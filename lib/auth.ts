@@ -69,19 +69,23 @@ export const authConfig: NextAuthConfig = {
 
                     if (!existingUser) {
                         // Create new user from Google OAuth
-                        await User.create({
+                        const newUser = await User.create({
                             email: user.email,
                             name: user.name,
                             image: user.image,
                             provider: "google",
                             emailVerified: new Date(),
                         });
-                    } else if (existingUser.provider !== "google") {
-                        // User exists but signed up with credentials
-                        existingUser.provider = "google";
-                        existingUser.image = user.image;
-                        existingUser.emailVerified = new Date();
-                        await existingUser.save();
+                        user.id = newUser._id.toString();
+                    } else {
+                        // Update existing user
+                        if (existingUser.provider !== "google") {
+                            existingUser.provider = "google";
+                            existingUser.image = user.image;
+                            existingUser.emailVerified = new Date();
+                            await existingUser.save();
+                        }
+                        user.id = existingUser._id.toString();
                     }
 
                     return true;
@@ -106,9 +110,11 @@ export const authConfig: NextAuthConfig = {
                 // Fetch additional user data from database
                 try {
                     await connectDB();
-                    const dbUser = await User.findById(token.id);
+                    // Query by email only since token.id might be a UUID from NextAuth
+                    const dbUser = await User.findOne({ email: session.user.email });
 
                     if (dbUser) {
+                        session.user.id = dbUser._id.toString();
                         session.user.walletAddress = dbUser.walletAddress;
                         session.user.portfolio = dbUser.portfolio;
                     }

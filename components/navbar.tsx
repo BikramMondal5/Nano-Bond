@@ -31,6 +31,7 @@ export function Navbar() {
     <nav className="fixed top-0 w-full z-40 border-b border-border/50 bg-[#0A0A0A]/90 backdrop-blur-2xl backdrop-saturate-150">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
+          {/* Left: Logo */}
           <div className="flex items-center gap-4">
             {user && !isLanding && <SidebarTrigger className="md:hidden" />}
 
@@ -40,23 +41,25 @@ export function Navbar() {
               </div>
               <span className="text-xl font-bold text-white tracking-tight">GovtBond</span>
             </Link>
-
-            {isLanding && (
-              <div className="hidden lg:flex items-center gap-6 ml-8">
-                {publicLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-sm font-medium text-muted-foreground hover:text-[#FD8C00] transition-colors relative group"
-                  >
-                    {link.label}
-                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#FD8C00] transition-all group-hover:w-full" />
-                  </Link>
-                ))}
-              </div>
-            )}
           </div>
 
+          {/* Center: Navigation Links (only on landing page) */}
+          {isLanding && (
+            <div className="hidden lg:flex items-center gap-6">
+              {publicLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm font-medium text-muted-foreground hover:text-[#FD8C00] transition-colors relative group"
+                >
+                  {link.label}
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#FD8C00] transition-all group-hover:w-full" />
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Right: Auth/User section */}
           <div className="flex items-center gap-3">
             {user ? (
               <DropdownMenu>

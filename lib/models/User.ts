@@ -97,9 +97,9 @@ const UserSchema = new Schema<IUser>(
     }
 );
 
-// Index for faster queries
-UserSchema.index({ email: 1 });
-UserSchema.index({ walletAddress: 1 });
+// Indexes are already created via unique: true in schema, no need to duplicate
+// UserSchema.index({ email: 1 });
+// UserSchema.index({ walletAddress: 1 });
 
 const User = models.User || model<IUser>('User', UserSchema);
 

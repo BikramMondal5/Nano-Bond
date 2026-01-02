@@ -12,3 +12,6 @@ export const config = {
         "/verification/:path*",
     ],
 };
+
+// Specify that this middleware should run in Node.js runtime, not Edge
+export const runtime = "nodejs";

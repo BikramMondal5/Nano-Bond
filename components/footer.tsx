@@ -2,11 +2,11 @@ import { Github, Twitter, Linkedin, Mail, Send } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="relative pt-20 pb-10 px-4 border-t border-border/50 bg-card/20 backdrop-blur-sm">
+    <footer className="relative pt-20 pb-2 px-4 border-t border-border/50 bg-card/20 backdrop-blur-sm">
       {/* Background glow effect */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/10 blur-[150px] rounded-full -z-10" />
 
-      <div className="container mx-auto">
+      <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-16">
           {/* Brand section */}
           <div className="col-span-2 lg:col-span-2">
@@ -134,14 +134,7 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-muted-foreground text-sm">© {new Date().getFullYear()} GovtBond. All rights reserved.</p>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-muted-foreground">All systems operational</span>
-          </div>
-        </div>
+        {/* Bottom bar removed */}
       </div>
     </footer>
   )

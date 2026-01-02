@@ -16,8 +16,9 @@ function AppSidebarWrapper() {
   const { user } = useAuth()
   const pathname = usePathname()
   const isLanding = pathname === "/"
+  const isAuthPage = pathname === "/login" || pathname === "/sign-up"
 
-  if (!user || isLanding) return null
+  if (!user || isLanding || isAuthPage) return null
 
   return <AppSidebar />
 }
@@ -28,7 +29,7 @@ export default function ClientLayout({
   children: React.ReactNode
 }>) {
   const pathname = usePathname()
-  const showFooter = pathname !== '/login' && pathname !== '/sign-up'
+  const showFooter = pathname === '/'
 
   return (
     <>

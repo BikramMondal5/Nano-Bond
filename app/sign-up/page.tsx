@@ -220,9 +220,9 @@ export default function SignUpPage() {
     <div className="min-h-screen bg-black flex flex-col relative">
       <Navbar />
       <MatrixRain opacity={0.25} speed={0.5} />
-      <div className="flex-1 flex relative z-10">
+      <div className="flex-1 flex relative z-10 overflow-hidden">
         {/* Left Side - Image Container */}
-        <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 overflow-hidden">
+        <div className="hidden lg:flex lg:w-1/2 fixed left-0 top-0 h-screen items-center justify-center p-12 overflow-hidden">
           <div className="absolute inset-0">
             <img
               src="/sign-up-page-banner.jpeg"
@@ -261,7 +261,7 @@ export default function SignUpPage() {
         </div>
 
         {/* Right Side - Form Container */}
-        <div className="w-full lg:w-1/2 flex items-start justify-center p-6 overflow-y-auto scrollbar-hide">
+        <div className="w-full lg:w-1/2 lg:ml-[50%] flex items-start justify-center p-6 py-24 overflow-y-auto scrollbar-hide min-h-screen">
           <Suspense
             fallback={<div className="text-orange-400 animate-pulse font-mono">INITIALIZING AGENT UPLINK...</div>}
           >
