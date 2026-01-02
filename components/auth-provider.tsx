@@ -1,10 +1,25 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { SessionProvider, useSession, signIn as nextAuthSignIn, signOut as nextAuthSignOut } from "next-auth/react"
 
 type User = {
-  address: string
+  id: string;
+  email: string;
+  name?: string;
+  image?: string;
+  address?: string;
+  walletAddress?: string;
+  portfolio?: {
+    totalInvested: number;
+    currentValue: number;
+    bonds: Array<{
+      bondId: string;
+      amount: number;
+      purchaseDate: Date;
+    }>;
+  };
 }
 
 type AuthContextType = {
@@ -16,37 +31,47 @@ type AuthContextType = {
 
 const AuthContext = React.createContext<AuthContextType | null>(null)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<User | null>(null)
-  const [isLoading, setIsLoading] = React.useState(true)
+function AuthProviderContent({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession()
   const router = useRouter()
-  const pathname = usePathname()
+  const [user, setUser] = React.useState<User | null>(null)
 
-  // Simulate persistent login state check
   React.useEffect(() => {
-    const savedUser = localStorage.getItem("gb_user")
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
+    if (session?.user) {
+      setUser({
+        id: session.user.id,
+        email: session.user.email || "",
+        name: session.user.name || undefined,
+        image: session.user.image || undefined,
+        address: session.user.walletAddress || undefined,
+        walletAddress: session.user.walletAddress,
+        portfolio: session.user.portfolio,
+      })
+    } else {
+      setUser(null)
     }
-    setIsLoading(false)
-  }, [])
+  }, [session])
 
-  const login = () => {
-    const mockUser = { address: "0xAb34...1aF9" }
-    setUser(mockUser)
-    localStorage.setItem("gb_user", JSON.stringify(mockUser))
-
-    // Redirect to portfolio after login as per requirements
-    router.push("/portfolio")
+  const login = async () => {
+    // Redirect to login page
+    router.push("/login")
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("gb_user")
-    router.push("/")
+  const logout = async () => {
+    await nextAuthSignOut({ redirect: true, callbackUrl: "/" })
   }
+
+  const isLoading = status === "loading"
 
   return <AuthContext.Provider value={{ user, login, logout, isLoading }}>{children}</AuthContext.Provider>
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AuthProviderContent>{children}</AuthProviderContent>
+    </SessionProvider>
+  )
 }
 
 export function useAuth() {

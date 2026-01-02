@@ -2,16 +2,18 @@
 
 import type React from "react"
 import { useState, Suspense, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { MatrixRain } from "@/components/cyber-hero"
-import { Shield, User, Mail, Lock, ArrowRight, Github } from "lucide-react"
+import { Shield, User, Mail, Lock, ArrowRight, Github, Wallet } from "lucide-react"
 
 function SignUpFormContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
@@ -28,10 +30,55 @@ function SignUpFormContent() {
     e.preventDefault()
     setIsLoading(true)
     setError("")
-    setTimeout(() => {
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          password,
+          firstName,
+          lastName,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || "Registration failed")
+        return
+      }
+
+      // Auto sign in after successful registration
+      const signInResult = await signIn("credentials", {
+        email: email.toLowerCase(),
+        password,
+        redirect: false,
+      })
+
+      if (signInResult?.ok) {
+        router.push("/portfolio")
+      } else {
+        router.push("/login?registered=true")
+      }
+    } catch (error) {
+      setError("An unexpected error occurred")
+    } finally {
       setIsLoading(false)
-      setError("Registration is locked in demo mode.")
-    }, 1500)
+    }
+  }
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true)
+    try {
+      await signIn("google", { callbackUrl: "/portfolio" })
+    } catch (error) {
+      setError("Failed to sign up with Google")
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -43,8 +90,8 @@ function SignUpFormContent() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 mb-4">
             <Shield className="w-8 h-8 text-orange-400" />
           </div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">Agent Registration</h2>
-          <p className="mt-2 text-orange-200/50">Join the elite cybersecurity simulation squad.</p>
+          <h2 className="text-3xl font-bold text-white tracking-tight">Create Your Account</h2>
+          <p className="mt-2 text-orange-200/50">Start investing in tokenized government bonds today</p>
         </div>
 
         {error && (
@@ -86,7 +133,7 @@ function SignUpFormContent() {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500/50 group-focus-within:text-orange-400 transition-colors" />
               <Input
                 type="email"
-                placeholder="agent@nexus.com"
+                placeholder="investor@govtbond.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -127,9 +174,8 @@ function SignUpFormContent() {
               type="button"
               variant="outline"
               className="w-full h-12 border-orange-500/30 text-orange-200 hover:bg-orange-950/40 rounded-xl bg-transparent flex items-center justify-center gap-3"
-              onClick={() => {
-                /* TODO: Implement Google OAuth */
-              }}
+              onClick={handleGoogleSignUp}
+              disabled={isLoading}
             >
               <img src="/google-logo.png" alt="Google" className="w-5 h-5" />
               Continue with Google
@@ -139,11 +185,12 @@ function SignUpFormContent() {
               variant="outline"
               className="w-full h-12 border-orange-500/30 text-orange-200 hover:bg-orange-950/40 rounded-xl bg-transparent flex items-center justify-center gap-3"
               onClick={() => {
-                /* TODO: Implement GitHub OAuth */
+                /* TODO: Implement Metamask connection */
               }}
+              disabled={isLoading}
             >
-              <Github className="w-5 h-5" />
-              Continue with GitHub
+              <img src="/MetaMask-logo.png" alt="MetaMask" className="w-5 h-5" />
+              Continue with Metamask
             </Button>
           </div>
 
@@ -152,15 +199,15 @@ function SignUpFormContent() {
             disabled={isLoading}
             className="w-full h-12 bg-orange-600 hover:bg-orange-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-orange-500/20 transition-all active:scale-[0.98] mt-4"
           >
-            {isLoading ? "Provisioning..." : "Create Identity"}
+            {isLoading ? "Creating account..." : "Start Investing"}
             {!isLoading && <ArrowRight className="ml-2 w-5 h-5" />}
           </Button>
         </form>
 
         <div className="mt-8 text-center text-sm">
-          <span className="text-orange-200/40">Already cleared?</span>{" "}
+          <span className="text-orange-200/40">Already have an account?</span>{" "}
           <Link href="/login" className="text-orange-400 hover:text-orange-300 font-bold transition-colors">
-            Authorize Session
+            Sign In
           </Link>
         </div>
       </div>
@@ -178,8 +225,8 @@ export default function SignUpPage() {
         <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 overflow-hidden">
           <div className="absolute inset-0">
             <img
-              src="https://images.unsplash.com/photo-1558494949-ef010cbdcc51?auto=format&fit=crop&q=80&w=2070"
-              alt="Network Security Graph"
+              src="/sign-up-page-banner.jpeg"
+              alt="Bond Portfolio Investment"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-orange-900/70 to-black/60" />
@@ -190,25 +237,24 @@ export default function SignUpPage() {
                 <Shield className="w-12 h-12 text-orange-400" />
               </div>
               <h1 className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-orange-300 to-amber-400">
-                Join the Elite Squad
+                Build Your Bond Portfolio
               </h1>
               <p className="text-lg text-orange-200/60 leading-relaxed">
-                Register to access cutting-edge threat intelligence and autonomous defense capabilities. Be part of the
-                next generation of cybersecurity.
+                Join thousands of investors accessing government bonds through blockchain technology. Earn stable returns with complete transparency and security.
               </p>
             </div>
             <div className="space-y-4 text-sm text-orange-200/50">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-orange-500" />
-                <span>Predictive attack simulations</span>
+                <span>Start with as little as $10</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-orange-500" />
-                <span>Advanced threat analytics</span>
+                <span>Bank-grade security & transparency</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-orange-500" />
-                <span>24/7 SOC dashboard access</span>
+                <span>24/7 portfolio access & management</span>
               </div>
             </div>
           </div>

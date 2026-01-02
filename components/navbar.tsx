@@ -28,7 +28,7 @@ export function Navbar() {
   const isLanding = pathname === "/"
 
   return (
-    <nav className="fixed top-0 w-full z-40 border-b border-border/50 bg-[#0A0A0A]/80 backdrop-blur-xl">
+    <nav className="fixed top-0 w-full z-40 border-b border-border/50 bg-[#0A0A0A]/90 backdrop-blur-2xl backdrop-saturate-150">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-4">
@@ -66,7 +66,7 @@ export function Navbar() {
                     className="border-border/50 bg-[#1A1A1A] hover:bg-[#252525] text-white gap-2"
                   >
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="hidden sm:inline">{user.address}</span>
+                    <span className="hidden sm:inline">{user.name || user.email || user.address}</span>
                     <ChevronDown className="w-4 h-4 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -91,13 +91,22 @@ export function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button
-                onClick={login}
-                className="bg-[#FD8C00] hover:bg-[#E67E00] text-black font-semibold shadow-[0_0_20px_-5px_rgba(253,140,0,0.5)] transition-all active:scale-95"
-              >
-                <Wallet className="w-4 h-4 mr-2" />
-                Connect Wallet
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-border/50 bg-[#1A1A1A] hover:bg-[#252525] text-white"
+                >
+                  <Link href="/sign-up">Register</Link>
+                </Button>
+                <Button
+                  onClick={login}
+                  className="bg-[#FD8C00] hover:bg-[#E67E00] text-black font-semibold shadow-[0_0_20px_-5px_rgba(253,140,0,0.5)] transition-all active:scale-95"
+                >
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Connect Wallet
+                </Button>
+              </div>
             )}
 
             {isLanding && (

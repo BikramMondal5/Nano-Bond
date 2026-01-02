@@ -51,9 +51,9 @@ export function FaqSection() {
         </div>
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-start">
           {/* Left Column - FAQs */}
-          <div>
+          <div className="lg:col-span-2">
             <Accordion type="single" collapsible className="space-y-4">
               {faqs.map((faq, idx) => (
                 <AccordionItem
@@ -71,7 +71,7 @@ export function FaqSection() {
           </div>
 
           {/* Right Column - CPU Architecture */}
-          <div className="lg:sticky lg:top-24">
+          <div className="lg:col-span-3 lg:sticky lg:top-24">
             <div className="p-8 rounded-2xl bg-transparent">
 
               <div className="aspect-[2/1] flex items-center justify-center">

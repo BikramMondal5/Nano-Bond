@@ -27,6 +27,9 @@ export default function ClientLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const pathname = usePathname()
+  const showFooter = pathname !== '/login' && pathname !== '/sign-up'
+
   return (
     <>
       <AuthProvider>
@@ -37,7 +40,7 @@ export default function ClientLayout({
             <SidebarInset className="flex flex-col w-full bg-[#0A0A0A]">
               <Navbar />
               <main className="flex-1 pt-16">{children}</main>
-              <Footer />
+              {showFooter && <Footer />}
             </SidebarInset>
           </div>
         </SidebarProvider>

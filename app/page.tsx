@@ -7,7 +7,6 @@ import { RoadmapSection } from "@/components/roadmap-section"
 import { StatsSection } from "@/components/stats-section"
 import { FaqSection } from "@/components/faq-section"
 import { CtaBanner } from "@/components/cta-banner"
-import { Footer } from "@/components/footer"
 import { PricingSection } from "@/components/pricing-section"
 import TestimonialCarousel from "@/components/testimonial-carousel"
 
@@ -25,7 +24,6 @@ export default function LandingPage() {
       <TestimonialCarousel />
       <FaqSection />
       <CtaBanner />
-      <Footer />
     </main>
   )
 }

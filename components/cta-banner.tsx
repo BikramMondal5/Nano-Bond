@@ -3,11 +3,11 @@ import { ArrowRight, Sparkles } from "lucide-react"
 
 export function CtaBanner() {
   return (
-    <section className="py-24 relative">
+    <section className="py-20 relative">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-96 bg-orange-500/20 blur-[150px] rounded-full -z-10 animate-glow-pulse" />
 
-      <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-12">
-        <div className="relative rounded-3xl overflow-hidden border border-border/50 bg-gradient-to-br from-primary/20 via-card/50 to-secondary/20 backdrop-blur-xl p-12 md:p-20">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="relative rounded-3xl overflow-hidden border border-border/50 bg-gradient-to-br from-primary/20 via-card/50 to-secondary/20 backdrop-blur-xl p-10 md:p-16">
           {/* Decorative grid pattern */}
           <div
             className="absolute inset-0 opacity-[0.03]"
@@ -27,7 +27,7 @@ export function CtaBanner() {
               <span className="text-sm font-medium text-primary">Join the Future of Investing</span>
             </div>
 
-            <h2 className="text-4xl md:text-6xl font-black text-foreground mb-6 leading-tight text-balance">
+            <h2 className="text-4xl md:text-5xl font-black text-foreground mb-5 leading-tight text-balance">
               Ready to earn stable returns from tokenized bonds?
             </h2>
 
