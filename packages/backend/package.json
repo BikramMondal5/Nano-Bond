@@ -1,0 +1,23 @@
+{
+    "name": "@govtbond/backend",
+    "version": "1.0.0",
+    "description": "Backend services for GovtBond",
+    "main": "dist/index.js",
+    "scripts": {
+        "start": "ts-node src/index.ts",
+        "monitor": "ts-node src/debt-monitor.ts",
+        "bot": "ts-node src/yield-bot.ts",
+        "flight": "ts-node src/test-flight.ts",
+        "build": "tsc"
+    },
+    "dependencies": {
+        "bybit-api": "^3.10.0",
+        "dotenv": "^16.4.0",
+        "ethers": "^6.11.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.3.3"
+    }
+}
