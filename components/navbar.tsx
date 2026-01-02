@@ -29,7 +29,7 @@ export function Navbar() {
 
   return (
     <nav className="fixed top-0 w-full z-40 border-b border-border/50 bg-[#0A0A0A]/80 backdrop-blur-xl">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-6 md:px-8 lg:px-12">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-4">
             {user && !isLanding && <SidebarTrigger className="md:hidden" />}
