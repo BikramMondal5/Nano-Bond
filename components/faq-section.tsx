@@ -1,6 +1,7 @@
 "use client"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { CpuArchitecture } from "@/components/ui/cpu-architecture"
 
 export function FaqSection() {
   const faqs = [
@@ -38,7 +39,7 @@ export function FaqSection() {
 
   return (
     <section id="faq" className="py-24 px-4 relative">
-      <div className="container mx-auto max-w-3xl">
+      <div className="container mx-auto max-w-7xl">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
             Knowledge Base
@@ -49,21 +50,41 @@ export function FaqSection() {
           <p className="text-xl text-orange-100/60 leading-relaxed">Everything you need to know about GovtBond</p>
         </div>
 
-        <Accordion type="single" collapsible className="space-y-4">
-          {faqs.map((faq, idx) => (
-            <AccordionItem
-              key={idx}
-              value={`item-${idx}`}
-              className="border border-border/50 rounded-xl px-6 bg-card/30 backdrop-blur-sm hover:border-primary/50 transition-colors"
-            >
-              <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground leading-relaxed">{faq.answer}</AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+          {/* Left Column - FAQs */}
+          <div>
+            <Accordion type="single" collapsible className="space-y-4">
+              {faqs.map((faq, idx) => (
+                <AccordionItem
+                  key={idx}
+                  value={`item-${idx}`}
+                  className="border border-border/50 rounded-xl px-6 bg-card/30 backdrop-blur-sm hover:border-primary/50 transition-colors"
+                >
+                  <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground leading-relaxed">{faq.answer}</AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+
+          {/* Right Column - CPU Architecture */}
+          <div className="lg:sticky lg:top-24">
+            <div className="p-8 rounded-2xl bg-transparent">
+
+              <div className="aspect-[2/1] flex items-center justify-center">
+                <CpuArchitecture
+                  imageUrl="/crypto-logo.png"
+                  className="w-full h-full"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )
 }
+

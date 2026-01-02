@@ -13,12 +13,12 @@ export function TrustStrip() {
 
   return (
     <div className="py-8 border-y border-border/30 bg-card/30 backdrop-blur-sm overflow-hidden">
-      <div className="container mx-auto px-4 mb-4">
+      <div className="max-w-7xl mx-auto px-6 mb-4">
         <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
           Powered by Industry Leaders
         </p>
       </div>
-      
+
       {/* Infinite scrolling marquee */}
       <div className="relative flex overflow-x-hidden">
         <div className="flex animate-marquee whitespace-nowrap py-4">

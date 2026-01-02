@@ -44,11 +44,11 @@ export function HeroSection() {
             <div className="relative">
               <div className="absolute inset-0 -inset-x-32 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
               <h1 className="relative text-6xl md:text-7xl lg:text-8xl font-bold mb-6">
-                <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent bg-[length:200%_auto] animate-[gradient_2s_linear_infinite]">
+                <span className="text-white">
                   Fractional Bonds,
                 </span>
                 <br />
-                <span className="text-foreground">Unlimited Access</span>
+                <span className="text-primary">Unlimited Access</span>
               </h1>
             </div>
             <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto">

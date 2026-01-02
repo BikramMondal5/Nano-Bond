@@ -3,10 +3,10 @@ import { ArrowRight, Sparkles } from "lucide-react"
 
 export function CtaBanner() {
   return (
-    <section className="py-24 px-4 relative">
+    <section className="py-24 relative">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-96 bg-orange-500/20 blur-[150px] rounded-full -z-10 animate-glow-pulse" />
 
-      <div className="container mx-auto">
+      <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-12">
         <div className="relative rounded-3xl overflow-hidden border border-border/50 bg-gradient-to-br from-primary/20 via-card/50 to-secondary/20 backdrop-blur-xl p-12 md:p-20">
           {/* Decorative grid pattern */}
           <div

@@ -114,7 +114,7 @@ export default function TestimonialCarousel() {
 
   return (
     <section id="testimonials" className="relative py-24 bg-transparent overflow-hidden">
-      <div className="max-w-6xl mx-auto px-4 mb-16 text-center space-y-4">
+      <div className="max-w-7xl mx-auto px-6 mb-16 text-center space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
           Wall of Confidence
         </div>
@@ -208,9 +208,8 @@ function TestimonialCard({ testimonial }: { testimonial: any }) {
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
-                className={`h-4 w-4 ${
-                  star <= (testimonial.rating || 5) ? "fill-orange-500 text-orange-500" : "fill-none text-white/10"
-                }`}
+                className={`h-4 w-4 ${star <= (testimonial.rating || 5) ? "fill-orange-500 text-orange-500" : "fill-none text-white/10"
+                  }`}
               />
             ))}
           </div>
