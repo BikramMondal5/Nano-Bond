@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/components/auth-provider"
 import { Navbar } from "@/components/navbar"
 import { AppSidebar } from "@/components/app-sidebar"
+import { AdminSidebar } from "@/components/admin-sidebar"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { usePathname } from "next/navigation"
@@ -19,6 +20,10 @@ function AppSidebarWrapper() {
   const isAuthPage = pathname === "/login" || pathname === "/sign-up"
 
   if (!user || isLanding || isAuthPage) return null
+
+  if (pathname.startsWith("/admin")) {
+    return <AdminSidebar />
+  }
 
   return <AppSidebar />
 }
