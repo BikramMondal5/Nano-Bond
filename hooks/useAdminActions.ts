@@ -28,14 +28,46 @@ export function useAdminActions() {
         }
     }
 
-    // Helper to distribute yield
+    // Helper to fund reserve (No distribution)
+    const fundReserve = async (amount: string) => {
+        try {
+            write({
+                address: COUPON_DISTRIBUTOR.address,
+                abi: COUPON_DISTRIBUTOR.abi,
+                functionName: 'fundReserve',
+                args: [parseUnits(amount, 6)], // Reserve in USDT (6 decimals)
+            })
+        } catch (err) {
+            console.error(err)
+            toast.error('Failed to fund reserve')
+        }
+    }
+
+    // Helper to distribute yield BY RATE (e.g. 0.08 per token)
+    const distributeRate = async (rate: string) => {
+        try {
+            write({
+                address: COUPON_DISTRIBUTOR.address,
+                abi: COUPON_DISTRIBUTOR.abi,
+                functionName: 'distribute',
+                args: [parseUnits(rate, 6)], // Rate is "USDT per Token". If Token is 18 dec, and USDT is 6 dec. 
+                // Logic in contract: Cost = Supply * Rate / 1e18.
+                // If we want 1 USDT per token, Rate should be 1e6.
+            })
+        } catch (err) {
+            console.error(err)
+            toast.error('Failed to distribute rate')
+        }
+    }
+
+    // Legacy Support (Optional)
     const distributeYield = async (amount: string) => {
         try {
             write({
                 address: COUPON_DISTRIBUTOR.address,
                 abi: COUPON_DISTRIBUTOR.abi,
                 functionName: 'depositYield',
-                args: [parseUnits(amount, 6)], // Yield is likely USDT, so 6 decimals
+                args: [parseUnits(amount, 6)],
             })
         } catch (err) {
             console.error(err)
@@ -76,6 +108,8 @@ export function useAdminActions() {
     return {
         addAsset,
         distributeYield,
+        fundReserve,
+        distributeRate,
         approveUSDT,
         setMaturityDate,
         hash,

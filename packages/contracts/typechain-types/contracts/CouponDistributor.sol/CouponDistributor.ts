@@ -32,12 +32,15 @@ export interface CouponDistributorInterface extends Interface {
       | "claimableYield"
       | "cumulativeYieldPerToken"
       | "depositYield"
+      | "distribute"
+      | "fundReserve"
       | "getRoleAdmin"
       | "grantRole"
       | "hasRole"
       | "onTokenTransfer"
       | "paymentToken"
       | "renounceRole"
+      | "reserve"
       | "revokeRole"
       | "rewards"
       | "supportsInterface"
@@ -48,9 +51,11 @@ export interface CouponDistributorInterface extends Interface {
     nameOrSignatureOrTopic:
       | "CouponClaimed"
       | "CouponDistributed"
+      | "ReserveFunded"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
+      | "YieldDistributed"
   ): EventFragment;
 
   encodeFunctionData(
@@ -69,6 +74,14 @@ export interface CouponDistributorInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "depositYield",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "distribute",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "fundReserve",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
@@ -95,6 +108,7 @@ export interface CouponDistributorInterface extends Interface {
     functionFragment: "renounceRole",
     values: [BytesLike, AddressLike]
   ): string;
+  encodeFunctionData(functionFragment: "reserve", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "revokeRole",
     values: [BytesLike, AddressLike]
@@ -130,6 +144,11 @@ export interface CouponDistributorInterface extends Interface {
     functionFragment: "depositYield",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "distribute", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "fundReserve",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
     data: BytesLike
@@ -148,6 +167,7 @@ export interface CouponDistributorInterface extends Interface {
     functionFragment: "renounceRole",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "reserve", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "rewards", data: BytesLike): Result;
   decodeFunctionResult(
@@ -182,6 +202,18 @@ export namespace CouponDistributedEvent {
   export interface OutputObject {
     totalAmount: bigint;
     ratePerShare: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ReserveFundedEvent {
+  export type InputTuple = [amount: BigNumberish];
+  export type OutputTuple = [amount: bigint];
+  export interface OutputObject {
+    amount: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -240,6 +272,19 @@ export namespace RoleRevokedEvent {
     role: string;
     account: string;
     sender: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace YieldDistributedEvent {
+  export type InputTuple = [rate: BigNumberish, totalCost: BigNumberish];
+  export type OutputTuple = [rate: bigint, totalCost: bigint];
+  export interface OutputObject {
+    rate: bigint;
+    totalCost: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -306,6 +351,18 @@ export interface CouponDistributor extends BaseContract {
     "nonpayable"
   >;
 
+  distribute: TypedContractMethod<
+    [ratePerToken: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  fundReserve: TypedContractMethod<
+    [amount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
 
   grantRole: TypedContractMethod<
@@ -333,6 +390,8 @@ export interface CouponDistributor extends BaseContract {
     [void],
     "nonpayable"
   >;
+
+  reserve: TypedContractMethod<[], [bigint], "view">;
 
   revokeRole: TypedContractMethod<
     [role: BytesLike, account: AddressLike],
@@ -373,6 +432,12 @@ export interface CouponDistributor extends BaseContract {
     nameOrSignature: "depositYield"
   ): TypedContractMethod<[amount: BigNumberish], [void], "nonpayable">;
   getFunction(
+    nameOrSignature: "distribute"
+  ): TypedContractMethod<[ratePerToken: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "fundReserve"
+  ): TypedContractMethod<[amount: BigNumberish], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
   getFunction(
@@ -407,6 +472,9 @@ export interface CouponDistributor extends BaseContract {
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "reserve"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
     nameOrSignature: "revokeRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
@@ -438,6 +506,13 @@ export interface CouponDistributor extends BaseContract {
     CouponDistributedEvent.OutputObject
   >;
   getEvent(
+    key: "ReserveFunded"
+  ): TypedContractEvent<
+    ReserveFundedEvent.InputTuple,
+    ReserveFundedEvent.OutputTuple,
+    ReserveFundedEvent.OutputObject
+  >;
+  getEvent(
     key: "RoleAdminChanged"
   ): TypedContractEvent<
     RoleAdminChangedEvent.InputTuple,
@@ -457,6 +532,13 @@ export interface CouponDistributor extends BaseContract {
     RoleRevokedEvent.InputTuple,
     RoleRevokedEvent.OutputTuple,
     RoleRevokedEvent.OutputObject
+  >;
+  getEvent(
+    key: "YieldDistributed"
+  ): TypedContractEvent<
+    YieldDistributedEvent.InputTuple,
+    YieldDistributedEvent.OutputTuple,
+    YieldDistributedEvent.OutputObject
   >;
 
   filters: {
@@ -480,6 +562,17 @@ export interface CouponDistributor extends BaseContract {
       CouponDistributedEvent.InputTuple,
       CouponDistributedEvent.OutputTuple,
       CouponDistributedEvent.OutputObject
+    >;
+
+    "ReserveFunded(uint256)": TypedContractEvent<
+      ReserveFundedEvent.InputTuple,
+      ReserveFundedEvent.OutputTuple,
+      ReserveFundedEvent.OutputObject
+    >;
+    ReserveFunded: TypedContractEvent<
+      ReserveFundedEvent.InputTuple,
+      ReserveFundedEvent.OutputTuple,
+      ReserveFundedEvent.OutputObject
     >;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<
@@ -513,6 +606,17 @@ export interface CouponDistributor extends BaseContract {
       RoleRevokedEvent.InputTuple,
       RoleRevokedEvent.OutputTuple,
       RoleRevokedEvent.OutputObject
+    >;
+
+    "YieldDistributed(uint256,uint256)": TypedContractEvent<
+      YieldDistributedEvent.InputTuple,
+      YieldDistributedEvent.OutputTuple,
+      YieldDistributedEvent.OutputObject
+    >;
+    YieldDistributed: TypedContractEvent<
+      YieldDistributedEvent.InputTuple,
+      YieldDistributedEvent.OutputTuple,
+      YieldDistributedEvent.OutputObject
     >;
   };
 }
