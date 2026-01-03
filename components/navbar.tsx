@@ -27,7 +27,7 @@ const publicLinks = [
 export function Navbar() {
   const { user, login, logout } = useAuth()
   const pathname = usePathname()
-  const isLanding = pathname === "/"
+  const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/sign-up"
 
   return (
     <nav className="fixed top-0 w-full z-40 border-b border-border/50 bg-[#0A0A0A]/90 backdrop-blur-2xl backdrop-saturate-150">
@@ -35,7 +35,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
           <div className="flex items-center gap-4">
-            {user && !isLanding && <SidebarTrigger className="md:hidden" />}
+            {user && !isPublicPage && <SidebarTrigger className="md:hidden" />}
 
             <Link href="/" className="flex items-center gap-2 group">
               <div className="relative w-8 h-8 transition-transform group-hover:scale-105">
@@ -45,8 +45,8 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Center: Navigation Links (only on landing page) */}
-          {isLanding && (
+          {/* Center: Navigation Links (only on public pages) */}
+          {isPublicPage && (
             <div className="hidden lg:flex items-center gap-6">
               {publicLinks.map((link) => (
                 <Link
@@ -110,7 +110,7 @@ export function Navbar() {
               </div>
             )}
 
-            {isLanding && (
+            {isPublicPage && (
               <Button variant="ghost" size="icon" className="lg:hidden text-white">
                 <Menu className="w-6 h-6" />
               </Button>
