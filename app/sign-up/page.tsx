@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+
 import type React from "react"
 import { useState, Suspense, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -9,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { MatrixRain } from "@/components/cyber-hero"
-import { Shield, User, Mail, Lock, ArrowRight, Github, Wallet } from "lucide-react"
+import { Shield, User, Mail, Lock, ArrowRight, Github, Wallet, Rocket } from "lucide-react"
 
 function SignUpFormContent() {
   const searchParams = useSearchParams()
@@ -88,7 +90,7 @@ function SignUpFormContent() {
 
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 mb-4">
-            <Shield className="w-8 h-8 text-orange-400" />
+            <Rocket className="w-8 h-8 text-orange-400" />
           </div>
           <h2 className="text-3xl font-bold text-white tracking-tight">Create Your Account</h2>
           <p className="mt-2 text-orange-200/50">Start investing in tokenized government bonds today</p>
@@ -225,7 +227,7 @@ export default function SignUpPage() {
         <div className="hidden lg:flex lg:w-1/2 fixed left-0 top-0 h-screen items-center justify-center p-12 overflow-hidden">
           <div className="absolute inset-0">
             <img
-              src="/sign-up-page-banner.jpeg"
+              src="/sign-up-banner.jpeg"
               alt="Bond Portfolio Investment"
               className="w-full h-full object-cover"
             />
@@ -234,7 +236,7 @@ export default function SignUpPage() {
           <div className="relative z-10 max-w-lg">
             <div className="mb-8">
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-orange-500/20 border-2 border-orange-500/30 mb-6">
-                <Shield className="w-12 h-12 text-orange-400" />
+                <Rocket className="w-12 h-12 text-orange-400" />
               </div>
               <h1 className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-orange-300 to-amber-400">
                 Build Your Bond Portfolio

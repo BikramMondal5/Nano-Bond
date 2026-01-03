@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Shield, Users, TrendingUp, Zap, Lock, DollarSign } from 'lucide-react'
+import { Shield, Users, TrendingUp, Zap, Lock, DollarSign, Sparkles } from 'lucide-react'
 
 export function Features() {
     return (
@@ -7,6 +7,10 @@ export function Features() {
             <div className="mx-auto max-w-6xl px-6">
                 {/* Section Header */}
                 <div className="text-center mb-16">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary mb-6">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Powerful Features
+                    </div>
                     <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
                         Powerful Features for Modern Investors
                     </h2>

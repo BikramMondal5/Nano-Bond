@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Wallet, TrendingUp, Coins } from "lucide-react";
+import { Wallet, TrendingUp, Coins, Workflow } from "lucide-react";
 import type React from "react";
 
 // The main props for the HowItWorks component
@@ -113,6 +113,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
         {/* Section Header */}
         <div className="mx-auto mb-16 max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary mb-6">
+            <Workflow className="w-3.5 h-3.5" />
             The Process
           </div>
           <h2 className="text-4xl md:text-6xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-secondary to-primary">
@@ -124,20 +125,44 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
         </div>
 
         {/* Step Indicators with Connecting Line */}
-        <div className="relative mx-auto mb-8 w-full max-w-5xl">
-          <div
+        <div className="relative mx-auto mb-8 w-full max-w-5xl px-0">
+          {/* Curvy Dotted Line SVG */}
+          <svg
+            className="absolute top-1/2 left-0 w-full h-16 -translate-y-1/2"
+            viewBox="0 0 1000 80"
+            preserveAspectRatio="none"
             aria-hidden="true"
-            className="absolute left-[16.6667%] top-1/2 h-0.5 w-[66.6667%] -translate-y-1/2 bg-gradient-to-r from-primary/50 via-secondary/50 to-primary/50"
-          ></div>
+          >
+            <path
+              d="M 80 40 Q 200 15, 320 40 T 500 40 Q 620 65, 740 40 T 920 40"
+              fill="none"
+              stroke="url(#gradient)"
+              strokeWidth="2.5"
+              strokeDasharray="10 10"
+              strokeLinecap="round"
+            />
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" className="text-primary" stopColor="currentColor" stopOpacity="0.6" />
+                <stop offset="50%" className="text-secondary" stopColor="currentColor" stopOpacity="0.6" />
+                <stop offset="100%" className="text-primary" stopColor="currentColor" stopOpacity="0.6" />
+              </linearGradient>
+            </defs>
+          </svg>
+
           {/* Use grid to align numbers with the card grid below */}
-          <div className="relative grid grid-cols-3">
+          <div className="relative grid grid-cols-3 gap-8">
             {stepsData.map((_, index) => (
               <div
                 key={index}
-                // Center the number within its grid column
-                className="flex h-10 w-10 items-center justify-center justify-self-center rounded-full bg-gradient-to-br from-primary to-secondary font-bold text-primary-foreground ring-4 ring-background"
+                className={`flex items-center ${index === 0 ? 'justify-start' :
+                    index === 2 ? 'justify-end' :
+                      'justify-center'
+                  }`}
               >
-                {index + 1}
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary font-bold text-lg text-primary-foreground ring-4 ring-background shadow-lg">
+                  {index + 1}
+                </div>
               </div>
             ))}
           </div>

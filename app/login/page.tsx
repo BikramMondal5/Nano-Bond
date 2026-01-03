@@ -178,7 +178,7 @@ export default function LoginPage() {
         <div className="hidden lg:flex lg:w-1/2 fixed left-0 top-0 h-screen items-center justify-center p-12 overflow-hidden">
           <div className="absolute inset-0">
             <img
-              src="/login-page-banner.jpeg"
+              src="/a-clean-3d-illustration-featuring-a-poli_LGz4tTIWT5mjAhAIXmRP1A_FjVoipGKQ6-nmpV1SiOP3Q.jpeg"
               alt="Government Bonds Investment"
               className="w-full h-full object-cover"
             />
