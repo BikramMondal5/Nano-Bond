@@ -29,9 +29,17 @@ export function Navbar() {
   const pathname = usePathname()
   const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/sign-up"
 
+  const showNavLinks =
+    isPublicPage ||
+    pathname === "/portfolio" ||
+    pathname.startsWith("/bond/") ||
+    pathname === "/invest" ||
+    pathname === "/redeem" ||
+    pathname === "/verification"
+
   return (
     <nav className="fixed top-0 w-full z-40 border-b border-border/50 bg-[#0A0A0A]/90 backdrop-blur-2xl backdrop-saturate-150">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="w-full px-6">
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
           <div className="flex items-center gap-4">
@@ -45,8 +53,8 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Center: Navigation Links (only on public pages) */}
-          {isPublicPage && (
+          {/* Center: Navigation Links (only on public pages or portfolio) */}
+          {showNavLinks && (
             <div className="hidden lg:flex items-center gap-6">
               {publicLinks.map((link) => (
                 <Link
@@ -110,7 +118,7 @@ export function Navbar() {
               </div>
             )}
 
-            {isPublicPage && (
+            {showNavLinks && (
               <Button variant="ghost" size="icon" className="lg:hidden text-white">
                 <Menu className="w-6 h-6" />
               </Button>
