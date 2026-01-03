@@ -43,9 +43,7 @@ export function VerificationGuide() {
                 <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
               </div>
             </div>
-            {idx < steps.length - 1 && (
-              <div className="hidden lg:block absolute top-7 left-[calc(50%+2rem)] w-[calc(100%-4rem)] h-[1px] bg-gradient-to-r from-primary/30 to-transparent" />
-            )}
+
           </div>
         ))}
       </div>

@@ -4,7 +4,7 @@ import { Plus, ArrowDownCircle, Info } from "lucide-react"
 
 export function SponsorActions() {
   return (
-    <Card className="bg-[#100F14] border-white/5 sticky top-24">
+    <Card className="bg-[#100F14] border-white/5">
       <CardHeader>
         <CardTitle className="text-[#E5E7EB] text-lg font-bold">Manage Stakes</CardTitle>
       </CardHeader>
