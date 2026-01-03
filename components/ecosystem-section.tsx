@@ -1,0 +1,135 @@
+"use client"
+
+import { CpuArchitecture } from "@/components/ui/cpu-architecture"
+import { Shield, TrendingUp, Zap, Lock, Coins, BarChart3 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+
+export function EcosystemSection() {
+    const features = [
+        {
+            icon: <Shield className="w-6 h-6" />,
+            title: "Military-Grade Security",
+            description: "Multi-signature wallets and audited smart contracts protecting your investments",
+        },
+        {
+            icon: <TrendingUp className="w-6 h-6" />,
+            title: "Real-Time Analytics",
+            description: "AI-powered bond analytics with performance tracking and yield predictions",
+        },
+        {
+            icon: <Lock className="w-6 h-6" />,
+            title: "Decentralized Infrastructure",
+            description: "Built on cutting-edge blockchain for maximum transparency and reliability",
+        },
+        {
+            icon: <Coins className="w-6 h-6" />,
+            title: "Fractional Ownership",
+            description: "Invest in government bonds with as little as $10, no barriers to entry",
+        },
+        {
+            icon: <BarChart3 className="w-6 h-6" />,
+            title: "Automated Yield Distribution",
+            description: "Receive interest payments automatically in USDT based on bond schedules",
+        },
+    ]
+
+    const integrations = [
+        { name: "Ethereum", position: "top-left", icon: "⟠" },
+        { name: "USDT", position: "bottom-right", icon: "₮" },
+    ]
+
+    return (
+        <section className="py-24 px-4 relative bg-transparent overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent -z-10" />
+
+            <div className="container mx-auto max-w-7xl">
+                <div className="text-center mb-16">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
+                        <Zap className="w-3.5 h-3.5" />
+                        Platform Ecosystem
+                    </div>
+                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+                        Why Choose GovtBond
+                    </h2>
+                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                        Built on a robust blockchain infrastructure connecting the best in DeFi
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                    {/* Left Side - Feature Cards */}
+                    <div className="space-y-4">
+                        {features.map((feature, index) => (
+                            <Card
+                                key={index}
+                                className="border border-border/50 bg-card/30 backdrop-blur-sm hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10"
+                            >
+                                <CardContent className="p-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                            {feature.icon}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-semibold text-foreground mb-2">
+                                                {feature.title}
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                {feature.description}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* Right Side - Blockchain Circuit with Connected Logos */}
+                    <div className="relative min-h-[600px] flex items-center justify-center p-8">
+                        {/* Central Blockchain Circuit */}
+                        <div className="relative w-full h-full flex items-center justify-center">
+                            <div className="w-full h-full max-w-[500px] max-h-[500px] relative z-10">
+                                <CpuArchitecture
+                                    imageUrl="/crypto-logo.png"
+                                    className="w-full h-full"
+                                />
+                            </div>
+
+                            {/* Top-Left Icon - Positioned higher */}
+                            <div className="absolute top-[-70%] left-[0%] z-20">
+                                <div className="relative group">
+                                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 border-3 border-primary/40 backdrop-blur-sm flex items-center justify-center text-4xl font-bold text-primary hover:scale-110 transition-transform duration-300 hover:shadow-xl hover:shadow-primary/40">
+                                        {integrations[0].icon}
+                                    </div>
+                                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span className="text-sm font-semibold text-foreground bg-card/90 px-3 py-1.5 rounded border border-border/50 shadow-lg">
+                                            {integrations[0].name}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Bottom-Right Icon - Positioned lower */}
+                            <div className="absolute bottom-[-70%] right-[0%] z-20">
+                                <div className="relative group">
+                                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 border-3 border-primary/40 backdrop-blur-sm flex items-center justify-center text-4xl font-bold text-primary hover:scale-110 transition-transform duration-300 hover:shadow-xl hover:shadow-primary/40">
+                                        {integrations[1].icon}
+                                    </div>
+                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span className="text-sm font-semibold text-foreground bg-card/90 px-3 py-1.5 rounded border border-border/50 shadow-lg">
+                                            {integrations[1].name}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Animated Glow Effect */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-[550px] h-[550px] rounded-full bg-primary/5 blur-3xl animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    )
+}
