@@ -11,7 +11,7 @@ import { usePathname } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { Footer } from "@/components/footer" // imported Footer to include it globally
 
-// Internal wrapper to handle conditional sidebar logic
+// Internal wrapper to handle conditional sidebar  
 function AppSidebarWrapper() {
   const { user } = useAuth()
   const pathname = usePathname()
