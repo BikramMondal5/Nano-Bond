@@ -18,12 +18,8 @@ export type { IERC721Errors } from "./@openzeppelin/contracts/interfaces/draft-I
 export { IERC721Errors__factory } from "./factories/@openzeppelin/contracts/interfaces/draft-IERC6093.sol/IERC721Errors__factory";
 export type { IERC1363 } from "./@openzeppelin/contracts/interfaces/IERC1363";
 export { IERC1363__factory } from "./factories/@openzeppelin/contracts/interfaces/IERC1363__factory";
-export type { IERC4626 } from "./@openzeppelin/contracts/interfaces/IERC4626";
-export { IERC4626__factory } from "./factories/@openzeppelin/contracts/interfaces/IERC4626__factory";
 export type { ERC20 } from "./@openzeppelin/contracts/token/ERC20/ERC20";
 export { ERC20__factory } from "./factories/@openzeppelin/contracts/token/ERC20/ERC20__factory";
-export type { ERC4626 } from "./@openzeppelin/contracts/token/ERC20/extensions/ERC4626";
-export { ERC4626__factory } from "./factories/@openzeppelin/contracts/token/ERC20/extensions/ERC4626__factory";
 export type { IERC20Metadata } from "./@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata";
 export { IERC20Metadata__factory } from "./factories/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata__factory";
 export type { IERC20 } from "./@openzeppelin/contracts/token/ERC20/IERC20";
@@ -34,8 +30,6 @@ export type { ERC165 } from "./@openzeppelin/contracts/utils/introspection/ERC16
 export { ERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/ERC165__factory";
 export type { IERC165 } from "./@openzeppelin/contracts/utils/introspection/IERC165";
 export { IERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/IERC165__factory";
-export type { SafeCast } from "./@openzeppelin/contracts/utils/math/SafeCast";
-export { SafeCast__factory } from "./factories/@openzeppelin/contracts/utils/math/SafeCast__factory";
 export type { CouponDistributor } from "./contracts/CouponDistributor.sol/CouponDistributor";
 export { CouponDistributor__factory } from "./factories/contracts/CouponDistributor.sol/CouponDistributor__factory";
 export type { ISovereignBond } from "./contracts/CouponDistributor.sol/ISovereignBond";

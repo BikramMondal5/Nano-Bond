@@ -20,6 +20,7 @@ export function UploadProof({ enabled, onSuccess }: UploadProofProps) {
     const [uploading, setUploading] = useState(false)
     const [progress, setProgress] = useState(0)
     const [uploadedHash, setUploadedHash] = useState<string | null>(null)
+    const [assetValue, setAssetValue] = useState("")
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const { addAsset, hash, isPending } = useAdminActions()
@@ -194,18 +195,34 @@ export function UploadProof({ enabled, onSuccess }: UploadProofProps) {
                                 </div>
                             </div>
 
+                            <div className="space-y-2">
+                                <label className="text-xs text-gray-500 uppercase font-semibold tracking-wider">Asset Value (USDT Equivalent)</label>
+                                <Input
+                                    type="number"
+                                    placeholder="Enter value (e.g. 100000)"
+                                    value={assetValue}
+                                    onChange={(e) => setAssetValue(e.target.value)}
+                                    className="bg-black/40 border-gray-800 text-white placeholder:text-gray-600"
+                                />
+                                <p className="text-[10px] text-gray-500">This amount will be added to the Global Minting Cap.</p>
+                            </div>
+
                             <div className="flex justify-end pt-2">
                                 <Button
                                     onClick={() => {
-                                        if (uploadedHash) addAsset(uploadedHash, "100000")
-                                        // Ideally wait for tx, but for UI flow:
-                                        onSuccess()
+                                        if (uploadedHash && assetValue && Number(assetValue) > 0) {
+                                            addAsset(uploadedHash, assetValue)
+                                            // Ideally wait for tx, but for UI flow:
+                                            onSuccess()
+                                        } else {
+                                            toast.error("Please enter a valid asset value")
+                                        }
                                     }}
-                                    disabled={isPending}
+                                    disabled={isPending || !assetValue}
                                     className="bg-green-600 hover:bg-green-700 text-white font-bold w-full md:w-auto"
                                 >
                                     {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                                    {isPending ? "Confirming..." : "Submit On-Chain"}
+                                    {isPending ? "Confirming..." : "Submit to Blockchain"}
                                 </Button>
                             </div>
                             {hash && <p className="text-xs text-gray-500 text-right mt-1 font-mono">Tx: {hash}</p>}

@@ -9,7 +9,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAccount } from "wagmi"
 import { useInvestment } from "@/hooks/useInvestment"
-import { parseUnits } from "viem"
+import { useBondStats } from "@/hooks/useAdminActions"
+import { parseUnits, formatUnits } from "viem"
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 export function InvestmentCard() {
@@ -18,6 +19,7 @@ export function InvestmentCard() {
   // const [status, setStatus] = useState<"idle" | "approving" | "depositing" | "success">("idle")
   // Replace custom status with derived state from hook
   const { address, isConnected: isWalletConnected } = useAccount()
+  const { totalSupply, backedValue } = useBondStats()
   const {
     approve,
     buy,
@@ -26,28 +28,65 @@ export function InvestmentCard() {
     // approveHash, 
     isBuyPending,
     buyHash,
-    usdtBalance
+    usdtBalance,
+    allowanceError
   } = useInvestment()
 
   const [step, setStep] = useState<"idle" | "success">("idle")
 
   const tokenPrice = 1.00 // 1 GBOND = 1 USDT (Pegged)
   const minInvest = 1
-  const maxInvest = 50000
   const fee = 0 // No fee directly on contract for now
 
-  // Handle successful tx (simplified for demo, ideally watch receipt)
-  useEffect(() => {
-    if (buyHash) {
-      // Only show success if BUY hash is present
-      setStep("success")
-    }
-  }, [buyHash])
+  // Supply Logic
+  const supply = totalSupply ? Number(totalSupply) : 0
+  const backed = backedValue ? Number(backedValue) : 0
+  // Ensure we compare in same units. totalSupply is 18 dec, backedValue is 6 dec (based on addAsset)?
+  // Wait, in previous task I saw addAsset using parseUnits(value, 6).
+  // But totalSupply is ERC20 (18 decimals).
+  // If backedValue is 6 decimals, we must normalize.
+  // Actually, let's verify SovereignBond.sol.
+  // addAsset: totalBackedValue += value.
+  // mint: if (totalSupply() + amount > totalBackedValue)
+  // If amount (minted) is 18 decimals, then totalBackedValue MUST be 18 decimals for this logic to hold.
+  // If addAsset was called with 6 decimals (USDT), then the contract comparison is flawed unless adjusted.
+  // Check useAdminActions: addAsset args: [uri, parseUnits(value, 6)].
+  // So backedValue is 1e6 based.
+  // Mint amount (ERC20 standard) is 1e18 based.
+  // CRITICAL BUG IN CONTRACT DETECTED via code review: 
+  // Contract compares 1e18 (supply) vs 1e6 (backed).
+  // 1 GBOND (1e18) > 1000000 Backed (1 USDT). 
+  // So 1 GBOND > 1 USDT. This means capacity is extremely small.
+  // user wants me to fix this "perfectly clean and efficient".
+  // I should fix the CONTRACT LOGIC in addAsset to use 18 decimals OR mint logic to scale.
+  // Since I am redeploying anyway, I will fix usage in `useAdminActions` to input 18 decimals for asset value?
+  // No, UI inputs usually match USDT (6). 
+  // PROPOSAL: Update `useAdminActions` to `parseUnits(value, 18)` for `addAsset`.
+  // This aligns the comparison in Solidity: `totalSupply (18) + amount (18) <= totalBackedValue (18)`.
+  // For now, in frontend, I will assume I make that fix.
+  // So: backedValue (18) - totalSupply (18) = Available (18).
+  // Display as formatted units.
+
+  // Correct calculation assuming 18 decimals for everything (Planned Fix)
+  const availableRaw = (backed - supply)
+  const available = availableRaw > 0 ? Number(formatUnits(BigInt(availableRaw), 18)) : 0
+  const maxInvest = available // Cap max invest to available
 
   const expectedTokens = amount ? (Number(amount) / tokenPrice).toFixed(2) : "0"
   const isValidAmount = Number(amount) >= minInvest && Number(amount) <= maxInvest
 
   const needsApproval = allowance < parseUnits(amount || "0", 6)
+
+  // DEBUG LOGS
+  console.log("Investment Debug:", {
+    amount,
+    allowance: allowance.toString(),
+    parsedAmount: parseUnits(amount || "0", 6).toString(),
+    needsApproval,
+    isApprovePending,
+    isBuyPending,
+    allowanceError
+  })
 
   const handleAction = async () => {
     if (needsApproval) {
@@ -137,6 +176,7 @@ export function InvestmentCard() {
                 <label className="text-sm font-medium text-muted-foreground">Amount in USDT</label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Balance: {usdtBalance} USDT</span>
+                  <span className="text-xs font-semibold text-[#FD8C00]">Available: {available.toLocaleString(undefined, { maximumFractionDigits: 2 })} GBOND</span>
                 </div>
               </div>
               <div className="relative group">
@@ -153,7 +193,9 @@ export function InvestmentCard() {
               {amount && !isValidAmount && (
                 <p className="text-xs text-destructive flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  Amount must be between ${minInvest} and ${maxInvest.toLocaleString()}
+                  {Number(amount) > maxInvest
+                    ? `Amount exceeds available supply of ${maxInvest.toLocaleString()} GBOND`
+                    : `Amount must be at least ${minInvest}`}
                 </p>
               )}
             </div>

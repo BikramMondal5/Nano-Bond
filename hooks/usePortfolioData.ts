@@ -96,11 +96,9 @@ export function usePortfolioData() {
     }
 
     return {
-        // TEMPORARY FIX: TreasurySwap mints 1:1 raw units from USDT (6 dec) to Bond (18 dec).
-        // This results in 5 USDT -> 5,000,000 units.
-        // If we parse as 18 decimals, it's 0.000000000005.
-        // If we parse as 6 decimals, it displays 5.0, which matches user expectation.
-        balance: balance ? formatUnits(balance as bigint, 6) : "0",
+        // Since TreasurySwap now correctly mints 18-decimal Bonds (scaled up),
+        // we must parse the balance as 18 decimals.
+        balance: balance ? formatUnits(balance as bigint, 18) : "0",
         claimable,
         isLoading: loadingBalance,
         address,

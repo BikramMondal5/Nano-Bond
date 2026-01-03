@@ -532,8 +532,8 @@
       ]
     },
     "D:\\Projects\\EIBS\\eibs-kgpchain\\packages\\contracts\\contracts\\TreasurySwap.sol": {
-      "lastModificationDate": 1767368397487,
-      "contentHash": "773c43f33843502ec1069e8c124feca4",
+      "lastModificationDate": 1767442098913,
+      "contentHash": "f6c20076044977f84052d1aa79255edd",
       "sourceName": "contracts/TreasurySwap.sol",
       "solcConfig": {
         "version": "0.8.24",

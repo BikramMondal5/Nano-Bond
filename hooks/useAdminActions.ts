@@ -1,5 +1,5 @@
 import { useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
-import { SOVEREIGN_BOND, COUPON_DISTRIBUTOR, USDT } from '@/lib/contracts'
+import { SOVEREIGN_BOND, COUPON_DISTRIBUTOR, USDT, TREASURY_SWAP } from '@/lib/contracts'
 import { toast } from 'sonner'
 import { parseUnits } from 'viem'
 
@@ -18,9 +18,9 @@ export function useAdminActions() {
                 address: SOVEREIGN_BOND.address,
                 abi: SOVEREIGN_BOND.abi,
                 functionName: 'addAsset',
-                args: [uri, parseUnits(value, 6)], // Assuming 6 decimals for value if USDT-like backing, or 18? SovereignBond usually reflects backed money so maybe 18. Let's assume 18.
-                // Wait, USDT is 6. If value is pure number, assume 18 for standard. 
-                // Let's use 18 for now or check ERC20 decimals.
+                args: [uri, parseUnits(value, 18)], // SovereignBond backing must match Minting decimals (18)
+                // Note: Even if backing asset is USDT (6 decimals), we record its VALUE in standard units (18)
+                // to allow 1:1 minting of 18-decimal GBONDs.
             })
         } catch (err) {
             console.error(err)
@@ -73,16 +73,77 @@ export function useBondStats() {
         address: SOVEREIGN_BOND.address,
         abi: SOVEREIGN_BOND.abi,
         functionName: 'totalSupply',
+        query: {
+            refetchInterval: 2000
+        }
     })
 
     const { data: backedValue } = useReadContract({
         address: SOVEREIGN_BOND.address,
         abi: SOVEREIGN_BOND.abi,
         functionName: 'totalBackedValue',
+        query: {
+            refetchInterval: 2000
+        }
+    })
+
+    const { data: maturityDate } = useReadContract({
+        address: SOVEREIGN_BOND.address,
+        abi: SOVEREIGN_BOND.abi,
+        functionName: 'maturityDate',
+        query: {
+            refetchInterval: 5000
+        }
     })
 
     return {
         totalSupply,
-        backedValue
+        backedValue,
+        maturityDate
+    }
+}
+// ... existing exports ...
+
+export function useTreasuryStats() {
+    const { data: usdtBalance } = useReadContract({
+        address: USDT.address,
+        abi: USDT.abi,
+        functionName: 'balanceOf',
+        args: [TREASURY_SWAP.address], // TREASURY_SWAP is imported
+        query: {
+            refetchInterval: 2000
+        }
+    })
+
+    return {
+        usdtBalance
+    }
+}
+
+export function useDistributorStats() {
+    // 1. Get Distributor USDT Balance (Tokens Left to be Claimed)
+    const { data: distributorBalance } = useReadContract({
+        address: USDT.address,
+        abi: USDT.abi,
+        functionName: 'balanceOf',
+        args: [COUPON_DISTRIBUTOR.address],
+        query: {
+            refetchInterval: 5000
+        }
+    })
+
+    // 2. Get Cumulative Yield Per Token (For Total Distributed calc)
+    const { data: cumulativeYield } = useReadContract({
+        address: COUPON_DISTRIBUTOR.address,
+        abi: COUPON_DISTRIBUTOR.abi,
+        functionName: 'cumulativeYieldPerToken',
+        query: {
+            refetchInterval: 5000
+        }
+    })
+
+    return {
+        distributorBalance,
+        cumulativeYield
     }
 }

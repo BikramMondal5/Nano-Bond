@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Wallet, Coins, Percent, Clock, Lock, Unlock, PlayCircle, AlertCircle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { formatUnits } from "viem"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
     AlertDialog,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { useAdminActions, useBondStats } from "@/hooks/useAdminActions"
+import { useAdminActions, useBondStats, useTreasuryStats, useDistributorStats } from "@/hooks/useAdminActions"
 
 interface VaultControlsProps {
     enabled: boolean
@@ -26,7 +27,36 @@ interface VaultControlsProps {
 export function VaultControls({ enabled }: VaultControlsProps) {
     const [locked, setLocked] = useState(false)
     const { distributeYield, approveUSDT, isPending } = useAdminActions()
-    const { totalSupply, backedValue } = useBondStats()
+    const { totalSupply, backedValue, maturityDate } = useBondStats()
+    const { distributorBalance, cumulativeYield } = useDistributorStats()
+
+    // Calculations
+    // Bond and Backed Value are 18 decimals now
+    const totalDeposited = backedValue ? Number(formatUnits(backedValue as bigint, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "..."
+    const totalMinted = totalSupply ? Number(formatUnits(totalSupply as bigint, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "..."
+
+    // Estimate Total Distributed
+    // cumulativeYield is 18 decimals (scaled). Supply is 18 decimals.
+    // Total = (Yield * Supply) / 1e18
+    const cumYieldNum = cumulativeYield ? Number(formatUnits(cumulativeYield as bigint, 18)) : 0
+    const supplyNum = totalSupply ? Number(formatUnits(totalSupply as bigint, 18)) : 0
+
+    // Result is in standard units (USDT/GBOND same scale)
+    const formattedDistributed = (cumYieldNum * supplyNum).toLocaleString(undefined, { maximumFractionDigits: 2 })
+
+    const tokensLeftToClaim = distributorBalance ? Number(formatUnits(distributorBalance as bigint, 6)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "..."
+
+    // Maturity Calc
+    let maturityDays = "..."
+    if (maturityDate) {
+        const now = Math.floor(Date.now() / 1000)
+        const maturity = Number(maturityDate)
+        if (maturity > now) {
+            maturityDays = Math.ceil((maturity - now) / 86400).toString()
+        } else {
+            maturityDays = "0"
+        }
+    }
 
     const handleAction = (action: string) => {
         if (action === "Yield Distribution") {
@@ -44,29 +74,35 @@ export function VaultControls({ enabled }: VaultControlsProps) {
         <div className={cn("space-y-6 transition-all duration-500", !enabled && "opacity-40 grayscale pointer-events-none")}>
 
             {/* Real-Time Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                 <StatsCard
-                    title="Total USDT Balance"
-                    value="50,000" // Requires USDT contract read, mocking for now or need add'l hook
+                    title="Total Amount Deposited"
+                    value={totalDeposited}
                     icon={Wallet}
-                    subtext="Target: 100,000"
+                    subtext="USDT Backing"
                 />
                 <StatsCard
-                    title="GBOND Supply"
-                    value={totalSupply ? (Number(totalSupply) / 1e18).toLocaleString() : "..."}
+                    title="Total Tokens Minted"
+                    value={totalMinted}
                     icon={Coins}
-                    subtext="Available: 50,000"
+                    subtext="GBOND Supply"
                 />
                 <StatsCard
-                    title="Total Backed Value"
-                    value={backedValue ? (Number(backedValue) / 1e18).toLocaleString() : "..."}
+                    title="Total Distributed Tokens"
+                    value={formattedDistributed}
                     icon={Percent}
-                    subtext="RWA Assets"
+                    subtext="Yield Distributed"
                     highlight
                 />
                 <StatsCard
-                    title="Days to Maturity"
-                    value="364"
+                    title="Tokens Left to be Claimed"
+                    value={tokensLeftToClaim}
+                    icon={AlertCircle}
+                    subtext="Distributor Balance"
+                />
+                <StatsCard
+                    title="Maturity Days Left"
+                    value={maturityDays}
                     icon={Clock}
                     subtext="Ends: Jan 2027"
                 />

@@ -1,4 +1,4 @@
-import { useWriteContract, useReadContract, useAccount } from 'wagmi'
+import { useWriteContract, useReadContract, useAccount, useWaitForTransactionReceipt } from 'wagmi'
 import { TREASURY_SWAP, USDT } from '@/lib/contracts'
 import { parseUnits, formatUnits } from 'viem'
 import { toast } from 'sonner'
@@ -6,6 +6,33 @@ import { useState, useEffect } from 'react'
 
 export function useInvestment() {
   const { address } = useAccount()
+
+  // 1. Data Fetching (Read Hooks)
+  // Check Allowance (Safe to define early)
+  const { data: allowance, refetch: refetchAllowance, error: allowanceError } = useReadContract({
+    address: USDT.address,
+    abi: USDT.abi,
+    functionName: 'allowance',
+    args: [address!, TREASURY_SWAP.address],
+    query: {
+      enabled: !!address,
+      refetchInterval: 2000
+    }
+  })
+
+  // Get USDT Balance
+  const { data: rawBalance, refetch: refetchBalance } = useReadContract({
+    address: USDT.address,
+    abi: USDT.abi,
+    functionName: 'balanceOf',
+    args: [address!],
+    query: {
+      enabled: !!address,
+      refetchInterval: 5000
+    }
+  })
+
+  // 2. Mutations (Write Hooks)
   const {
     writeContract: writeApprove,
     isPending: isApprovePending,
@@ -19,6 +46,32 @@ export function useInvestment() {
     error: buyError
   } = useWriteContract()
 
+  // 3. Side Effects (Wait for Receipts)
+  // Wait for Approve TX
+  const { isLoading: isApproveConfirming, isSuccess: isApproveConfirmed } =
+    useWaitForTransactionReceipt({
+      hash: approveHash,
+    })
+
+  // Refetch allowance when confirmed
+  useEffect(() => {
+    if (isApproveConfirmed) {
+      refetchAllowance()
+      toast.success('USDT Approved successfully!')
+    }
+  }, [isApproveConfirmed, refetchAllowance])
+
+  // Watch for Buy Success to refetch balance
+  const { isSuccess: isBuyConfirmed } = useWaitForTransactionReceipt({ hash: buyHash })
+
+  useEffect(() => {
+    if (isBuyConfirmed) {
+      refetchBalance()
+      toast.success('Bond purchased successfully!')
+    }
+  }, [isBuyConfirmed, refetchBalance])
+
+  // 4. Action Functions
   // Approve USDT for TreasurySwap
   const approve = async (amount: string) => {
     try {
@@ -45,38 +98,9 @@ export function useInvestment() {
       })
     } catch (err) {
       console.error(err)
-      toast.error('Failed to buy proof')
+      toast.error('Failed to buy bond')
     }
   }
-
-  // Check Allowance
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: USDT.address,
-    abi: USDT.abi,
-    functionName: 'allowance',
-    args: [address!, TREASURY_SWAP.address],
-    query: {
-      enabled: !!address,
-      // Refetch allowance when approve tx is done or periodically
-      refetchInterval: isApprovePending ? 1000 : 5000
-    }
-  })
-
-  // Helper to speed up UI feeling of "approved"
-  // If approveHash exists, we might want to wait, 
-  // but allowance polling will eventually catch up.
-
-  // Get USDT Balance
-  const { data: rawBalance } = useReadContract({
-    address: USDT.address,
-    abi: USDT.abi,
-    functionName: 'balanceOf',
-    args: [address!],
-    query: {
-      enabled: !!address,
-      refetchInterval: 5000
-    }
-  })
 
   // Format as 6 decimals
   const usdtBalance = rawBalance ? formatUnits(rawBalance as bigint, 6) : "0"
@@ -86,11 +110,12 @@ export function useInvestment() {
     buy,
     allowance: allowance ? allowance : BigInt(0),
     refetchAllowance,
-    isApprovePending,
+    isApprovePending: isApprovePending || isApproveConfirming,
     approveHash,
     isBuyPending,
     buyHash,
     buyError,
+    allowanceError,
     usdtBalance
   }
 }
