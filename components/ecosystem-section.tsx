@@ -85,6 +85,40 @@ export function EcosystemSection() {
 
                     {/* Right Side - Blockchain Circuit with Connected Logos */}
                     <div className="relative min-h-[600px] flex items-center justify-center p-8">
+                        {/* SVG for Dotted Lines */}
+                        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ zIndex: 5 }}>
+                            <defs>
+                                <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#f97316" stopOpacity="0.8" />
+                                    <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.8" />
+                                </linearGradient>
+                            </defs>
+
+                            {/* Top-Left Icon to Circuit Top (Rounded Corner) */}
+                            <path
+                                d="M 15 15 L 35 15 Q 50 15 50 30 L 50 35"
+                                stroke="url(#line-gradient)"
+                                strokeWidth="2"
+                                strokeDasharray="4 6"
+                                fill="none"
+                                strokeLinecap="round"
+                                vectorEffect="non-scaling-stroke"
+                                className="stroke-[4px]"
+                            />
+
+                            {/* Circuit Bottom to Bottom-Right Icon (Rounded Corner) */}
+                            <path
+                                d="M 50 65 L 50 70 Q 50 85 65 85 L 85 85"
+                                stroke="url(#line-gradient)"
+                                strokeWidth="2"
+                                strokeDasharray="4 6"
+                                fill="none"
+                                strokeLinecap="round"
+                                vectorEffect="non-scaling-stroke"
+                                className="stroke-[4px]"
+                            />
+                        </svg>
+
                         {/* Central Blockchain Circuit */}
                         <div className="relative w-full h-full flex items-center justify-center">
                             <div className="w-full h-full max-w-[500px] max-h-[500px] relative z-10">
@@ -94,8 +128,8 @@ export function EcosystemSection() {
                                 />
                             </div>
 
-                            {/* Top-Left Icon - Positioned higher */}
-                            <div className="absolute top-[-70%] left-[0%] z-20">
+                            {/* Top-Left Icon */}
+                            <div className="absolute top-[-50%] left-[5%] z-20">
                                 <div className="relative group">
                                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 border-3 border-primary/40 backdrop-blur-sm flex items-center justify-center text-4xl font-bold text-primary hover:scale-110 transition-transform duration-300 hover:shadow-xl hover:shadow-primary/40">
                                         {integrations[0].icon}
@@ -108,8 +142,8 @@ export function EcosystemSection() {
                                 </div>
                             </div>
 
-                            {/* Bottom-Right Icon - Positioned lower */}
-                            <div className="absolute bottom-[-70%] right-[0%] z-20">
+                            {/* Bottom-Right Icon */}
+                            <div className="absolute bottom-[-50%] right-[5%] z-20">
                                 <div className="relative group">
                                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 border-3 border-primary/40 backdrop-blur-sm flex items-center justify-center text-4xl font-bold text-primary hover:scale-110 transition-transform duration-300 hover:shadow-xl hover:shadow-primary/40">
                                         {integrations[1].icon}
