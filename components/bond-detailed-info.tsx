@@ -20,7 +20,7 @@ export function BondDetailedInfo() {
           <TabsContent value="bond-terms" className="space-y-4 text-[#9CA3AF] leading-relaxed">
             <p>
               This bond represents a fractional interest in a US Treasury Bill with a 365-day duration. The underlying
-              asset is held in a bankruptcy-remote Special Purpose Vehicle (SPV) managed by GovtBond Custodial Services.
+              asset is held in a bankruptcy-remote Special Purpose Vehicle (SPV) managed by NanoTreasury Custodial Services.
             </p>
             <ul className="list-disc pl-5 space-y-2">
               <li>Maturity Date: April 15, 2026</li>

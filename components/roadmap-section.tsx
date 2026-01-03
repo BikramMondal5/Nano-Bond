@@ -6,7 +6,7 @@ export function RoadmapSection() {
       quarter: "Q2",
       year: "2025",
       items: [
-        "Launch GovtBond platform on testnet",
+        "Launch NanoTreasury platform on testnet",
         "Smart contract security audits",
         "Initial bond tokenization (US Treasury)",
         "Community beta testing program",

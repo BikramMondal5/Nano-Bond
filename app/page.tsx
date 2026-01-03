@@ -23,8 +23,8 @@ export default function LandingPage() {
       {/* <RoadmapSection /> */}
       {/* <StatsSection /> */}
       {/* <PricingSection /> */}
-      <TestimonialCarousel />
       <FaqSection />
+      <TestimonialCarousel />
       <CtaBanner />
     </main>
   )

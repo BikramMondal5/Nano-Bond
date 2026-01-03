@@ -2,6 +2,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Wallet, PlusCircle, ArrowDownLeft, ShieldCheck, Users, History, Settings, LogOut } from "lucide-react"
+import Image from "next/image"
 
 import {
   Sidebar,
@@ -41,10 +42,10 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50 bg-[#0A0A0A]">
       <SidebarHeader className="flex flex-row items-center gap-2 px-4 py-6">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FD8C00] to-orange-600 flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-lg">G</span>
+        <div className="relative w-8 h-8 shrink-0">
+          <Image src="/logo.png" alt="NanoTreasury" fill className="object-contain" />
         </div>
-        {state === "expanded" && <span className="text-xl font-bold text-white tracking-tight">GovtBond</span>}
+        {state === "expanded" && <span className="text-xl font-bold text-white tracking-tight">NanoTreasury</span>}
       </SidebarHeader>
 
       <SidebarContent className="px-2">

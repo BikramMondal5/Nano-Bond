@@ -6,12 +6,12 @@ import ClientLayout from "./client-layout"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
-// Updated metadata for GovtBond with Laika-inspired aesthetic
+// Updated metadata for NanoTreasury with Laika-inspired aesthetic
 export const metadata: Metadata = {
-  title: "GovtBond – Fractional Government Bonds on Blockchain",
+  title: "NanoTreasury – Fractional Government Bonds on Blockchain",
   description:
     "Invest in USDT-backed government bond fractions with stablecoins. Transparent, accessible, and secure fractional bond investment platform.",
-    generator: 'v0.app'
+  generator: 'v0.app'
 }
 
 export default function RootLayout({

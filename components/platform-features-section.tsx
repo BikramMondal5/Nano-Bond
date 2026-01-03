@@ -61,7 +61,7 @@ export function PlatformFeaturesSection() {
 
                 <FeatureSteps
                     features={features}
-                    title="Why Choose GovtBond"
+                    title="Why Choose NanoTreasury"
                     autoPlayInterval={4000}
                     className="p-0"
                 />
