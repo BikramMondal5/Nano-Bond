@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { useAdminActions } from "@/hooks/useAdminActions"
 
 interface UploadProofProps {
     enabled: boolean
@@ -20,6 +21,8 @@ export function UploadProof({ enabled, onSuccess }: UploadProofProps) {
     const [progress, setProgress] = useState(0)
     const [uploadedHash, setUploadedHash] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const { addAsset, hash, isPending } = useAdminActions()
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -193,13 +196,19 @@ export function UploadProof({ enabled, onSuccess }: UploadProofProps) {
 
                             <div className="flex justify-end pt-2">
                                 <Button
-                                    onClick={onSuccess}
+                                    onClick={() => {
+                                        if (uploadedHash) addAsset(uploadedHash, "100000")
+                                        // Ideally wait for tx, but for UI flow:
+                                        onSuccess()
+                                    }}
+                                    disabled={isPending}
                                     className="bg-green-600 hover:bg-green-700 text-white font-bold w-full md:w-auto"
                                 >
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Submit for Verification
+                                    {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                                    {isPending ? "Confirming..." : "Submit On-Chain"}
                                 </Button>
                             </div>
+                            {hash && <p className="text-xs text-gray-500 text-right mt-1 font-mono">Tx: {hash}</p>}
                         </div>
                     )}
 

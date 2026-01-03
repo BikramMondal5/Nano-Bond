@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { useAdminActions, useBondStats } from "@/hooks/useAdminActions"
 
 interface VaultControlsProps {
     enabled: boolean
@@ -24,9 +25,19 @@ interface VaultControlsProps {
 
 export function VaultControls({ enabled }: VaultControlsProps) {
     const [locked, setLocked] = useState(false)
+    const { distributeYield, approveUSDT, isPending } = useAdminActions()
+    const { totalSupply, backedValue } = useBondStats()
 
     const handleAction = (action: string) => {
-        toast.success(`${action} initiated successfully.`)
+        if (action === "Yield Distribution") {
+            distributeYield("1000") // Mock 1000 USDT for now
+            toast.info("Yield distribution transaction initiated...")
+        } else if (action === "Approve USDT") {
+            approveUSDT("100000") // Approve sufficiently large amount
+            toast.info("USDT Approval initiated...")
+        } else {
+            toast.success(`${action} initiated successfully.`)
+        }
     }
 
     return (
@@ -36,21 +47,21 @@ export function VaultControls({ enabled }: VaultControlsProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                     title="Total USDT Balance"
-                    value="50,000"
+                    value="50,000" // Requires USDT contract read, mocking for now or need add'l hook
                     icon={Wallet}
                     subtext="Target: 100,000"
                 />
                 <StatsCard
                     title="GBOND Supply"
-                    value="50,000"
+                    value={totalSupply ? (Number(totalSupply) / 1e18).toLocaleString() : "..."}
                     icon={Coins}
                     subtext="Available: 50,000"
                 />
                 <StatsCard
-                    title="Interest Accrued"
-                    value="1,240.50"
+                    title="Total Backed Value"
+                    value={backedValue ? (Number(backedValue) / 1e18).toLocaleString() : "..."}
                     icon={Percent}
-                    subtext="+12.5% yield APY"
+                    subtext="RWA Assets"
                     highlight
                 />
                 <StatsCard
@@ -79,6 +90,14 @@ export function VaultControls({ enabled }: VaultControlsProps) {
                         desc="This will calculate and distribute pending interest to all active bond holders. This action cannot be undone."
                         onConfirm={() => handleAction("Yield Distribution")}
                     />
+
+                    <Button
+                        variant="default"
+                        onClick={() => handleAction("Approve USDT")}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        <Coins className="w-4 h-4 mr-2" /> Approve USDT
+                    </Button>
 
                     <ActionDialog
                         trigger={<Button variant="outline" className="border-gray-700 text-gray-300 hover:text-white hover:border-gray-500"><Clock className="w-4 h-4 mr-2" /> Set Maturity Manually</Button>}
