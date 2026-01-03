@@ -3,6 +3,7 @@
 import { CpuArchitecture } from "@/components/ui/cpu-architecture"
 import { Shield, TrendingUp, Zap, Lock, Coins, BarChart3 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import Image from "next/image"
 
 export function EcosystemSection() {
     const features = [
@@ -89,8 +90,8 @@ export function EcosystemSection() {
                         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ zIndex: 5 }}>
                             <defs>
                                 <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stopColor="#f97316" stopOpacity="0.8" />
-                                    <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.8" />
+                                    <stop offset="0%" stopColor="#22c55e" stopOpacity="0.8" />
+                                    <stop offset="100%" stopColor="#4ade80" stopOpacity="0.8" />
                                 </linearGradient>
                             </defs>
 
@@ -123,19 +124,27 @@ export function EcosystemSection() {
                         <div className="relative w-full h-full flex items-center justify-center">
                             <div className="w-full h-full max-w-[500px] max-h-[500px] relative z-10">
                                 <CpuArchitecture
-                                    imageUrl="/crypto-logo.png"
+                                    imageUrl="/logo.png"
                                     className="w-full h-full"
                                 />
                             </div>
 
                             {/* Top-Left Icon */}
-                            <div className="absolute top-[-50%] left-[5%] z-20">
+                            <div className="absolute top-[-50%] left-[0%] z-20">
                                 <div className="relative group">
-                                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 border-3 border-primary/40 backdrop-blur-sm flex items-center justify-center text-4xl font-bold text-primary hover:scale-110 transition-transform duration-300 hover:shadow-xl hover:shadow-primary/40">
-                                        {integrations[0].icon}
+                                    <div className="relative w-28 h-28 rounded-full bg-black/80 backdrop-blur-md flex flex-col items-center justify-center hover:scale-105 transition-transform duration-300 shadow-[inset_0_0_20px_2px_rgba(34,197,94,0.6)] border border-green-500/20">
+                                        <div className="relative w-16 h-16">
+                                            <Image
+                                                src="/crypto-logo.png"
+                                                alt="Platform Logo"
+                                                fill
+                                                className="object-contain"
+                                            />
+                                        </div>
                                     </div>
+
                                     <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <span className="text-sm font-semibold text-foreground bg-card/90 px-3 py-1.5 rounded border border-border/50 shadow-lg">
+                                        <span className="text-sm font-semibold text-green-400 bg-black/90 px-3 py-1.5 rounded border border-green-500/30 shadow-lg">
                                             {integrations[0].name}
                                         </span>
                                     </div>
@@ -143,13 +152,21 @@ export function EcosystemSection() {
                             </div>
 
                             {/* Bottom-Right Icon */}
-                            <div className="absolute bottom-[-50%] right-[5%] z-20">
+                            <div className="absolute bottom-[-50%] right-[0%] z-20">
                                 <div className="relative group">
-                                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 border-3 border-primary/40 backdrop-blur-sm flex items-center justify-center text-4xl font-bold text-primary hover:scale-110 transition-transform duration-300 hover:shadow-xl hover:shadow-primary/40">
-                                        {integrations[1].icon}
+                                    <div className="relative w-28 h-28 rounded-full bg-black/80 backdrop-blur-md flex flex-col items-center justify-center hover:scale-105 transition-transform duration-300 shadow-[inset_0_0_20px_2px_rgba(34,197,94,0.6)] border border-green-500/20">
+                                        <div className="relative w-16 h-16">
+                                            <Image
+                                                src="/USDT-logo.png"
+                                                alt="USDT Logo"
+                                                fill
+                                                className="object-contain"
+                                            />
+                                        </div>
                                     </div>
+
                                     <div className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <span className="text-sm font-semibold text-foreground bg-card/90 px-3 py-1.5 rounded border border-border/50 shadow-lg">
+                                        <span className="text-sm font-semibold text-green-400 bg-black/90 px-3 py-1.5 rounded border border-green-500/30 shadow-lg">
                                             {integrations[1].name}
                                         </span>
                                     </div>
