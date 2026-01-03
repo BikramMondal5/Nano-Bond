@@ -30,6 +30,11 @@ contract SovereignBond is ERC20, AccessControl {
     error NotVerified(address user);
     error Unauthorized();
     error ExceedsBackedLogic();
+    error NotMatured(uint256 current, uint256 maturity);
+
+    uint256 public maturityDate;
+    
+    event MaturityDateUpdated(uint256 newDate);
 
     constructor(string memory name, string memory symbol, address _registry, address admin) 
         ERC20(name, symbol) 
@@ -37,12 +42,51 @@ contract SovereignBond is ERC20, AccessControl {
         registry = IdentityRegistry(_registry);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MINTER_ROLE, admin);
+        
+        // Default Maturity: 2 Years from deployment (Bot/Auto handling)
+        maturityDate = block.timestamp + 730 days; 
     }
 
     function setRegistry(address _registry) external onlyRole(DEFAULT_ADMIN_ROLE) {
         registry = IdentityRegistry(_registry);
     }
 
+    /**
+     * @notice Admin override for maturity date (Manual provoke).
+     */
+    function setMaturityDate(uint256 _newDate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        maturityDate = _newDate;
+        emit MaturityDateUpdated(_newDate);
+    }
+
+    // Distributor Hook
+    address public distributor;
+    function setDistributor(address _distributor) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        distributor = _distributor;
+    }
+
+    // Override ERC20 _update to trigger Distributor checkpoints AND enforce Identity
+    function _update(address from, address to, uint256 value) internal override {
+        // 1. Identity Registry Checks (Pre-Transfer validation)
+        if (from != address(0) && to != address(0)) {
+            if (!registry.isVerified(from)) revert NotVerified(from);
+            if (!registry.isVerified(to)) revert NotVerified(to);
+        } else if (to != address(0)) {
+            // Minting: Receiver must be verified
+            if (!registry.isVerified(to)) revert NotVerified(to);
+        }
+
+        // 2. Distributor Hook (Pre-Transfer accounting)
+        if (distributor != address(0)) {
+            (bool success, ) = distributor.call(
+                abi.encodeWithSignature("onTokenTransfer(address,address)", from, to)
+            );
+            require(success, "Distributor Hook Failed");
+        }
+
+        // 3. State Update
+        super._update(from, to, value);
+    }
     /**
      * @notice Adds a verified RWA document to increase the minting cap.
      */
@@ -53,7 +97,7 @@ contract SovereignBond is ERC20, AccessControl {
     }
 
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
-        // 1. Verify Identity
+        // 1. Verify Identity (Optimization: _update already checks too, but explicit check here fails faster)
         if (!registry.isVerified(to)) revert NotVerified(to);
         
         // 2. Verify Asset Backing Cap
@@ -64,30 +108,5 @@ contract SovereignBond is ERC20, AccessControl {
 
     function burn(address from, uint256 amount) external onlyRole(MINTER_ROLE) {
         _burn(from, amount);
-    }
-
-    /**
-     * @dev Hook that is called before any transfer of tokens.
-     *      - Enforces Identity Compliance.
-     */
-    function _update(address from, address to, uint256 value) internal virtual override {
-        // Skip check for Minting (from=0) and Burning (to=0)
-        // Actually Minting DOES verify receiver (done in mint function above or here).
-        // Let's enforce strictly here.
-        
-        if (from != address(0) && to != address(0)) {
-            // P2P Transfer: Both must be verified? Or just Receiver?
-            // Usually, just Receiver needs to be eligible to hold. 
-            // Checking sender ensures blacklisted (revoked) users cannot move funds.
-            if (!registry.isVerified(from)) revert NotVerified(from);
-            if (!registry.isVerified(to)) revert NotVerified(to);
-        } else if (to != address(0)) {
-            // Minting: Receiver must be verified
-            if (!registry.isVerified(to)) revert NotVerified(to);
-        }
-        
-        // Burning: No checks needed usually, or check sender.
-        
-        super._update(from, to, value);
     }
 }

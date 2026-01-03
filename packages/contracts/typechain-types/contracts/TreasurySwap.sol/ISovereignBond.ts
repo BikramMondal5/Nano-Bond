@@ -22,14 +22,29 @@ import type {
 } from "../../common";
 
 export interface ISovereignBondInterface extends Interface {
-  getFunction(nameOrSignature: "mint" | "registry"): FunctionFragment;
+  getFunction(
+    nameOrSignature: "burn" | "maturityDate" | "mint" | "registry"
+  ): FunctionFragment;
 
+  encodeFunctionData(
+    functionFragment: "burn",
+    values: [AddressLike, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "maturityDate",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "mint",
     values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "registry", values?: undefined): string;
 
+  decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "maturityDate",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "mint", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "registry", data: BytesLike): Result;
 }
@@ -77,6 +92,14 @@ export interface ISovereignBond extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  burn: TypedContractMethod<
+    [from: AddressLike, amount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  maturityDate: TypedContractMethod<[], [bigint], "view">;
+
   mint: TypedContractMethod<
     [to: AddressLike, amount: BigNumberish],
     [void],
@@ -89,6 +112,16 @@ export interface ISovereignBond extends BaseContract {
     key: string | FunctionFragment
   ): T;
 
+  getFunction(
+    nameOrSignature: "burn"
+  ): TypedContractMethod<
+    [from: AddressLike, amount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "maturityDate"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "mint"
   ): TypedContractMethod<

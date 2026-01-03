@@ -35,14 +35,18 @@ export interface SovereignBondInterface extends Interface {
       | "balanceOf"
       | "burn"
       | "decimals"
+      | "distributor"
       | "getRoleAdmin"
       | "grantRole"
       | "hasRole"
+      | "maturityDate"
       | "mint"
       | "name"
       | "registry"
       | "renounceRole"
       | "revokeRole"
+      | "setDistributor"
+      | "setMaturityDate"
       | "setRegistry"
       | "supportsInterface"
       | "symbol"
@@ -56,6 +60,7 @@ export interface SovereignBondInterface extends Interface {
     nameOrSignatureOrTopic:
       | "Approval"
       | "AssetAdded"
+      | "MaturityDateUpdated"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
@@ -96,6 +101,10 @@ export interface SovereignBondInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "decimals", values?: undefined): string;
   encodeFunctionData(
+    functionFragment: "distributor",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "getRoleAdmin",
     values: [BytesLike]
   ): string;
@@ -106,6 +115,10 @@ export interface SovereignBondInterface extends Interface {
   encodeFunctionData(
     functionFragment: "hasRole",
     values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "maturityDate",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "mint",
@@ -120,6 +133,14 @@ export interface SovereignBondInterface extends Interface {
   encodeFunctionData(
     functionFragment: "revokeRole",
     values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setDistributor",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setMaturityDate",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "setRegistry",
@@ -163,11 +184,19 @@ export interface SovereignBondInterface extends Interface {
   decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "decimals", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "distributor",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "getRoleAdmin",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "maturityDate",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "mint", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "registry", data: BytesLike): Result;
@@ -176,6 +205,14 @@ export interface SovereignBondInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "setDistributor",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setMaturityDate",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "setRegistry",
     data: BytesLike
@@ -225,6 +262,18 @@ export namespace AssetAddedEvent {
     id: bigint;
     uri: string;
     value: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace MaturityDateUpdatedEvent {
+  export type InputTuple = [newDate: BigNumberish];
+  export type OutputTuple = [newDate: bigint];
+  export interface OutputObject {
+    newDate: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -395,6 +444,8 @@ export interface SovereignBond extends BaseContract {
 
   decimals: TypedContractMethod<[], [bigint], "view">;
 
+  distributor: TypedContractMethod<[], [string], "view">;
+
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
 
   grantRole: TypedContractMethod<
@@ -408,6 +459,8 @@ export interface SovereignBond extends BaseContract {
     [boolean],
     "view"
   >;
+
+  maturityDate: TypedContractMethod<[], [bigint], "view">;
 
   mint: TypedContractMethod<
     [to: AddressLike, amount: BigNumberish],
@@ -427,6 +480,18 @@ export interface SovereignBond extends BaseContract {
 
   revokeRole: TypedContractMethod<
     [role: BytesLike, account: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+
+  setDistributor: TypedContractMethod<
+    [_distributor: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+
+  setMaturityDate: TypedContractMethod<
+    [_newDate: BigNumberish],
     [void],
     "nonpayable"
   >;
@@ -519,6 +584,9 @@ export interface SovereignBond extends BaseContract {
     nameOrSignature: "decimals"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
+    nameOrSignature: "distributor"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
     nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
   getFunction(
@@ -535,6 +603,9 @@ export interface SovereignBond extends BaseContract {
     [boolean],
     "view"
   >;
+  getFunction(
+    nameOrSignature: "maturityDate"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "mint"
   ): TypedContractMethod<
@@ -562,6 +633,12 @@ export interface SovereignBond extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "setDistributor"
+  ): TypedContractMethod<[_distributor: AddressLike], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "setMaturityDate"
+  ): TypedContractMethod<[_newDate: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "setRegistry"
   ): TypedContractMethod<[_registry: AddressLike], [void], "nonpayable">;
@@ -605,6 +682,13 @@ export interface SovereignBond extends BaseContract {
     AssetAddedEvent.InputTuple,
     AssetAddedEvent.OutputTuple,
     AssetAddedEvent.OutputObject
+  >;
+  getEvent(
+    key: "MaturityDateUpdated"
+  ): TypedContractEvent<
+    MaturityDateUpdatedEvent.InputTuple,
+    MaturityDateUpdatedEvent.OutputTuple,
+    MaturityDateUpdatedEvent.OutputObject
   >;
   getEvent(
     key: "RoleAdminChanged"
@@ -656,6 +740,17 @@ export interface SovereignBond extends BaseContract {
       AssetAddedEvent.InputTuple,
       AssetAddedEvent.OutputTuple,
       AssetAddedEvent.OutputObject
+    >;
+
+    "MaturityDateUpdated(uint256)": TypedContractEvent<
+      MaturityDateUpdatedEvent.InputTuple,
+      MaturityDateUpdatedEvent.OutputTuple,
+      MaturityDateUpdatedEvent.OutputObject
+    >;
+    MaturityDateUpdated: TypedContractEvent<
+      MaturityDateUpdatedEvent.InputTuple,
+      MaturityDateUpdatedEvent.OutputTuple,
+      MaturityDateUpdatedEvent.OutputObject
     >;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<

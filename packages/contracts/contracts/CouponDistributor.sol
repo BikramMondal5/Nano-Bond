@@ -44,8 +44,37 @@ contract CouponDistributor is AccessControl {
     // Total Yield Per Token (Accumulated)
     uint256 public cumulativeYieldPerToken; 
     
-    // User's paid mask
+    // User's paid checkpoint
     mapping(address => uint256) public userPaidPerToken;
+    // Unclaimed rewards buffer
+    mapping(address => uint256) public rewards;
+
+    modifier updateReward(address account) {
+        if (account != address(0)) {
+            uint256 earned = bond.balanceOf(account) * (cumulativeYieldPerToken - userPaidPerToken[account]) / 1e18;
+            rewards[account] += earned;
+            userPaidPerToken[account] = cumulativeYieldPerToken;
+        }
+        _;
+    }
+
+    /**
+     * @notice Hook called by SovereignBond on Transfer/Mint/Burn.
+     * @dev Updates rewards for both parties BEFORE their balance changes.
+     */
+    function onTokenTransfer(address from, address to) external {
+        require(msg.sender == address(bond), "Only Bond");
+        _updateRewardLocal(from);
+        _updateRewardLocal(to);
+    }
+
+    function _updateRewardLocal(address account) internal {
+        if (account != address(0)) {
+            uint256 earned = bond.balanceOf(account) * (cumulativeYieldPerToken - userPaidPerToken[account]) / 1e18;
+            rewards[account] += earned;
+            userPaidPerToken[account] = cumulativeYieldPerToken;
+        }
+    }
 
     /**
      * @notice Admin deposits Interest (e.g. $1M).
@@ -57,7 +86,6 @@ contract CouponDistributor is AccessControl {
         require(supply > 0, "No bonds minted");
         
         // Rate = Amount / Supply 
-        // Use 1e18 precision
         uint256 rate = (amount * 1e18) / supply;
         cumulativeYieldPerToken += rate;
         
@@ -67,19 +95,21 @@ contract CouponDistributor is AccessControl {
     /**
      * @notice User claims their share.
      */
-    function claim() external {
-        uint256 bal = bond.balanceOf(msg.sender);
-        require(bal > 0, "No bonds held");
+    function claim() external updateReward(msg.sender) {
+        uint256 reward = rewards[msg.sender];
+        require(reward > 0, "Nothing to claim");
         
-        uint256 owedRate = cumulativeYieldPerToken - userPaidPerToken[msg.sender];
-        require(owedRate > 0, "Nothing to claim");
-        
-        uint256 reward = (bal * owedRate) / 1e18;
-        
-        userPaidPerToken[msg.sender] = cumulativeYieldPerToken;
+        rewards[msg.sender] = 0;
         
         paymentToken.safeTransfer(msg.sender, reward);
         
         emit CouponClaimed(msg.sender, reward);
+    }
+
+    // View function for UI
+    function claimableYield(address user) external view returns (uint256) {
+        uint256 current = rewards[user];
+        uint256 pending = bond.balanceOf(user) * (cumulativeYieldPerToken - userPaidPerToken[user]) / 1e18;
+        return current + pending;
     }
 }

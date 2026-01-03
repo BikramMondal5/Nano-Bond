@@ -34,6 +34,7 @@ export interface TreasurySwapInterface extends Interface {
       | "grantRole"
       | "hasRole"
       | "paymentToken"
+      | "redeem"
       | "renounceRole"
       | "revokeRole"
       | "supportsInterface"
@@ -76,6 +77,10 @@ export interface TreasurySwapInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "redeem",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "renounceRole",
     values: [BytesLike, AddressLike]
   ): string;
@@ -109,6 +114,7 @@ export interface TreasurySwapInterface extends Interface {
     functionFragment: "paymentToken",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "redeem", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
     data: BytesLike
@@ -279,6 +285,8 @@ export interface TreasurySwap extends BaseContract {
 
   paymentToken: TypedContractMethod<[], [string], "view">;
 
+  redeem: TypedContractMethod<[bondAmount: BigNumberish], [void], "nonpayable">;
+
   renounceRole: TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
     [void],
@@ -343,6 +351,9 @@ export interface TreasurySwap extends BaseContract {
   getFunction(
     nameOrSignature: "paymentToken"
   ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "redeem"
+  ): TypedContractMethod<[bondAmount: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "renounceRole"
   ): TypedContractMethod<

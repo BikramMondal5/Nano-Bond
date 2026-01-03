@@ -1,31 +1,54 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Wallet, ArrowRightLeft, Clock, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-export function RedemptionCard() {
-  const [isConnected, setIsConnected] = useState(false)
-  const [amount, setAmount] = useState("")
-  const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle")
+import { useAccount } from "wagmi"
+import { useInvestment } from "@/hooks/useInvestment"
+import { usePortfolioData } from "@/hooks/usePortfolioData"
+import { useBondStats } from "@/hooks/useAdminActions"
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 
-  // Mock Data
-  const gbondBalance = 1200
-  const tokenPrice = 1.12 // 1 GBOND = 1.12 USDT
-  const isMatured = true // Toggle this to see the disabled state
+export function RedemptionCard() {
+  const { isConnected } = useAccount()
+  const { balance, claimable } = usePortfolioData()
+  const { maturityDate } = useBondStats()
+  const { redeem, claim, isBuyPending: isRedeemPending, isBuyConfirmed: isRedeemConfirmed } = useInvestment() // Reusing hooks
+
+  const [amount, setAmount] = useState("")
+  // const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle")
+  // Using hook state instead
+
+  // Real Data
+  const gbondBalance = balance ? Number(balance) : 0
+  const claimableYield = claimable ? Number(claimable) : 0
+  const tokenPrice = 1.00 // 1 GBOND = 1 USDT (Pegged/Redeemable)
+
+  // Check Maturity
+  const now = Math.floor(Date.now() / 1000)
+  const isMatured = maturityDate ? Number(maturityDate) <= now : false
 
   const expectedUsdt = amount ? (Number(amount) * tokenPrice).toFixed(2) : "0"
   const isValidAmount = Number(amount) > 0 && Number(amount) <= gbondBalance
 
-  const handleAction = () => {
-    setStatus("processing")
-    setTimeout(() => setStatus("success"), 3000)
+  const handleAction = async () => {
+    // setStatus("processing")
+    await redeem(amount)
   }
 
-  if (status === "success") {
+  // Effect to handle success via hook
+  const [showSuccess, setShowSuccess] = useState(false)
+  useEffect(() => {
+    if (isRedeemConfirmed) {
+      setShowSuccess(true)
+    }
+  }, [isRedeemConfirmed])
+
+  if (showSuccess) {
     return (
       <Card className="bg-[#100F14] border-orange-500/20 shadow-2xl overflow-hidden">
         <CardContent className="pt-12 pb-12 flex flex-col items-center text-center space-y-6">
@@ -39,7 +62,7 @@ export function RedemptionCard() {
             </p>
           </div>
           <div className="flex gap-4">
-            <Button variant="outline" className="border-white/10 bg-transparent" onClick={() => setStatus("idle")}>
+            <Button variant="outline" className="border-white/10 bg-transparent" onClick={() => { setShowSuccess(false); setAmount(""); }}>
               Back to Dashboard
             </Button>
             <Button className="bg-primary hover:bg-primary/90">View Transaction</Button>
@@ -80,15 +103,32 @@ export function RedemptionCard() {
                 Please connect your wallet to view your balance and redeem tokens.
               </p>
             </div>
-            <Button
-              className="bg-primary hover:bg-primary/90 text-white font-bold py-6 px-12 rounded-xl transition-all"
-              onClick={() => setIsConnected(true)}
-            >
-              Connect Wallet
-            </Button>
+            <div className="transform scale-110">
+              <ConnectButton />
+            </div>
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* Claimable Yield Section */}
+            {claimableYield > 0 && (
+              <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-green-400 font-medium mb-1">Unclaimed Interest</div>
+                  <div className="text-2xl font-bold text-white flex items-center gap-2">
+                    {claimableYield.toFixed(2)} USDT
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => claim()}
+                  disabled={isRedeemPending}
+                  className="bg-green-600 hover:bg-green-700 text-white border-none"
+                >
+                  {isRedeemPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Claim Now"}
+                </Button>
+              </div>
+            )}
+
             <div className="flex items-center justify-between p-4 bg-[#1C1A21] rounded-xl border border-white/5">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
@@ -147,10 +187,10 @@ export function RedemptionCard() {
                   <div className="w-full">
                     <Button
                       className="w-full py-8 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(253,140,0,0.2)] hover:shadow-[0_0_25px_rgba(253,140,0,0.3)] transition-all disabled:opacity-50 text-lg uppercase tracking-widest italic"
-                      disabled={!isValidAmount || !isMatured || status === "processing"}
+                      disabled={!isValidAmount || !isMatured || isRedeemPending}
                       onClick={handleAction}
                     >
-                      {status === "processing" ? (
+                      {isRedeemPending ? (
                         <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                           Processing...
