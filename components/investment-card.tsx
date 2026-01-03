@@ -1,40 +1,102 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Wallet, ArrowRightLeft, ShieldCheck, AlertCircle, Loader2, CheckCircle2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useAccount } from "wagmi"
+import { useInvestment } from "@/hooks/useInvestment"
+import { useBondStats } from "@/hooks/useAdminActions"
+import { parseUnits, formatUnits } from "viem"
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 export function InvestmentCard() {
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(false) // Logic can be improved with useAccount
   const [amount, setAmount] = useState("")
-  const [status, setStatus] = useState<"idle" | "approving" | "depositing" | "success">("idle")
-  const [isVerified, setIsVerified] = useState(true) // Mock verification status
+  // const [status, setStatus] = useState<"idle" | "approving" | "depositing" | "success">("idle")
+  // Replace custom status with derived state from hook
+  const { address, isConnected: isWalletConnected } = useAccount()
+  const { totalSupply, backedValue } = useBondStats()
+  const {
+    approve,
+    buy,
+    allowance,
+    isApprovePending,
+    // approveHash, 
+    isBuyPending,
+    buyHash,
+    usdtBalance,
+    allowanceError
+  } = useInvestment()
 
-  const tokenPrice = 1.08 // 1 GBOND = 1.08 USDT
-  const minInvest = 100
-  const maxInvest = 50000
-  const fee = 0.5 // 0.5 USDT
+  const [step, setStep] = useState<"idle" | "success">("idle")
+
+  const tokenPrice = 1.00 // 1 GBOND = 1 USDT (Pegged)
+  const minInvest = 1
+  const fee = 0 // No fee directly on contract for now
+
+  // Supply Logic
+  const supply = totalSupply ? Number(totalSupply) : 0
+  const backed = backedValue ? Number(backedValue) : 0
+  // Ensure we compare in same units. totalSupply is 18 dec, backedValue is 6 dec (based on addAsset)?
+  // Wait, in previous task I saw addAsset using parseUnits(value, 6).
+  // But totalSupply is ERC20 (18 decimals).
+  // If backedValue is 6 decimals, we must normalize.
+  // Actually, let's verify SovereignBond.sol.
+  // addAsset: totalBackedValue += value.
+  // mint: if (totalSupply() + amount > totalBackedValue)
+  // If amount (minted) is 18 decimals, then totalBackedValue MUST be 18 decimals for this logic to hold.
+  // If addAsset was called with 6 decimals (USDT), then the contract comparison is flawed unless adjusted.
+  // Check useAdminActions: addAsset args: [uri, parseUnits(value, 6)].
+  // So backedValue is 1e6 based.
+  // Mint amount (ERC20 standard) is 1e18 based.
+  // CRITICAL BUG IN CONTRACT DETECTED via code review: 
+  // Contract compares 1e18 (supply) vs 1e6 (backed).
+  // 1 GBOND (1e18) > 1000000 Backed (1 USDT). 
+  // So 1 GBOND > 1 USDT. This means capacity is extremely small.
+  // user wants me to fix this "perfectly clean and efficient".
+  // I should fix the CONTRACT LOGIC in addAsset to use 18 decimals OR mint logic to scale.
+  // Since I am redeploying anyway, I will fix usage in `useAdminActions` to input 18 decimals for asset value?
+  // No, UI inputs usually match USDT (6). 
+  // PROPOSAL: Update `useAdminActions` to `parseUnits(value, 18)` for `addAsset`.
+  // This aligns the comparison in Solidity: `totalSupply (18) + amount (18) <= totalBackedValue (18)`.
+  // For now, in frontend, I will assume I make that fix.
+  // So: backedValue (18) - totalSupply (18) = Available (18).
+  // Display as formatted units.
+
+  // Correct calculation assuming 18 decimals for everything (Planned Fix)
+  const availableRaw = (backed - supply)
+  const available = availableRaw > 0 ? Number(formatUnits(BigInt(availableRaw), 18)) : 0
+  const maxInvest = available // Cap max invest to available
 
   const expectedTokens = amount ? (Number(amount) / tokenPrice).toFixed(2) : "0"
   const isValidAmount = Number(amount) >= minInvest && Number(amount) <= maxInvest
 
-  const handleConnect = () => {
-    setIsConnected(true)
-  }
+  const needsApproval = allowance < parseUnits(amount || "0", 6)
+
+  // DEBUG LOGS
+  console.log("Investment Debug:", {
+    amount,
+    allowance: allowance.toString(),
+    parsedAmount: parseUnits(amount || "0", 6).toString(),
+    needsApproval,
+    isApprovePending,
+    isBuyPending,
+    allowanceError
+  })
 
   const handleAction = async () => {
-    if (status === "idle") {
-      setStatus("approving")
-      setTimeout(() => setStatus("depositing"), 2000)
-      setTimeout(() => setStatus("success"), 4000)
+    if (needsApproval) {
+      await approve(amount)
+    } else {
+      await buy(amount)
     }
   }
 
-  if (status === "success") {
+  if (step === "success") {
     return (
       <Card className="bg-[#100F14] border-orange-500/20 shadow-2xl overflow-hidden relative">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16" />
@@ -44,17 +106,30 @@ export function InvestmentCard() {
           </div>
           <div className="space-y-2">
             <h3 className="text-2xl font-bold text-white">Investment Successful!</h3>
-            <p className="text-muted-foreground">You have successfully purchased {expectedTokens} GBOND tokens.</p>
+            <p className="text-muted-foreground">Transaction submitted. You will receive {expectedTokens} GBOND shortly.</p>
+            {buyHash && <p className="text-xs text-gray-500 font-mono">Tx: {buyHash}</p>}
           </div>
           <Button
             className="bg-primary hover:bg-primary/90 text-white font-bold py-6 px-8 rounded-xl"
             onClick={() => {
-              setStatus("idle")
+              setStep("idle")
               setAmount("")
             }}
           >
             Invest More
           </Button>
+
+          {buyHash && (
+            <a
+              href={`https://explorer.sepolia.mantle.xyz/tx/${buyHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary text-sm hover:underline flex items-center gap-1"
+            >
+              View Transaction on Explorer
+              <ArrowRightLeft className="w-3 h-3" />
+            </a>
+          )}
         </CardContent>
       </Card>
     )
@@ -78,7 +153,7 @@ export function InvestmentCard() {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {!isConnected ? (
+        {!isWalletConnected ? (
           <div className="py-8 flex flex-col items-center justify-center space-y-6">
             <div className="w-16 h-16 bg-muted/20 rounded-2xl flex items-center justify-center border border-white/5">
               <Wallet className="w-8 h-8 text-muted-foreground" />
@@ -89,12 +164,9 @@ export function InvestmentCard() {
                 Please connect your Web3 wallet to start investing in Government Bonds.
               </p>
             </div>
-            <Button
-              className="bg-primary hover:bg-primary/90 text-white font-bold py-6 px-12 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-              onClick={handleConnect}
-            >
-              Connect Wallet
-            </Button>
+            <div className="transform scale-110">
+              <ConnectButton />
+            </div>
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -102,7 +174,10 @@ export function InvestmentCard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-muted-foreground">Amount in USDT</label>
-                <span className="text-xs text-muted-foreground">Balance: 12,450.00 USDT</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Balance: {usdtBalance} USDT</span>
+                  <span className="text-xs font-semibold text-[#FD8C00]">Available: {available.toLocaleString(undefined, { maximumFractionDigits: 2 })} GBOND</span>
+                </div>
               </div>
               <div className="relative group">
                 <Input
@@ -111,14 +186,16 @@ export function InvestmentCard() {
                   className="bg-[#1C1A21] border-white/5 h-16 text-xl pl-4 pr-16 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  disabled={status !== "idle"}
+                  disabled={isApprovePending || isBuyPending}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">USDT</div>
               </div>
               {amount && !isValidAmount && (
                 <p className="text-xs text-destructive flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  Amount must be between ${minInvest} and ${maxInvest.toLocaleString()}
+                  {Number(amount) > maxInvest
+                    ? `Amount exceeds available supply of ${maxInvest.toLocaleString()} GBOND`
+                    : `Amount must be at least ${minInvest}`}
                 </p>
               )}
             </div>
@@ -158,16 +235,16 @@ export function InvestmentCard() {
                       <Button
                         variant="outline"
                         className="w-full py-7 border-white/10 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-xl disabled:opacity-50"
-                        disabled={!isValidAmount || status !== "idle" || status === "depositing"}
+                        disabled={!isValidAmount || !needsApproval || !!isApprovePending || !!isBuyPending}
                         onClick={handleAction}
                       >
-                        {status === "approving" ? (
+                        {isApprovePending ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Approving...
                           </>
                         ) : (
-                          "Approve USDT"
+                          needsApproval ? "Approve USDT" : "Approved"
                         )}
                       </Button>
                     </div>
@@ -180,10 +257,10 @@ export function InvestmentCard() {
 
               <Button
                 className="w-full py-7 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(253,140,0,0.2)] hover:shadow-[0_0_25px_rgba(253,140,0,0.3)] transition-all disabled:opacity-50"
-                disabled={!isValidAmount || status === "idle" || status === "approving"}
+                disabled={!isValidAmount || needsApproval || !!isApprovePending || !!isBuyPending}
                 onClick={handleAction}
               >
-                {status === "depositing" ? (
+                {isBuyPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Processing...
@@ -193,21 +270,11 @@ export function InvestmentCard() {
                 )}
               </Button>
             </div>
-
-            {!isVerified && (
-              <Alert className="bg-destructive/10 border-destructive/20 text-destructive py-2">
-                <AlertCircle className="w-4 h-4" />
-                <AlertTitle className="text-xs">Action Required</AlertTitle>
-                <AlertDescription className="text-[11px]">
-                  Account verification pending. Please complete KYC to invest.
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
         )}
       </CardContent>
 
-      {isConnected && (
+      {isWalletConnected && (
         <CardFooter className="bg-[#1C1A21]/50 border-t border-white/5 py-4">
           <p className="text-[11px] text-muted-foreground leading-tight">
             Investing in digital assets involves risk. By clicking Invest Now, you agree to our

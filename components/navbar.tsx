@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/components/auth-provider"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 const publicLinks = [
   { label: "Features", href: "/#features" },
@@ -103,13 +104,9 @@ export function Navbar() {
                 >
                   <Link href="/sign-up">Register</Link>
                 </Button>
-                <Button
-                  onClick={login}
-                  className="bg-[#FD8C00] hover:bg-[#E67E00] text-black font-semibold shadow-[0_0_20px_-5px_rgba(253,140,0,0.5)] transition-all active:scale-95"
-                >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Connect Wallet
-                </Button>
+                <div className="flex items-center">
+                  <ConnectButton showBalance={false} />
+                </div>
               </div>
             )}
 
