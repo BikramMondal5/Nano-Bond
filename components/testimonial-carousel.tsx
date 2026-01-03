@@ -1,6 +1,6 @@
 "use client"
 import { Card, CardContent } from "@/components/ui/card"
-import { Star, Quote } from "lucide-react"
+import { Star, Quote, MessageSquareQuote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
@@ -12,7 +12,7 @@ const defaultTestimonials = [
     type: "Enterprise",
     avatar: "https://i.pravatar.cc/150?u=marcus",
     feedback:
-      "The agentic orchestration in GovtBond has transformed our treasury operations. We've seen a 40% reduction in settlement times due to autonomous audits.",
+      "The agentic orchestration in NanoTreasury has transformed our treasury operations. We've seen a 40% reduction in settlement times due to autonomous audits.",
     rating: 5,
   },
   {
@@ -116,13 +116,14 @@ export default function TestimonialCarousel() {
     <section id="testimonials" className="relative py-24 bg-transparent overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-16 text-center space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
+          <MessageSquareQuote className="w-3.5 h-3.5" />
           Wall of Confidence
         </div>
         <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
           Trusted by Industry Leaders
         </h2>
         <p className="text-lg text-orange-100/60 max-w-2xl mx-auto text-pretty">
-          See how institutional teams are optimizing portfolios with GovtBond.
+          See how institutional teams are optimizing portfolios with NanoTreasury.
         </p>
 
         <div className="flex flex-col items-center gap-4 mt-8">

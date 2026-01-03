@@ -12,7 +12,7 @@ import { usePathname } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { Footer } from "@/components/footer" // imported Footer to include it globally
 
-// Internal wrapper to handle conditional sidebar logic
+// Internal wrapper to handle conditional sidebar  
 function AppSidebarWrapper() {
   const { user } = useAuth()
   const pathname = usePathname()
@@ -40,12 +40,12 @@ export default function ClientLayout({
     <>
       <AuthProvider>
         <SidebarProvider defaultOpen={true}>
-          <div className="flex min-h-screen w-full">
+          <Navbar />
+          <div className="flex min-h-screen w-full pt-16">
             <AppSidebarWrapper />
 
             <SidebarInset className="flex flex-col w-full bg-[#0A0A0A]">
-              <Navbar />
-              <main className="flex-1 pt-16">{children}</main>
+              <main className="flex-1">{children}</main>
               {showFooter && <Footer />}
             </SidebarInset>
           </div>

@@ -1,4 +1,5 @@
 import { Github, Twitter, Linkedin, Mail, Send } from "lucide-react"
+import Image from "next/image"
 
 export function Footer() {
   return (
@@ -11,10 +12,10 @@ export function Footer() {
           {/* Brand section */}
           <div className="col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-orange-500 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">G</span>
+              <div className="relative w-10 h-10 shrink-0">
+                <Image src="/logo.png" alt="NanoTreasury" fill className="object-contain" />
               </div>
-              <span className="text-2xl font-bold text-foreground">GovtBond</span>
+              <span className="text-2xl font-bold text-foreground">NanoTreasury</span>
             </div>
             <p className="text-muted-foreground max-w-sm mb-8 leading-relaxed">
               Democratizing access to government bonds through blockchain technology. Secure, transparent, and
@@ -113,7 +114,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:support@govtbond.io"
+                  href="mailto:support@nanotreasury.io"
                   className="hover:text-primary transition-colors flex items-center gap-2"
                 >
                   <Mail className="w-4 h-4" />

@@ -2,6 +2,7 @@ import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { TrustStrip } from "@/components/trust-strip"
 import { ValuePropositionCards } from "@/components/value-proposition-cards"
+import { EcosystemSection } from "@/components/ecosystem-section"
 import { HowItWorks } from "@/components/how-it-works"
 import { RoadmapSection } from "@/components/roadmap-section"
 import { StatsSection } from "@/components/stats-section"
@@ -16,13 +17,14 @@ export default function LandingPage() {
       <Navbar />
       <HeroSection />
       <TrustStrip />
+      <EcosystemSection />
       <ValuePropositionCards />
       <HowItWorks />
-      <RoadmapSection />
-      <StatsSection />
-      <PricingSection />
-      <TestimonialCarousel />
+      {/* <RoadmapSection /> */}
+      {/* <StatsSection /> */}
+      {/* <PricingSection /> */}
       <FaqSection />
+      <TestimonialCarousel />
       <CtaBanner />
     </main>
   )
