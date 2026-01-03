@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "D:\\Projects\\EIBS\\eibs-kgpchain\\packages\\contracts\\contracts\\CouponDistributor.sol": {
-      "lastModificationDate": 1767448199189,
-      "contentHash": "942a54d941d13b0e50c41bb35495dc3e",
+      "lastModificationDate": 1767453030095,
+      "contentHash": "5444f44c34dfdf71d604298b38040160",
       "sourceName": "contracts/CouponDistributor.sol",
       "solcConfig": {
         "version": "0.8.24",

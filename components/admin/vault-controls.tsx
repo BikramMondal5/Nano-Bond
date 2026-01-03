@@ -27,7 +27,7 @@ interface VaultControlsProps {
 
 export function VaultControls({ enabled }: VaultControlsProps) {
     const [locked, setLocked] = useState(false)
-    const { distributeYield, approveUSDT, setMaturityDate, isPending } = useAdminActions()
+    const { distributeYield, fundReserve, distributeRate, approveUSDT, setMaturityDate, isPending } = useAdminActions()
     const { totalSupply, backedValue, maturityDate } = useBondStats()
     const { distributorBalance, cumulativeYield } = useDistributorStats()
 
@@ -126,7 +126,8 @@ export function VaultControls({ enabled }: VaultControlsProps) {
                 <CardContent>
                     <InterestFunder
                         onApprove={approveUSDT}
-                        onDistribute={distributeYield}
+                        onFund={fundReserve}
+                        onDistributeRate={distributeRate}
                         isLoading={isPending}
                     />
                 </CardContent>
@@ -227,41 +228,75 @@ function ActionDialog({ trigger, title, desc, onConfirm }: { trigger: React.Reac
     )
 }
 
-function InterestFunder({ onApprove, onDistribute, isLoading }: { onApprove: (a: string) => void, onDistribute: (a: string) => void, isLoading: boolean }) {
-    const [amount, setAmount] = useState("")
+const InterestFunder = ({ onApprove, onFund, onDistributeRate, isLoading }: {
+    onApprove: (a: string) => void,
+    onFund: (a: string) => void,
+    onDistributeRate: (r: string) => void,
+    isLoading: boolean
+}) => {
+    const [fundAmount, setFundAmount] = useState("")
+    const [rateAmount, setRateAmount] = useState("")
 
     return (
-        <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-                <label className="text-sm font-medium text-gray-400">Yield Amount (USDT)</label>
-                <div className="relative">
-                    <Input
-                        type="number"
-                        placeholder="0.00"
-                        className="bg-[#1C1A21] border-gray-700 text-white pl-4 pr-12 h-12"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                    />
-                    <div className="absolute right-3 top-3 text-xs text-gray-500 font-bold">USDT</div>
+        <div className="space-y-6">
+            {/* 1. Fund Reserve Section */}
+            <div className="flex flex-col sm:flex-row gap-4 items-end border-b border-gray-800 pb-6">
+                <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <label className="text-sm font-medium text-gray-400">Step 1: Fund Reserve (Amount)</label>
+                    <div className="relative">
+                        <Input
+                            type="number"
+                            placeholder="100.00"
+                            className="bg-[#1C1A21] border-gray-700 text-white pl-4 pr-12 h-12"
+                            value={fundAmount}
+                            onChange={(e) => setFundAmount(e.target.value)}
+                        />
+                        <div className="absolute right-3 top-3 text-xs text-gray-500 font-bold">USDT</div>
+                    </div>
                 </div>
+
+                <Button
+                    variant="outline"
+                    className="h-12 border-gray-700 hover:bg-gray-800 text-white"
+                    onClick={() => onApprove(fundAmount)}
+                    disabled={!fundAmount || isLoading}
+                >
+                    Approve Funding
+                </Button>
+
+                <Button
+                    className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                    onClick={() => onFund(fundAmount)}
+                    disabled={!fundAmount || isLoading}
+                >
+                    Deposit to Reserve
+                </Button>
             </div>
 
-            <Button
-                variant="outline"
-                className="h-12 border-gray-700 hover:bg-gray-800 text-white"
-                onClick={() => onApprove(amount)}
-                disabled={!amount || isLoading}
-            >
-                Approve Funding
-            </Button>
+            {/* 2. Distribute Rate Section */}
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <label className="text-sm font-medium text-gray-400">Step 2: Distribute Coupon (Rate)</label>
+                    <div className="relative">
+                        <Input
+                            type="number"
+                            placeholder="0.05"
+                            className="bg-[#1C1A21] border-gray-700 text-white pl-4 pr-12 h-12"
+                            value={rateAmount}
+                            onChange={(e) => setRateAmount(e.target.value)}
+                        />
+                        <div className="absolute right-3 top-3 text-xs text-gray-500 font-bold">USDT/Bond</div>
+                    </div>
+                </div>
 
-            <Button
-                className="h-12 bg-green-600 hover:bg-green-700 text-white font-bold"
-                onClick={() => onDistribute(amount)}
-                disabled={!amount || isLoading}
-            >
-                Deposit & Distribute
-            </Button>
+                <Button
+                    className="h-12 bg-green-600 hover:bg-green-700 text-white font-bold"
+                    onClick={() => onDistributeRate(rateAmount)}
+                    disabled={!rateAmount || isLoading}
+                >
+                    Distribute Rate (e.g. 0.05)
+                </Button>
+            </div>
         </div>
     )
 }

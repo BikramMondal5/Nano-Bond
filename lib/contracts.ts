@@ -1,5 +1,5 @@
 export const SOVEREIGN_BOND = {
-    address: "0x4CbFB70B7E542897f2033248F52b3777fdc82EEd" as `0x${string}`,
+    address: "0xDAF1155390b64E15CCDedD54Ed42CD5A1C7db5CD" as `0x${string}`,
     abi: [
         {
             "inputs": [],
@@ -83,13 +83,34 @@ export const SOVEREIGN_BOND = {
 }
 
 export const COUPON_DISTRIBUTOR = {
-    address: "0xfb9db2a5b96deb3cD9186D723bfEF23E465a3d9d" as `0x${string}`,
+    address: "0x42bCA77915BBb75324B61b650F84772A4ed7a400" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
             "name": "depositYield",
             "outputs": [],
             "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
+            "name": "fundReserve",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [{ "internalType": "uint256", "name": "ratePerToken", "type": "uint256" }],
+            "name": "distribute",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "reserve",
+            "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+            "stateMutability": "view",
             "type": "function"
         },
         {
@@ -131,7 +152,7 @@ export const COUPON_DISTRIBUTOR = {
 }
 
 export const USDT = {
-    address: "0x65fA4AA270eC225758f0B0dBf0C3fA5c3a042cB8" as `0x${string}`,
+    address: "0xB1fC9a11C50Ce3DD6943AeBdAe1951c9191a19ca" as `0x${string}`,
     abi: [
         {
             "constant": true,
@@ -170,7 +191,7 @@ export const USDT = {
 }
 
 export const TREASURY_SWAP = {
-    address: "0x9EA638256D9c8B3711623aB87a5874771E7452Cf" as `0x${string}`,
+    address: "0x99A68DfD1c2209b7f76f1E9cF83fFec3F31974a1" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],

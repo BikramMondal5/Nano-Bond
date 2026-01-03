@@ -76,8 +76,54 @@ contract CouponDistributor is AccessControl {
         }
     }
 
+    // Reserve Logic
+    uint256 public reserve;
+
+    event ReserveFunded(uint256 amount);
+    event YieldDistributed(uint256 rate, uint256 totalCost);
+
     /**
-     * @notice Admin deposits Interest (e.g. $1M).
+     * @notice Admin funds the contract reserve without distributing immediately.
+     */
+    function fundReserve(uint256 amount) external {
+        paymentToken.safeTransferFrom(msg.sender, address(this), amount);
+        reserve += amount;
+        emit ReserveFunded(amount);
+    }
+
+    /**
+     * @notice Distribute a specific Rate (e.g. 0.08 USDT per Bond).
+     * @param ratePerToken Amount of Yield per 1 Bond (18 decimals).
+     */
+    function distribute(uint256 ratePerToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 supply = bond.totalSupply();
+        require(supply > 0, "No bonds minted");
+
+        uint256 totalCost = (supply * ratePerToken) / 1e18; // supply is 18 dec, rate is 18 dec. result should be 18 dec?
+        // Wait. Supply 100 * 1e18. Rate 0.08 * 1e18. 
+        // Cost = (100e18 * 0.08e18) / 1e18 = 8e18. Correct.
+        
+        // Wait, supply is 18 decimals? Yes, Bond is ERC20.
+        // Rate is "USDT per 1.0 Bond".
+        // Example: Rate 1e6 (1 USDT) per 1e18 Bond.
+        // Cost = 100e18 * 1e6 / 1e18 = 100e6. Correct.
+        
+        require(reserve >= totalCost, "Insufficient Reserve");
+        
+        reserve -= totalCost;
+        cumulativeYieldPerToken += ratePerToken; // Rate must be scaled to 18 decimals for accumulating?
+        // cumulativeYieldPerToken is used as: balance * (cum - paid) / 1e18.
+        // Balance = 1e18. Result = 1e18 * Rate / 1e18 = Rate.
+        // So Rate should be in PAYMENT TOKEN UNITS normalized?
+        // If PaymentToken is 6 decimals. Rate is 6 decimals?
+        // If Rate is 6 decimals (e.g. 1e6).
+        // Result = 100e18 * 1e6 / 1e18 = 100e6. Correct.
+        
+        emit YieldDistributed(ratePerToken, totalCost);
+    }
+
+    /**
+     * @notice Legacy support or Direct Distribution (Amount / Supply).
      */
     function depositYield(uint256 amount) external {
         paymentToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -85,7 +131,9 @@ contract CouponDistributor is AccessControl {
         uint256 supply = bond.totalSupply();
         require(supply > 0, "No bonds minted");
         
-        // Rate = Amount / Supply 
+        // Rate = (Amount * 1e18) / Supply
+        // If Amount 100e6. Supply 100e18.
+        // Rate = 100e6 * 1e18 / 100e18 = 1e6.
         uint256 rate = (amount * 1e18) / supply;
         cumulativeYieldPerToken += rate;
         
