@@ -71,6 +71,11 @@ async function main() {
     const distributorAddr = await distributor.getAddress();
     console.log("CouponDistributor deployed to:", distributorAddr);
 
+    // 9. Link Bond to Distributor (For Hooks)
+    console.log("Linking Bond to Distributor...");
+    await bond.setDistributor(distributorAddr);
+    console.log("Bond Linked.");
+
     const addresses = {
         USDT: usdtAddr,
         Registry: registryAddr,

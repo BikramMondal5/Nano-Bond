@@ -1,5 +1,5 @@
 export const SOVEREIGN_BOND = {
-    address: "0xFB6BDc5C9Af24Ad6a70d0DE22F98521A99602634" as `0x${string}`,
+    address: "0x4CbFB70B7E542897f2033248F52b3777fdc82EEd" as `0x${string}`,
     abi: [
         {
             "inputs": [],
@@ -30,10 +30,7 @@ export const SOVEREIGN_BOND = {
             "type": "function"
         },
         {
-            "inputs": [
-                { "internalType": "string", "name": "uri", "type": "string" },
-                { "internalType": "uint256", "name": "value", "type": "uint256" }
-            ],
+            "inputs": [{ "internalType": "string", "name": "uri", "type": "string" }, { "internalType": "uint256", "name": "value", "type": "uint256" }],
             "name": "addAsset",
             "outputs": [],
             "stateMutability": "nonpayable",
@@ -63,20 +60,30 @@ export const SOVEREIGN_BOND = {
             "type": "event"
         },
         {
-            "inputs": [
-                { "internalType": "bytes32", "name": "role", "type": "bytes32" },
-                { "internalType": "address", "name": "account", "type": "address" }
-            ],
+            "inputs": [{ "internalType": "bytes32", "name": "role", "type": "bytes32" }, { "internalType": "address", "name": "account", "type": "address" }],
             "name": "hasRole",
             "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
             "stateMutability": "view",
             "type": "function"
+        },
+        {
+            "inputs": [{ "internalType": "uint256", "name": "_newDate", "type": "uint256" }],
+            "name": "setMaturityDate",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "anonymous": false,
+            "inputs": [{ "indexed": false, "internalType": "uint256", "name": "newDate", "type": "uint256" }],
+            "name": "MaturityDateUpdated",
+            "type": "event"
         }
     ] as const
 }
 
 export const COUPON_DISTRIBUTOR = {
-    address: "0xA68121cF4CEd439D40ed881C473dFB44eD144266" as `0x${string}`,
+    address: "0xfb9db2a5b96deb3cD9186D723bfEF23E465a3d9d" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
@@ -112,38 +119,50 @@ export const COUPON_DISTRIBUTOR = {
             "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
             "stateMutability": "view",
             "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "paymentToken", // USDT
+            "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+            "stateMutability": "view",
+            "type": "function"
         }
     ] as const
 }
 
 export const USDT = {
-    address: "0x85FbCC345761fc0E4E8eEDe73003c7B22f2F1538" as `0x${string}`,
+    address: "0x65fA4AA270eC225758f0B0dBf0C3fA5c3a042cB8" as `0x${string}`,
     abi: [
         {
-            "inputs": [{ "internalType": "address", "name": "spender", "type": "address" }, { "internalType": "uint256", "name": "amount", "type": "uint256" }],
-            "name": "approve",
-            "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        },
-        {
-            "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
+            "constant": true,
+            "inputs": [{ "name": "_owner", "type": "address" }],
             "name": "balanceOf",
-            "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+            "outputs": [{ "name": "balance", "type": "uint256" }],
+            "payable": false,
             "stateMutability": "view",
             "type": "function"
         },
         {
-            "inputs": [{ "internalType": "address", "name": "to", "type": "address" }, { "internalType": "uint256", "name": "amount", "type": "uint256" }],
-            "name": "mint",
-            "outputs": [],
+            "constant": false,
+            "inputs": [
+                { "name": "_spender", "type": "address" },
+                { "name": "_value", "type": "uint256" }
+            ],
+            "name": "approve",
+            "outputs": [{ "name": "", "type": "bool" }],
+            "payable": false,
             "stateMutability": "nonpayable",
             "type": "function"
         },
         {
-            "inputs": [{ "internalType": "address", "name": "owner", "type": "address" }, { "internalType": "address", "name": "spender", "type": "address" }],
+            "constant": true,
+            "inputs": [
+                { "name": "_owner", "type": "address" },
+                { "name": "_spender", "type": "address" }
+            ],
             "name": "allowance",
-            "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+            "outputs": [{ "name": "", "type": "uint256" }],
+            "payable": false,
             "stateMutability": "view",
             "type": "function"
         }
@@ -151,7 +170,7 @@ export const USDT = {
 }
 
 export const TREASURY_SWAP = {
-    address: "0x7a6f2e6A9e862729532dCD8c1b97d73671db7758" as `0x${string}`,
+    address: "0x9EA638256D9c8B3711623aB87a5874771E7452Cf" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
@@ -166,6 +185,24 @@ export const TREASURY_SWAP = {
             "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
             "stateMutability": "view",
             "type": "function"
+        },
+        {
+            "inputs": [
+                { "internalType": "uint256", "name": "bondAmount", "type": "uint256" }
+            ],
+            "name": "redeem",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "anonymous": false,
+            "inputs": [
+                { "indexed": true, "internalType": "address", "name": "seller", "type": "address" },
+                { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+            ],
+            "name": "BondRedeemed",
+            "type": "event"
         },
         {
             "anonymous": false,

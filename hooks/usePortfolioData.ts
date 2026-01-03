@@ -16,51 +16,20 @@ export function usePortfolioData() {
         }
     })
 
-    // 2. Get Distribution Data (Cumulative Yield)
-    const { data: cumulativeYield, refetch: refetchYield } = useReadContract({
+    // 2. Get Claimable Logic (Replaced manual calc with Contract View because of Checkpointing)
+    const { data: claimableRaw, refetch: refetchClaimable } = useReadContract({
         address: COUPON_DISTRIBUTOR.address,
         abi: COUPON_DISTRIBUTOR.abi,
-        functionName: 'cumulativeYieldPerToken',
-    })
-
-    // 3. Get User's Paid Per Token
-    const { data: userPaid, refetch: refetchPaid } = useReadContract({
-        address: COUPON_DISTRIBUTOR.address,
-        abi: COUPON_DISTRIBUTOR.abi,
-        functionName: 'userPaidPerToken',
+        functionName: 'claimableYield',
         args: [address!],
         query: {
             enabled: !!address
         }
     })
 
-    // Calculation: Claimable = Balance * (Cumulative - UserPaid)
-    // All units in 1e18? Or 1e6?
-    // Usually Yield Rate is high precision (1e18).
-
     let claimable = "0"
-    if (balance && cumulativeYield !== undefined && userPaid !== undefined) {
-        const bal = BigInt(balance as bigint)
-        const cum = BigInt(cumulativeYield as bigint)
-        const paid = BigInt(userPaid as bigint)
-
-        console.log("DEBUG: Portfolio Data", {
-            balance: formatUnits(bal, 6), // showing as 6 decimals for readability
-            cumulativeYield: cum.toString(),
-            userPaid: paid.toString(),
-            diff: (cum - paid).toString()
-        })
-
-        // FIX: If userPaid is 0 but cumulativeYield is > 0, we can't legitimately claim ALL history. 
-        // This usually happens on first load or uninitialized state.
-        // We will default to 0 yield in this specific edge case.
-        if (paid === 0n && cum > 0n) {
-            claimable = "0"
-        } else {
-            const diff = cum - paid
-            const rawClaimable = (bal * diff) / BigInt(1e18) // Normalizing rate
-            claimable = formatUnits(rawClaimable, 6) // USDT has 6 decimals
-        }
+    if (claimableRaw !== undefined) {
+        claimable = formatUnits(claimableRaw as bigint, 6)
     }
 
     // 4. Verify TreasurySwap Linkage (Debug)
@@ -91,8 +60,7 @@ export function usePortfolioData() {
             console.error("CRITICAL CONFIG ERROR: TreasurySwap does NOT have MINTER_ROLE on the Bond contract.")
         }
         refetchBalance()
-        refetchYield()
-        refetchPaid()
+        refetchClaimable()
     }
 
     return {

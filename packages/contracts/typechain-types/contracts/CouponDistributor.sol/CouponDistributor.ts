@@ -29,14 +29,17 @@ export interface CouponDistributorInterface extends Interface {
       | "DEFAULT_ADMIN_ROLE"
       | "bond"
       | "claim"
+      | "claimableYield"
       | "cumulativeYieldPerToken"
       | "depositYield"
       | "getRoleAdmin"
       | "grantRole"
       | "hasRole"
+      | "onTokenTransfer"
       | "paymentToken"
       | "renounceRole"
       | "revokeRole"
+      | "rewards"
       | "supportsInterface"
       | "userPaidPerToken"
   ): FunctionFragment;
@@ -56,6 +59,10 @@ export interface CouponDistributorInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "bond", values?: undefined): string;
   encodeFunctionData(functionFragment: "claim", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "claimableYield",
+    values: [AddressLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "cumulativeYieldPerToken",
     values?: undefined
@@ -77,6 +84,10 @@ export interface CouponDistributorInterface extends Interface {
     values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
+    functionFragment: "onTokenTransfer",
+    values: [AddressLike, AddressLike]
+  ): string;
+  encodeFunctionData(
     functionFragment: "paymentToken",
     values?: undefined
   ): string;
@@ -87,6 +98,10 @@ export interface CouponDistributorInterface extends Interface {
   encodeFunctionData(
     functionFragment: "revokeRole",
     values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "rewards",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "supportsInterface",
@@ -104,6 +119,10 @@ export interface CouponDistributorInterface extends Interface {
   decodeFunctionResult(functionFragment: "bond", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "claim", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "claimableYield",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "cumulativeYieldPerToken",
     data: BytesLike
   ): Result;
@@ -118,6 +137,10 @@ export interface CouponDistributorInterface extends Interface {
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "onTokenTransfer",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "paymentToken",
     data: BytesLike
   ): Result;
@@ -126,6 +149,7 @@ export interface CouponDistributorInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "rewards", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
@@ -272,6 +296,8 @@ export interface CouponDistributor extends BaseContract {
 
   claim: TypedContractMethod<[], [void], "nonpayable">;
 
+  claimableYield: TypedContractMethod<[user: AddressLike], [bigint], "view">;
+
   cumulativeYieldPerToken: TypedContractMethod<[], [bigint], "view">;
 
   depositYield: TypedContractMethod<
@@ -294,6 +320,12 @@ export interface CouponDistributor extends BaseContract {
     "view"
   >;
 
+  onTokenTransfer: TypedContractMethod<
+    [from: AddressLike, to: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+
   paymentToken: TypedContractMethod<[], [string], "view">;
 
   renounceRole: TypedContractMethod<
@@ -307,6 +339,8 @@ export interface CouponDistributor extends BaseContract {
     [void],
     "nonpayable"
   >;
+
+  rewards: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
 
   supportsInterface: TypedContractMethod<
     [interfaceId: BytesLike],
@@ -329,6 +363,9 @@ export interface CouponDistributor extends BaseContract {
   getFunction(
     nameOrSignature: "claim"
   ): TypedContractMethod<[], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "claimableYield"
+  ): TypedContractMethod<[user: AddressLike], [bigint], "view">;
   getFunction(
     nameOrSignature: "cumulativeYieldPerToken"
   ): TypedContractMethod<[], [bigint], "view">;
@@ -353,6 +390,13 @@ export interface CouponDistributor extends BaseContract {
     "view"
   >;
   getFunction(
+    nameOrSignature: "onTokenTransfer"
+  ): TypedContractMethod<
+    [from: AddressLike, to: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "paymentToken"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
@@ -369,6 +413,9 @@ export interface CouponDistributor extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "rewards"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
   getFunction(
     nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
