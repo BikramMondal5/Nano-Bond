@@ -1,25 +1,42 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
-import { TrendingUp, Wallet, Clock, Coins } from "lucide-react"
+import { TrendingUp, Wallet, Clock, Coins, RefreshCw, Info } from "lucide-react"
+import { usePortfolioData } from "@/hooks/usePortfolioData"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export function PortfolioHero() {
+  const { balance, claimable, isLoading, refetch } = usePortfolioData()
+
+  // Fixed Annualized Yield from Bond Terms (8.5%)
+  const INTEREST_RATE = 0.085
+
+  // Calculate "Total Portfolio Value" = Balance + (Balance * Rate)
+  const numericBalance = Number(balance || 0)
+  const projectedYield = numericBalance * INTEREST_RATE
+  const totalValue = (numericBalance + projectedYield).toLocaleString(undefined, { maximumFractionDigits: 2 })
+
   const stats = [
     {
       label: "Total Portfolio Value",
-      value: "10,500 USDT",
+      value: isLoading ? "..." : `$${totalValue} USDT`,
       icon: TrendingUp,
-      trend: "+12.5%",
+      trend: "+8.5% APY",
       highlight: true,
     },
     {
       label: "Total GBOND Balance",
-      value: "9,500 GBOND",
+      value: isLoading ? "..." : `${numericBalance.toLocaleString()} GBOND`,
       icon: Wallet,
+      action: refetch,
+      debug: `Contract: 0x...${refetch.toString().slice(-4)}` // Simplified
     },
     {
-      label: "Unrealized Yield",
-      value: "+ 650 USDT",
+      label: "Interest Rate",
+      value: "8.50%",
       icon: Coins,
       color: "text-primary",
+      sub: "Annualized Yield",
     },
     {
       label: "Days to Maturity",
@@ -47,7 +64,19 @@ export function PortfolioHero() {
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm text-[#9CA3AF] font-medium">{stat.label}</p>
+            <p className="text-sm text-[#9CA3AF] font-medium flex items-center gap-2">
+              {stat.action && (
+                <>
+                  <button
+                    onClick={stat.action}
+                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                    title="Refresh"
+                  >
+                    <RefreshCw className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                </>
+              )}
+            </p>
             <h3
               className={`text-2xl font-bold tracking-tight ${stat.highlight ? "text-white" : stat.color || "text-[#E5E7EB]"}`}
             >

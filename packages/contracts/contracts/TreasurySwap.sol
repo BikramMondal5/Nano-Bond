@@ -48,14 +48,17 @@ contract TreasurySwap is AccessControl {
      * @notice Buy Bonds for a beneficiary (e.g. via Gateway).
      */
     function buyFor(uint256 amount, address beneficiary) public {
-        // 1. Receive Payment from Caller
+        // 1. Receive Payment from Caller (USDT - 6 decimals)
         paymentToken.safeTransferFrom(msg.sender, address(this), amount);
         
-        // 2. Mint Bond to Beneficiary
+        // 2. Mint Bond to Beneficiary (Bond - 18 decimals)
+        // Convert 6 decimals to 18 decimals -> Multiply by 1e12
+        uint256 bondAmount = amount * 1e12;
+
         // Registry check happens inside bond.mint()
-        bond.mint(beneficiary, amount);
+        bond.mint(beneficiary, bondAmount);
         
-        emit BondPurchased(beneficiary, amount);
+        emit BondPurchased(beneficiary, bondAmount);
     }
 
     /**
