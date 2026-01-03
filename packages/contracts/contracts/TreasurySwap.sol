@@ -9,7 +9,9 @@ import "./IdentityRegistry.sol";
 // Interface for SovereignBond to mint
 interface ISovereignBond {
     function mint(address to, uint256 amount) external;
+    function burn(address from, uint256 amount) external;
     function registry() external view returns (IdentityRegistry);
+    function maturityDate() external view returns (uint256);
 }
 
 /**
@@ -59,6 +61,46 @@ contract TreasurySwap is AccessControl {
         bond.mint(beneficiary, bondAmount);
         
         emit BondPurchased(beneficiary, bondAmount);
+    }
+
+    /**
+     * @notice Redeem Bonds for USDT after maturity.
+     * @param bondAmount Amount of GBOND to redeem (18 decimals).
+     */
+    function redeem(uint256 bondAmount) external {
+        // 1. Check Maturity "Auto-Bot" Logic
+        if (block.timestamp < bond.maturityDate()) {
+             revert("Bond not matured yet");
+        }
+
+        // 2. Burn Bonds from User
+        // Treasury needs BURNER_ROLE or allowance. 
+        // We will grant BURNER_ROLE to Treasury in deploy script.
+        // It is cleaner if Treasury has MINTER/BURNER role.
+        // Or user approves Treasury? 
+        // Standard: User approves -> Treasury transfersFrom/burns.
+        // If Treasury has BURNER_ROLE on AccessControl, 'burnFrom' usually still requires allowance 
+        // UNLESS it's a privileged burn (like 'clawback'). 
+        // Let's assume standard flow: User must Approve bond to Treasury?
+        // Wait, standard ERC20Burnable 'burnFrom' requires allowance.
+        // Our 'burn' in SovereignBond is `onlyRole(MINTER_ROLE)`.
+        // It calls `_burn`. 
+        // We should add a `burnFrom` or allow Treasury to burn.
+        // Let's trust Treasury (Minter role) to burn arbitrary? 
+        // Yes, Treasury is the "System".
+        // But `_burn` doesn't check allowance. 
+        // We should explicitly transfer or just burn if msg.sender is user?
+        // Ah, `burn(address from, amount)` is `onlyRole(MINTER_ROLE)`.
+        // So Treasury calls `bond.burn(msg.sender, amount)`.
+        
+        bond.burn(msg.sender, bondAmount);
+
+        // 3. Send USDT back (Convert 18 -> 6 decimals)
+        // Divide by 1e12
+        uint256 usdtAmount = bondAmount / 1e12;
+        paymentToken.safeTransfer(msg.sender, usdtAmount);
+
+        emit BondRedeemed(msg.sender, usdtAmount);
     }
 
     /**

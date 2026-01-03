@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Wallet, Coins, Percent, Clock, Lock, Unlock, PlayCircle, AlertCircle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatUnits } from "viem"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
     AlertDialog,
@@ -26,7 +27,7 @@ interface VaultControlsProps {
 
 export function VaultControls({ enabled }: VaultControlsProps) {
     const [locked, setLocked] = useState(false)
-    const { distributeYield, approveUSDT, isPending } = useAdminActions()
+    const { distributeYield, approveUSDT, setMaturityDate, isPending } = useAdminActions()
     const { totalSupply, backedValue, maturityDate } = useBondStats()
     const { distributorBalance, cumulativeYield } = useDistributorStats()
 
@@ -65,6 +66,10 @@ export function VaultControls({ enabled }: VaultControlsProps) {
         } else if (action === "Approve USDT") {
             approveUSDT("100000") // Approve sufficiently large amount
             toast.info("USDT Approval initiated...")
+        } else if (action === "Manual Maturity Set") {
+            // Set Maturity to NOW (Expiring immediately for testing/redemption)
+            setMaturityDate(Math.floor(Date.now() / 1000) - 60) // 1 min ago
+            toast.info("Setting maturity to NOW...")
         } else {
             toast.success(`${action} initiated successfully.`)
         }
@@ -107,6 +112,25 @@ export function VaultControls({ enabled }: VaultControlsProps) {
                     subtext="Ends: Jan 2027"
                 />
             </div>
+
+            {/* Interest Funding Panel */}
+            <Card className="bg-[#100F14] border-green-500/20">
+                <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                        <Coins className="w-5 h-5 text-green-500" /> Interest Funding
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">
+                        Fund the vault with USDT to distribute interest to bond holders.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <InterestFunder
+                        onApprove={approveUSDT}
+                        onDistribute={distributeYield}
+                        isLoading={isPending}
+                    />
+                </CardContent>
+            </Card>
 
             {/* Vault Actions Panel */}
             <Card className="bg-[#100F14] border-orange-500/20">
@@ -200,5 +224,44 @@ function ActionDialog({ trigger, title, desc, onConfirm }: { trigger: React.Reac
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+    )
+}
+
+function InterestFunder({ onApprove, onDistribute, isLoading }: { onApprove: (a: string) => void, onDistribute: (a: string) => void, isLoading: boolean }) {
+    const [amount, setAmount] = useState("")
+
+    return (
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+            <div className="grid w-full max-w-sm items-center gap-1.5">
+                <label className="text-sm font-medium text-gray-400">Yield Amount (USDT)</label>
+                <div className="relative">
+                    <Input
+                        type="number"
+                        placeholder="0.00"
+                        className="bg-[#1C1A21] border-gray-700 text-white pl-4 pr-12 h-12"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                    />
+                    <div className="absolute right-3 top-3 text-xs text-gray-500 font-bold">USDT</div>
+                </div>
+            </div>
+
+            <Button
+                variant="outline"
+                className="h-12 border-gray-700 hover:bg-gray-800 text-white"
+                onClick={() => onApprove(amount)}
+                disabled={!amount || isLoading}
+            >
+                Approve Funding
+            </Button>
+
+            <Button
+                className="h-12 bg-green-600 hover:bg-green-700 text-white font-bold"
+                onClick={() => onDistribute(amount)}
+                disabled={!amount || isLoading}
+            >
+                Deposit & Distribute
+            </Button>
+        </div>
     )
 }

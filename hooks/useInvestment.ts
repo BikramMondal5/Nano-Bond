@@ -1,5 +1,5 @@
 import { useWriteContract, useReadContract, useAccount, useWaitForTransactionReceipt } from 'wagmi'
-import { TREASURY_SWAP, USDT } from '@/lib/contracts'
+import { TREASURY_SWAP, USDT, COUPON_DISTRIBUTOR } from '@/lib/contracts'
 import { parseUnits, formatUnits } from 'viem'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
@@ -102,12 +102,43 @@ export function useInvestment() {
     }
   }
 
+  // Redeem Bond
+  const redeem = async (amount: string) => {
+    try {
+      writeBuy({
+        address: TREASURY_SWAP.address,
+        abi: TREASURY_SWAP.abi,
+        functionName: 'redeem',
+        args: [parseUnits(amount, 18)] // Redeem amount is in GBOND (18 decimals)
+      })
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to redeem bond')
+    }
+  }
+
+  // Claim Yield
+  const claim = async () => {
+    try {
+      writeBuy({
+        address: COUPON_DISTRIBUTOR.address,
+        abi: COUPON_DISTRIBUTOR.abi,
+        functionName: 'claim'
+      })
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to claim yield')
+    }
+  }
+
   // Format as 6 decimals
   const usdtBalance = rawBalance ? formatUnits(rawBalance as bigint, 6) : "0"
 
   return {
     approve,
     buy,
+    redeem,
+    claim,
     allowance: allowance ? allowance : BigInt(0),
     refetchAllowance,
     isApprovePending: isApprovePending || isApproveConfirming,
@@ -116,6 +147,7 @@ export function useInvestment() {
     buyHash,
     buyError,
     allowanceError,
-    usdtBalance
+    usdtBalance,
+    isBuyConfirmed
   }
 }

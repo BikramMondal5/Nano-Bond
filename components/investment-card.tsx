@@ -29,10 +29,17 @@ export function InvestmentCard() {
     isBuyPending,
     buyHash,
     usdtBalance,
-    allowanceError
+    allowanceError,
+    isBuyConfirmed
   } = useInvestment()
 
   const [step, setStep] = useState<"idle" | "success">("idle")
+
+  useEffect(() => {
+    if (isBuyConfirmed) {
+      setStep("success")
+    }
+  }, [isBuyConfirmed])
 
   const tokenPrice = 1.00 // 1 GBOND = 1 USDT (Pegged)
   const minInvest = 1

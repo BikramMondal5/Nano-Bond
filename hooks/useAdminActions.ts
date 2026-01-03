@@ -58,10 +58,26 @@ export function useAdminActions() {
         }
     }
 
+    // Helper to set maturity date
+    const setMaturityDate = async (timestamp: number) => {
+        try {
+            write({
+                address: SOVEREIGN_BOND.address,
+                abi: SOVEREIGN_BOND.abi,
+                functionName: 'setMaturityDate',
+                args: [BigInt(timestamp)]
+            })
+        } catch (err) {
+            console.error(err)
+            toast.error('Failed to set maturity date')
+        }
+    }
+
     return {
         addAsset,
         distributeYield,
         approveUSDT,
+        setMaturityDate,
         hash,
         isPending,
         writeError
