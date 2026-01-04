@@ -27,7 +27,7 @@ export function CoreVerificationPanel() {
                 <span className="text-muted-foreground">Verified By</span>
                 <div className="flex items-center gap-1.5 text-foreground font-medium">
                   <ShieldCheck className="w-4 h-4 text-primary" />
-                  NanoTreasury Admin
+                  NanoBond Admin
                 </div>
               </div>
             </div>

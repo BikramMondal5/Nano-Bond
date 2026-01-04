@@ -1,6 +1,5 @@
 import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
-import { TrustStrip } from "@/components/trust-strip"
 import { ValuePropositionCards } from "@/components/value-proposition-cards"
 import { EcosystemSection } from "@/components/ecosystem-section"
 import { HowItWorks } from "@/components/how-it-works"
@@ -16,7 +15,6 @@ export default function LandingPage() {
     <main className="min-h-screen bg-background overflow-hidden">
       <Navbar />
       <HeroSection />
-      <TrustStrip />
       <EcosystemSection />
       <ValuePropositionCards />
       <HowItWorks />

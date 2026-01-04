@@ -50,7 +50,7 @@ export function EcosystemSection() {
                         Platform Ecosystem
                     </div>
                     <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
-                        Why Choose NanoTreasury
+                        Why Choose NanoBond
                     </h2>
                     <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                         Built on a robust blockchain infrastructure connecting the best in DeFi
