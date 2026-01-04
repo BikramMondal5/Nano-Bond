@@ -133,18 +133,6 @@ function LoginFormContent() {
               <img src="/google-logo.png" alt="Google" className="w-5 h-5" />
               Continue with Google
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-12 border-orange-500/30 text-orange-200 hover:bg-orange-950/40 rounded-xl bg-transparent flex items-center justify-center gap-3"
-              onClick={() => {
-                /* TODO: Implement Metamask connection */
-              }}
-              disabled={isLoading}
-            >
-              <img src="/MetaMask-logo.png" alt="MetaMask" className="w-5 h-5" />
-              Continue with Metamask
-            </Button>
           </div>
 
           <Button

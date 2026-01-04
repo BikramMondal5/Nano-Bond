@@ -47,9 +47,9 @@ export function Navbar() {
 
             <Link href="/" className="flex items-center gap-2 group">
               <div className="relative w-8 h-8 transition-transform group-hover:scale-105">
-                <Image src="/logo.png" alt="NanoTreasury" fill className="object-contain" />
+                <Image src="/logo.png" alt="NanoBond" fill className="object-contain" />
               </div>
-              <span className="text-xl font-bold text-white tracking-tight">NanoTreasury</span>
+              <span className="text-xl font-bold text-white tracking-tight">NanoBond</span>
             </Link>
           </div>
 

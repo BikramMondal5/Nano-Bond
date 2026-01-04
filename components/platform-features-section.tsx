@@ -61,7 +61,7 @@ export function PlatformFeaturesSection() {
 
                 <FeatureSteps
                     features={features}
-                    title="Why Choose NanoTreasury"
+                    title="Why Choose NanoBond"
                     autoPlayInterval={4000}
                     className="p-0"
                 />

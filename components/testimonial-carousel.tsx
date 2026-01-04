@@ -12,7 +12,7 @@ const defaultTestimonials = [
     type: "Enterprise",
     avatar: "https://i.pravatar.cc/150?u=marcus",
     feedback:
-      "The agentic orchestration in NanoTreasury has transformed our treasury operations. We've seen a 40% reduction in settlement times due to autonomous audits.",
+      "The agentic orchestration in NanoBond has transformed our treasury operations. We've seen a 40% reduction in settlement times due to autonomous audits.",
     rating: 5,
   },
   {
@@ -123,7 +123,7 @@ export default function TestimonialCarousel() {
           Trusted by Industry Leaders
         </h2>
         <p className="text-lg text-orange-100/60 max-w-2xl mx-auto text-pretty">
-          See how institutional teams are optimizing portfolios with NanoTreasury.
+          See how institutional teams are optimizing portfolios with NanoBond.
         </p>
 
         <div className="flex flex-col items-center gap-4 mt-8">

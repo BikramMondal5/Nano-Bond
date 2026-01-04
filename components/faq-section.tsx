@@ -6,9 +6,9 @@ import { HelpCircle } from "lucide-react"
 export function FaqSection() {
   const faqs = [
     {
-      question: "What is NanoTreasury, and how does it work?",
+      question: "What is NanoBond, and how does it work?",
       answer:
-        "NanoTreasury is a blockchain-based platform that tokenizes government bonds into fractional shares. Users can purchase bond fractions using stablecoins like USDT, earning fixed yields directly on-chain. Our smart contracts handle custody, interest distribution, and trading.",
+        "NanoBond is a blockchain-based platform that tokenizes government bonds into fractional shares. Users can purchase bond fractions using stablecoins like USDT, earning fixed yields directly on-chain. Our smart contracts handle custody, interest distribution, and trading.",
     },
     {
       question: "Are my investments secure?",
@@ -48,7 +48,7 @@ export function FaqSection() {
           <h2 className="text-4xl md:text-6xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
             Frequently Asked Questions
           </h2>
-          <p className="text-xl text-orange-100/60 leading-relaxed">Everything you need to know about NanoTreasury</p>
+          <p className="text-xl text-orange-100/60 leading-relaxed">Everything you need to know about NanoBond</p>
         </div>
 
         {/* FAQ Section - Full Width */}
