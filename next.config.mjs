@@ -6,15 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  
-  // Output file tracing - exclude problematic files
-  outputFileTracingIgnores: [
-    '**/node_modules/thread-stream/test/**',
-    '**/node_modules/thread-stream/bench.js',
-    '**/node_modules/thread-stream/README.md',
-    '**/node_modules/thread-stream/LICENSE',
-  ],
-  
+
   webpack: (config, { isServer, webpack }) => {
     // Exclude problematic test files from thread-stream
     config.module.rules.push({
@@ -27,7 +19,7 @@ const nextConfig = {
       test: /node_modules[\\/]thread-stream[\\/](README\.md|LICENSE)/,
       use: 'ignore-loader'
     });
-    
+
     // Exclude client components packages from server bundle
     if (isServer) {
       config.externals.push({
@@ -35,7 +27,7 @@ const nextConfig = {
         'thread-stream': 'commonjs thread-stream',
       });
     }
-    
+
     // Add fallbacks
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -46,7 +38,7 @@ const nextConfig = {
       'pino-elasticsearch': false,
       'why-is-node-running': false,
     };
-    
+
     return config;
   },
 }
