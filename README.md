@@ -1,6 +1,6 @@
 # 🏛️💎 GovtBond – Fractional Tokenized Government Bonds
 
-![Preview Image](screenshot.png)
+![Preview Image](public/screenshot.png)
 
 GovtBond is a decentralized finance (DeFi) platform that democratizes access to government bonds. It enables retail users to invest in fractional units of government bonds using stablecoins, providing a transparent, secure, and highly accessible investment experience through blockchain technology.
 
@@ -30,7 +30,7 @@ GovtBond is a decentralized finance (DeFi) platform that democratizes access to 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/BikramMondal5/eibs-kgpchain.git
+git clone https://github.com/BikramMondal5/Nano-Bond.git
 ```
 
 2. Navigate to the project directory:
@@ -46,7 +46,9 @@ npm install --legacy-peer-deps
 ```
 
 4. Set up environment variables:
-   Create a `.env.local` file in the root directory and add the necessary environment variables (e.g., MongoDB URI, NextAuth secret, Blockchain provider URLs).
+   - Create a `.env.local` file in the root directory and add the necessary environment variables (e.g., MongoDB URI, NextAuth secret, Blockchain provider URLs).
+   - Create a `.env` file in the `packages/backend` directory and add the necessary environment variables.
+     - - Create a `.env` file in the `packages/contracts` directory and add the necessary environment variables.
 
 5. Run the development server:
 ```bash
