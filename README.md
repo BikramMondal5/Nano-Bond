@@ -1,6 +1,6 @@
 # 🏛️💎 GovtBond – Fractional Tokenized Government Bonds
 
-![Preview Image](public/screenshot.png)
+![Preview Image](screenshot.png)
 
 GovtBond is a decentralized finance (DeFi) platform that democratizes access to government bonds. It enables retail users to invest in fractional units of government bonds using stablecoins, providing a transparent, secure, and highly accessible investment experience through blockchain technology.
 
