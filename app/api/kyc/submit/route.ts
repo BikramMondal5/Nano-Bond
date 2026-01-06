@@ -11,6 +11,13 @@ export async function POST(req: NextRequest) {
     const walletSignature = formData.get('walletSignature') as string
     const signedMessage = formData.get('signedMessage') as string
 
+    if (!walletAddress || !walletSignature || !signedMessage) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
     // Verify signature
     const recoveredAddress = ethers.verifyMessage(signedMessage, walletSignature)
 
@@ -21,10 +28,43 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Connect to DB
+    await connectDB()
+
+    // FIX: Search for user case-insensitively and with better error handling
+    const normalizedWallet = walletAddress.toLowerCase()
+
+    console.log('Searching for user with wallet:', normalizedWallet)
+
+    let user = await User.findOne({
+      walletAddress: { $regex: new RegExp(`^${normalizedWallet}$`, 'i') }
+    })
+
+    // Debug: Check if wallet exists but with different case
+    if (!user) {
+      const allUsers = await User.find({ walletAddress: { $exists: true, $ne: null } })
+      console.log('All wallet addresses in DB:', allUsers.map(u => u.walletAddress))
+
+      return NextResponse.json(
+        {
+          error: 'User not found. Please ensure your wallet is connected.',
+          debug: {
+            searchedWallet: normalizedWallet,
+            foundWallets: allUsers.map(u => u.walletAddress)
+          }
+        },
+        { status: 404 }
+      )
+    }
+
+    console.log('Found user:', user._id, user.email)
+
     // Forward to AI service
     const aiFormData = new FormData()
     aiFormData.append('aadhaar', formData.get('aadhaar') as Blob)
     aiFormData.append('video', formData.get('video') as Blob)
+
+    console.log('Sending to AI service...')
 
     const aiResponse = await axios.post(
       process.env.AI_KYC_SERVICE_URL + '/verify',
@@ -47,26 +87,23 @@ export async function POST(req: NextRequest) {
     const isApproved = (
       aiResults.aadhaarValidation?.isValid &&
       aiResults.aadhaarValidation?.confidence >= 85 &&
-      aiResults.livenessDetection?.isLive &&  // PRIMARY CHECK
-      aiResults.livenessDetection?.confidence >= 60 &&  // Ensure decent liveness confidence
+      aiResults.livenessDetection?.isLive &&
+      aiResults.livenessDetection?.confidence >= 60 &&
       aiResults.fraudScore?.overall <= 30
     )
 
-    // Save to database
-    await connectDB()
+    console.log('KYC Decision:', isApproved ? 'APPROVED' : 'REJECTED')
+
+    // Update user with KYC results
     const expiresAt = isApproved ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : null
 
-    await User.findOneAndUpdate(
-      { walletAddress: walletAddress.toLowerCase() },
-      {
-        kycStatus: isApproved ? 'APPROVED' : 'REJECTED',
-        kycApprovedAt: isApproved ? new Date() : null,
-        kycExpiresAt: expiresAt,
-        kycRejectionReason: isApproved ? null : generateRejectionReason(aiResults),
-        aadhaarHash: aiResults.aadhaarHash
-      },
-      { upsert: true, new: true }
-    )
+    user.kycStatus = isApproved ? 'APPROVED' : 'REJECTED'
+    user.kycApprovedAt = isApproved ? new Date() : null
+    user.kycExpiresAt = expiresAt
+    user.kycRejectionReason = isApproved ? null : generateRejectionReason(aiResults)
+    user.aadhaarHash = aiResults.aadhaarHash
+
+    await user.save()
 
     // Register on blockchain if approved
     if (isApproved) {
@@ -84,9 +121,14 @@ export async function POST(req: NextRequest) {
           wallet
         )
 
+        // Format aadhaarHash as bytes32 (add 0x prefix if missing)
+        const formattedHash = aiResults.aadhaarHash.startsWith('0x')
+          ? aiResults.aadhaarHash
+          : `0x${aiResults.aadhaarHash}`
+
         const tx = await registry.registerVerified(
           walletAddress,
-          aiResults.aadhaarHash,
+          formattedHash,
           walletSignature,
           Math.min(aiResults.fraudScore?.overall || 0, 100)
         )
@@ -119,7 +161,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (error.response) {
-      // AI service returned an error
       return NextResponse.json(
         { error: error.response.data?.error || 'AI verification failed. Please try again.' },
         { status: error.response.status || 500 }
@@ -133,7 +174,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Generic error
     return NextResponse.json(
       { error: error.message || 'KYC submission failed. Please try again.' },
       { status: 500 }
@@ -150,7 +190,6 @@ function generateRejectionReason(aiResults: any): string {
   if (aiResults.aadhaarValidation?.confidence < 85) {
     reasons.push('Low Aadhaar confidence score')
   }
-  // Removed face matching check - not reliable with old Aadhaar photos
   if (!aiResults.livenessDetection?.isLive) {
     reasons.push('Liveness verification failed - please record video showing natural movement')
   }

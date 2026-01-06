@@ -174,7 +174,7 @@ def detect_face_in_frames(frames: list) -> bool:
             if len(faces) > 0:
                 face_count += 1
         
-        return face_count >= 3  # Face detected in at least 3 frames
+        return bool(face_count >= 3)  # Face detected in at least 3 frames
     except:
         return False
 
@@ -201,10 +201,9 @@ def detect_blinks_advanced(frames: list) -> bool:
             if diff > np.std(eye_states) * 0.5:
                 changes += 1
         
-        return changes >= 2  # At least 2 significant changes detected
+        return bool(changes >= 2) # At least 2 significant changes detected
     except:
-        return len(frames) > 20  # Fallback
-
+        return bool(len(frames) > 20)  # Fallback
 
 def calculate_fraud_score_video_based(img, ocr_data, validation, liveness) -> dict:
     """Fraud scoring based on Aadhaar + Liveness (no face matching)"""
@@ -232,6 +231,139 @@ def calculate_fraud_score_video_based(img, ocr_data, validation, liveness) -> di
         "deepfakeScore": float(tampering * 100),
         "tamperingDetected": bool(tampering > 0.5)
     }
+
+def load_image(image_bytes: bytes):
+    """Load image from bytes"""
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Invalid image format")
+    return img
+
+
+def extract_aadhaar_data(img) -> dict:
+    """Extract text from Aadhaar using OCR"""
+    try:
+        # Preprocess image for better OCR
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+        
+        # Extract text
+        text = pytesseract.image_to_string(gray)
+        
+        # Extract Aadhaar number (12 digits)
+        aadhaar_pattern = r'\b\d{4}\s?\d{4}\s?\d{4}\b'
+        aadhaar_match = re.search(aadhaar_pattern, text)
+        aadhaar_number = aadhaar_match.group(0).replace(' ', '') if aadhaar_match else None
+        
+        # Extract DOB
+        dob_pattern = r'\b\d{2}[/-]\d{2}[/-]\d{4}\b'
+        dob_match = re.search(dob_pattern, text)
+        dob = dob_match.group(0) if dob_match else None
+        
+        # Extract name (simple heuristic - first line with letters)
+        lines = text.split('\n')
+        name = None
+        for line in lines:
+            if len(line.strip()) > 3 and any(c.isalpha() for c in line):
+                name = line.strip()
+                break
+        
+        return {
+            "aadhaarNumber": f"XXXX-XXXX-{aadhaar_number[-4:]}" if aadhaar_number else None,
+            "aadhaar_number": aadhaar_number,  # Full number for hashing
+            "name": name,
+            "dob": dob,
+            "extractedSuccessfully": bool(aadhaar_number),
+            "rawText": text[:200]  # First 200 chars for debugging
+        }
+    except Exception as e:
+        print(f"OCR Error: {str(e)}")
+        return {
+            "extractedSuccessfully": False,
+            "error": str(e)
+        }
+
+
+def validate_aadhaar(ocr_results: dict, img) -> dict:
+    """Validate Aadhaar authenticity"""
+    confidence = 50  # Base confidence
+    
+    # Check if Aadhaar number was extracted
+    if ocr_results.get('extractedSuccessfully'):
+        confidence += 30
+    
+    # Check image quality
+    if img.shape[0] > 500 and img.shape[1] > 700:
+        confidence += 10
+    
+    # Check if it looks like an official document
+    if 'GOVERNMENT' in ocr_results.get('rawText', '').upper() or 'INDIA' in ocr_results.get('rawText', '').upper():
+        confidence += 10
+    
+    return {
+        "isValid": bool(confidence >= 70),  # Add bool()
+        "confidence": int(min(confidence, 100)),  # Add int()
+        "method": "IMAGE_FORENSICS"
+    }
+
+
+def detect_motion_in_frames(frames: list) -> bool:
+    """Detect motion between frames"""
+    if len(frames) < 5:
+        return False
+    
+    try:
+        motion_scores = []
+        for i in range(1, len(frames), 3):
+            # Calculate frame difference
+            diff = cv2.absdiff(
+                cv2.cvtColor(frames[i-1], cv2.COLOR_BGR2GRAY),
+                cv2.cvtColor(frames[i], cv2.COLOR_BGR2GRAY)
+            )
+            motion_scores.append(np.sum(diff))
+        
+        # Check if there's significant motion
+        avg_motion = np.mean(motion_scores)
+        return bool(avg_motion > 1000000) # Threshold for motion detection
+    except:
+        return False
+
+
+def detect_image_tampering(img) -> float:
+    """Detect if image has been tampered with"""
+    try:
+        # Simple tampering detection using noise analysis
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Calculate Laplacian variance (edge detection)
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        
+        # JPEG compression artifacts
+        _, buffer = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        reencoded = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
+        diff = cv2.absdiff(img, reencoded)
+        artifact_score = np.mean(diff)
+        
+        # Combine scores (normalized 0-1)
+        tampering_score = float(min((artifact_score / 10.0), 1.0))  # Add float()
+        return tampering_score
+    except:
+        return 0.0
+
+
+def hash_aadhaar(aadhaar_number: str) -> str:
+    """Generate secure hash of Aadhaar number"""
+    if not aadhaar_number:
+        return "0x" + hashlib.sha256(b'unknown').hexdigest()
+    
+    # Add salt for security
+    salt = os.getenv("AADHAAR_HASH_SALT", "nanobond-secure-salt-2024")
+    combined = f"{salt}:{aadhaar_number}"
+    
+    # Return with 0x prefix for blockchain compatibility
+    return "0x" + hashlib.sha256(combined.encode()).hexdigest()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
