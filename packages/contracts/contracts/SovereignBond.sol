@@ -39,7 +39,7 @@ contract SovereignBond is ERC20, AccessControl {
     constructor(string memory name, string memory symbol, address _registry, address admin) 
         ERC20(name, symbol) 
     {
-        registry = IdentityRegistry(_registry);
+        registry = IdentityRegistry(_registry);  // This now points to V2 address
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MINTER_ROLE, admin);
         

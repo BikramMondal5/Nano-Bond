@@ -26,3 +26,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+package-lock.json
+packages/contracts/artifacts
+packages/contracts/cache
+packages/contracts/typechain-types
+packages/contracts/debug_buy.log
+packages/contracts/deploy_log.txt
+packages/contracts/deploy.log
+packages/contracts/deployed_addresses.json

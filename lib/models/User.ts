@@ -20,6 +20,11 @@ export interface IUser {
             purchaseDate: Date;
         }>;
     };
+    kycStatus?: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+    kycApprovedAt?: Date;
+    kycExpiresAt?: Date;
+    kycRejectionReason?: string;
+    aadhaarHash?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -91,15 +96,28 @@ const UserSchema = new Schema<IUser>(
                 },
             ],
         },
+        kycStatus: {
+            type: String,
+            enum: ['NOT_SUBMITTED', 'PENDING', 'APPROVED', 'REJECTED', 'EXPIRED'],
+            default: 'NOT_SUBMITTED',
+        },
+        kycApprovedAt: {
+            type: Date,
+        },
+        kycExpiresAt: {
+            type: Date,
+        },
+        kycRejectionReason: {
+            type: String,
+        },
+        aadhaarHash: {
+            type: String,
+        },
     },
     {
         timestamps: true,
     }
 );
-
-// Indexes are already created via unique: true in schema, no need to duplicate
-// UserSchema.index({ email: 1 });
-// UserSchema.index({ walletAddress: 1 });
 
 const User = models.User || model<IUser>('User', UserSchema);
 
