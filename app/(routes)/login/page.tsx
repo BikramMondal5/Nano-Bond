@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { MatrixRain } from "@/components/cyber-hero"
-import { Shield, Lock, Mail, ArrowRight, Github, Wallet } from "lucide-react"
+import { Shield, Lock, Mail, ArrowRight, Github, Wallet, Loader2 } from "lucide-react"
+import { useWeb3Auth } from "@/hooks/use-web3auth"
 
 function LoginFormContent() {
   const searchParams = useSearchParams()
@@ -51,12 +52,31 @@ function LoginFormContent() {
     }
   }
 
-  const handleGoogleSignIn = async () => {
+  const { login, isInitializing } = useWeb3Auth()
+
+  const handleWeb3SignIn = async () => {
     setIsLoading(true)
     try {
-      await signIn("google", { callbackUrl: "/portfolio" })
+      const user = await login()
+      if (user && user.email) {
+        const result = await signIn("credentials", {
+          web3auth_email: user.email,
+          web3auth_name: user.name,
+          redirect: false,
+        })
+
+        if (result?.ok) {
+          router.push("/portfolio")
+        } else {
+          setError("Failed to create session with Web3Auth")
+        }
+      } else {
+        setError("Web3Auth login failed or no email provided")
+      }
     } catch (error) {
-      setError("Failed to sign in with Google")
+      console.error(error)
+      setError("Failed to sign in with Web3Auth")
+    } finally {
       setIsLoading(false)
     }
   }
@@ -127,11 +147,15 @@ function LoginFormContent() {
               type="button"
               variant="outline"
               className="w-full h-12 border-orange-500/30 text-orange-200 hover:bg-orange-950/40 rounded-xl bg-transparent flex items-center justify-center gap-3"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
+              onClick={handleWeb3SignIn}
+              disabled={isLoading || isInitializing}
             >
-              <img src="/google-logo.png" alt="Google" className="w-5 h-5" />
-              Continue with Google
+              {isInitializing ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Wallet className="w-5 h-5" />
+              )}
+              Continue with Web3Auth
             </Button>
           </div>
 

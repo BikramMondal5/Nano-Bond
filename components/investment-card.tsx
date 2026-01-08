@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
@@ -12,6 +13,8 @@ import { useInvestment } from "@/hooks/useInvestment"
 import { useBondStats } from "@/hooks/useAdminActions"
 import { parseUnits, formatUnits } from "viem"
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import router from "next/router"
+import { AlertTriangle } from "lucide-react"
 
 export function InvestmentCard() {
   const [isConnected, setIsConnected] = useState(false) // Logic can be improved with useAccount
@@ -83,17 +86,15 @@ export function InvestmentCard() {
   const isValidAmount = Number(amount) >= minInvest && Number(amount) <= maxInvest
 
   const needsApproval = allowance < parseUnits(amount || "0", 6)
+  const [kycStatus, setKycStatus] = useState<any>(null)
 
-  // DEBUG LOGS
-  console.log("Investment Debug:", {
-    amount,
-    allowance: allowance.toString(),
-    parsedAmount: parseUnits(amount || "0", 6).toString(),
-    needsApproval,
-    isApprovePending,
-    isBuyPending,
-    allowanceError
-  })
+  useEffect(() => {
+    if (address) {
+      axios.get(`/api/kyc/status/${address}`)
+        .then(res => setKycStatus(res.data))
+        .catch(err => console.error('KYC check failed:', err))
+    }
+  }, [address])
 
   const handleAction = async () => {
     if (needsApproval) {
@@ -158,6 +159,22 @@ export function InvestmentCard() {
           Secured by on-chain Government Bond reserves.
         </CardDescription>
       </CardHeader>
+
+      {isWalletConnected && kycStatus && !kycStatus.isVerified && (
+        <Alert className="bg-orange-500/10 border-orange-500/20">
+          <AlertTriangle className="h-4 w-4 text-orange-500" />
+          <AlertDescription>
+            KYC verification required to invest.{' '}
+            <Button
+              variant="link"
+              className="p-0 h-auto text-primary hover:underline"
+              onClick={() => router.push('/kyc')}
+            >
+              Complete KYC
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <CardContent className="space-y-6">
         {!isWalletConnected ? (

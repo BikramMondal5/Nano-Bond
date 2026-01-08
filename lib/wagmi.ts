@@ -2,8 +2,8 @@ import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { mantleSepoliaTestnet } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
-    appName: 'GovtBond',
-    projectId: 'YOUR_PROJECT_ID', // TODO: Get from user or use placeholder
+    appName: 'NanoBond',
+    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
     chains: [mantleSepoliaTestnet],
-    ssr: true, // If your dApp uses server side rendering (SSR)
+    ssr: true,
 });
