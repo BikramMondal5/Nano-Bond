@@ -1,0 +1,67 @@
+import mongoose, { Schema, model, models } from 'mongoose';
+
+export interface IBond {
+    bondName: string;
+    bondId: string;
+    issuer: string;
+    couponRate: number;
+    startDate: Date;
+    maturityDate: Date;
+    minInvestment: number;
+    maxSubscription: number;
+    description?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+const BondSchema = new Schema<IBond>(
+    {
+        bondName: {
+            type: String,
+            required: [true, 'Bond name is required'],
+            trim: true,
+        },
+        bondId: {
+            type: String,
+            required: [true, 'Bond ID is required'],
+            unique: true,
+            trim: true,
+        },
+        issuer: {
+            type: String,
+            required: [true, 'Issuer is required'],
+            trim: true,
+        },
+        couponRate: {
+            type: Number,
+            required: [true, 'Coupon rate is required'],
+        },
+        startDate: {
+            type: Date,
+            required: [true, 'Start date is required'],
+        },
+        maturityDate: {
+            type: Date,
+            required: [true, 'Maturity date is required'],
+        },
+        minInvestment: {
+            type: Number,
+            required: [true, 'Minimum investment is required'],
+        },
+        maxSubscription: {
+            type: Number,
+            required: [true, 'Maximum subscription is required'],
+        },
+        description: {
+            type: String,
+            trim: true,
+        },
+    },
+    {
+        timestamps: true,
+    }
+);
+
+const Bond = models.Bond || model<IBond>('Bond', BondSchema);
+
+export default Bond;

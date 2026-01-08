@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Wallet, PlusCircle, ArrowDownLeft, ShieldCheck, Users, History, Settings, LogOut } from "lucide-react"
+import { Home, Wallet, PlusCircle, ArrowDownLeft, ShieldCheck, Users, History, Settings, LogOut, Landmark } from "lucide-react"
 import Image from "next/image"
 
 import {
@@ -21,6 +21,7 @@ const mainNavItems = [
   { label: "Dashboard", icon: Home, href: "/portfolio" },
   { label: "My Bonds", icon: Wallet, href: "/bond/us-treasury" },
   { label: "Invest", icon: PlusCircle, href: "/invest" },
+  { label: "Govt Bonds", icon: Landmark, href: "/govt-bonds" },
   { label: "Redeem", icon: ArrowDownLeft, href: "/redeem" },
   { label: "Verification", icon: ShieldCheck, href: "/verification" },
   { label: "Transactions", icon: History, href: "/transactions" },

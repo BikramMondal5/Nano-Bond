@@ -12,8 +12,11 @@ export function WalletSync() {
     useEffect(() => {
         const syncWallet = async () => {
             if (isConnected && address && session?.user) {
-                // Only update if wallet address changed
-                if (address !== session.user.walletAddress) {
+                // Determine if wallet address needs to be updated (compare case-insensitively)
+                const currentSessionWallet = session.user.walletAddress?.toLowerCase();
+                const currentWallet = address.toLowerCase();
+
+                if (currentWallet !== currentSessionWallet) {
                     try {
                         await axios.post('/api/user/wallet', { walletAddress: address })
                         // Update session with new wallet address
