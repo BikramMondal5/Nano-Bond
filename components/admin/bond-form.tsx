@@ -68,11 +68,30 @@ export function BondForm({ onSuccess }: BondFormProps) {
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setLoading(true)
-        // Simulate API storage
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-        console.log("Bond Saved:", values)
-        setLoading(false)
-        onSuccess()
+        try {
+            const response = await fetch('/api/bonds', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(values),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to create bond');
+            }
+
+            const data = await response.json();
+            console.log("Bond Saved:", data);
+            onSuccess();
+        } catch (error) {
+            console.error("Error submitting bond:", error);
+            // Ideally use a toast notification here
+            alert("Failed to save bond. Please check the console for details.");
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
