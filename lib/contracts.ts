@@ -237,3 +237,16 @@ export const TREASURY_SWAP = {
         }
     ] as const
 }
+
+export const IDENTITY_REGISTRY_V2 = {
+    address: "0xc34dF48D64Ab0bD94Ce9dc48A53723e872a9B17F" as `0x${string}`,
+    abi: [
+        {
+            "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
+            "name": "isVerified",
+            "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+            "stateMutability": "view",
+            "type": "function"
+        }
+    ] as const
+}
