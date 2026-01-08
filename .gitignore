@@ -7,9 +7,10 @@
 # next.js
 /.next/
 /out/
-
+ai-kyc-service/venv/
 # production
 /build
+package-lock.json  
 
 # debug
 npm-debug.log*

@@ -1,5 +1,5 @@
 import NextAuth, { NextAuthConfig } from "next-auth";
-import Google from "next-auth/providers/google";
+
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
@@ -7,24 +7,38 @@ import User from "@/lib/models/User";
 
 export const authConfig: NextAuthConfig = {
     providers: [
-        Google({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-            authorization: {
-                params: {
-                    prompt: "consent",
-                    access_type: "offline",
-                    response_type: "code",
-                },
-            },
-        }),
+
         Credentials({
             name: "Credentials",
             credentials: {
                 email: { label: "Email", type: "email" },
                 password: { label: "Password", type: "password" },
+                web3auth_email: { label: "Web3Auth Email", type: "text" },
+                web3auth_name: { label: "Web3Auth Name", type: "text" },
             },
             async authorize(credentials) {
+                if (credentials?.web3auth_email) {
+                    await connectDB();
+                    const email = credentials.web3auth_email as string;
+                    let user = await User.findOne({ email });
+
+                    if (!user) {
+                        user = await User.create({
+                            email,
+                            name: credentials.web3auth_name || email.split("@")[0],
+                            provider: "web3auth",
+                            emailVerified: new Date(),
+                        });
+                    }
+
+                    return {
+                        id: user._id.toString(),
+                        email: user.email,
+                        name: user.name || `${user.firstName} ${user.lastName}`.trim(),
+                        image: user.image,
+                    };
+                }
+
                 if (!credentials?.email || !credentials?.password) {
                     throw new Error("Email and password are required");
                 }
@@ -37,8 +51,12 @@ export const authConfig: NextAuthConfig = {
                     throw new Error("No user found with this email");
                 }
 
+                if (!user.password && user.provider === "web3auth") {
+                    throw new Error("Please sign in with Web3Auth");
+                }
+
                 if (!user.password) {
-                    throw new Error("Please sign in with Google");
+                    throw new Error("Please sign in with your provider");
                 }
 
                 const isPasswordValid = await bcrypt.compare(
@@ -61,39 +79,7 @@ export const authConfig: NextAuthConfig = {
     ],
     callbacks: {
         async signIn({ user, account, profile }) {
-            if (account?.provider === "google") {
-                try {
-                    await connectDB();
 
-                    const existingUser = await User.findOne({ email: user.email });
-
-                    if (!existingUser) {
-                        // Create new user from Google OAuth
-                        const newUser = await User.create({
-                            email: user.email,
-                            name: user.name,
-                            image: user.image,
-                            provider: "google",
-                            emailVerified: new Date(),
-                        });
-                        user.id = newUser._id.toString();
-                    } else {
-                        // Update existing user
-                        if (existingUser.provider !== "google") {
-                            existingUser.provider = "google";
-                            existingUser.image = user.image;
-                            existingUser.emailVerified = new Date();
-                            await existingUser.save();
-                        }
-                        user.id = existingUser._id.toString();
-                    }
-
-                    return true;
-                } catch (error) {
-                    console.error("Error in signIn callback:", error);
-                    return false;
-                }
-            }
 
             return true;
         },

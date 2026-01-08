@@ -37,6 +37,13 @@ const nextConfig = {
       'fastbench': false,
       'pino-elasticsearch': false,
       'why-is-node-running': false,
+      '@react-native-async-storage/async-storage': false,
+    };
+
+    // Add alias to handle the module resolution
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@react-native-async-storage/async-storage': false,
     };
 
     return config;
