@@ -17,6 +17,7 @@ interface Web3AuthContextType {
     walletAddress: string | null;
     balance: string | null;
     isInitializing: boolean;
+    error: string | null;
     getEthersProvider: () => any;
     getSigner: () => Promise<any>;
 }

@@ -63,7 +63,8 @@ function SignUpFormContent() {
       })
 
       if (signInResult?.ok) {
-        router.push("/portfolio")
+        // Force a hard navigation to ensure session cookies are picked up immediately
+        window.location.href = "/portfolio";
       } else {
         router.push("/login?registered=true")
       }
@@ -89,7 +90,8 @@ function SignUpFormContent() {
         })
 
         if (signInResult?.ok) {
-          router.push("/portfolio")
+          // Force a hard navigation to ensure session cookies are picked up immediately
+          window.location.href = "/portfolio";
         } else {
           setError("Failed to create session with Web3Auth")
         }

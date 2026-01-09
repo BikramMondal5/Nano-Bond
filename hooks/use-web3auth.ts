@@ -27,6 +27,8 @@ export const useWeb3Auth = () => {
   const [balance, setBalance] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
+  const [error, setError] = useState<string | null>(null);
+
   const web3authRef = useRef<Web3Auth | null>(null);
 
   // Get wallet address from provider
@@ -45,6 +47,7 @@ export const useWeb3Auth = () => {
       return address;
     } catch (error) {
       console.error("Error getting wallet address:", error);
+      setError("Failed to get wallet address");
       return null;
     }
   }, []);
@@ -74,8 +77,9 @@ export const useWeb3Auth = () => {
           setUserInfo(user);
           await getWalletAddress(web3auth.provider);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error initializing Web3Auth:", error);
+        setError(error?.message || "Failed to initialize Web3Auth");
       } finally {
         setIsInitializing(false);
       }
@@ -87,8 +91,10 @@ export const useWeb3Auth = () => {
   const login = async () => {
     if (!web3authRef.current) {
       console.error("Web3Auth not initialized");
+      setError("Web3Auth not initialized");
       return;
     }
+    setError(null);
     try {
       const web3authProvider = await web3authRef.current.connect();
       setProvider(web3authProvider);
@@ -99,8 +105,9 @@ export const useWeb3Auth = () => {
         const address = await getWalletAddress(web3authProvider);
         return { user, address };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error logging in:", error);
+      setError(error?.message || "Failed to login");
       throw error;
     }
   };
@@ -114,8 +121,10 @@ export const useWeb3Auth = () => {
       setUserInfo(null);
       setWalletAddress(null);
       setBalance(null);
-    } catch (error) {
+      setError(null);
+    } catch (error: any) {
       console.error("Error logging out:", error);
+      setError(error?.message || "Failed to logout");
     }
   };
 
@@ -141,6 +150,7 @@ export const useWeb3Auth = () => {
     walletAddress,
     balance,
     isInitializing,
+    error,
     web3auth: web3authRef.current,
     getEthersProvider,
     getSigner

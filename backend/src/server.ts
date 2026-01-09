@@ -6,7 +6,7 @@ import { BondService } from './services/bond.service';
 import { AAService } from './services/aa.service';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
