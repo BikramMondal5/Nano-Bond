@@ -22,6 +22,7 @@ interface RegistryBond {
     category?: string;
     contractAddress: string;
     treasuryAddress?: string;
+    distributorAddress?: string;
     couponRate: number;
     minInvestment: number;
     maxSubscription: number;

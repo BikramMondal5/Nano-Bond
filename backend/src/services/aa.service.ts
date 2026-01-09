@@ -120,4 +120,96 @@ export class AAService {
             return tx.hash;
         });
     }
+
+    /**
+     * Backend-Sponsored Redemption (Gasless)
+     */
+    async redeem(userAddress: string, bondAmount: string, bondId: string = 'GOI-2030') {
+        return this.withLock(async () => {
+            if (!config.admin.privateKey) throw new Error('Admin key not configured');
+
+            // Resolve Bond
+            const bondData = this.bondService.getBondByIdSync(bondId);
+            if (!bondData) throw new Error(`Bond not found: ${bondId}`);
+            if (!bondData.treasuryAddress) throw new Error(`Treasury not configured for: ${bondId}`);
+
+            const treasuryAddress = bondData.treasuryAddress;
+            console.log(`[AAService] Processing gasless redemption for ${userAddress}: ${bondAmount} GBOND`);
+
+            const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+
+            const TREASURY_REDEEM_ABI = [
+                "function adminRedeem(address user, uint256 bondAmount) external"
+            ];
+
+            const treasury = new ethers.Contract(treasuryAddress, TREASURY_REDEEM_ABI, adminWallet);
+            const amountBig = ethers.parseUnits(bondAmount, 18); // GBOND has 18 decimals
+
+            try {
+                const tx = await treasury.adminRedeem(userAddress, amountBig);
+                console.log(`[AAService] Redemption TX sent: ${tx.hash}`);
+                await tx.wait();
+                console.log(`[AAService] Redemption confirmed`);
+
+                return {
+                    success: true,
+                    txHash: tx.hash,
+                    message: `Redeemed ${bondAmount} GBOND (gasless)`
+                };
+            } catch (error: any) {
+                console.error(`[AAService] adminRedeem failed:`, error.message);
+                if (error.message?.includes('Bond not matured')) {
+                    throw new Error('Bond has not matured yet.');
+                }
+                throw error;
+            }
+        });
+    }
+
+    /**
+     * Backend-Sponsored Yield Claim (Gasless)
+     */
+    async claim(userAddress: string, bondId: string = 'GOI-2030') {
+        return this.withLock(async () => {
+            if (!config.admin.privateKey) throw new Error('Admin key not configured');
+
+            // Resolve Bond
+            const bondData = this.bondService.getBondByIdSync(bondId);
+            if (!bondData) throw new Error(`Bond not found: ${bondId}`);
+            // Note: Bond Registry has "distributorAddress" but we might need to fetch it from the bond data structure in bondService
+            // The JSON structure has it.
+
+            const distributorAddress = bondData.distributorAddress || config.contracts.distributorAddress; // Fallback
+            if (!distributorAddress) throw new Error(`Distributor not configured`);
+
+            console.log(`[AAService] Processing gasless claim for ${userAddress}`);
+
+            const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+
+            const DISTRIBUTOR_CLAIM_ABI = [
+                "function adminClaim(address beneficiary) external"
+            ];
+
+            const distributor = new ethers.Contract(distributorAddress, DISTRIBUTOR_CLAIM_ABI, adminWallet);
+
+            try {
+                const tx = await distributor.adminClaim(userAddress);
+                console.log(`[AAService] Claim TX sent: ${tx.hash}`);
+                await tx.wait();
+                console.log(`[AAService] Claim confirmed`);
+
+                return {
+                    success: true,
+                    txHash: tx.hash,
+                    message: `Yield claimed successfully (gasless)`
+                };
+            } catch (error: any) {
+                console.error(`[AAService] adminClaim failed:`, error.message);
+                if (error.message?.includes('Nothing to claim')) {
+                    throw new Error('No yield available to claim.');
+                }
+                throw error;
+            }
+        });
+    }
 }

@@ -27,6 +27,7 @@ export interface CouponDistributorInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "DEFAULT_ADMIN_ROLE"
+      | "adminClaim"
       | "bond"
       | "claim"
       | "claimableYield"
@@ -61,6 +62,10 @@ export interface CouponDistributorInterface extends Interface {
   encodeFunctionData(
     functionFragment: "DEFAULT_ADMIN_ROLE",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "adminClaim",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(functionFragment: "bond", values?: undefined): string;
   encodeFunctionData(functionFragment: "claim", values?: undefined): string;
@@ -130,6 +135,7 @@ export interface CouponDistributorInterface extends Interface {
     functionFragment: "DEFAULT_ADMIN_ROLE",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "adminClaim", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "bond", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "claim", data: BytesLike): Result;
   decodeFunctionResult(
@@ -337,6 +343,12 @@ export interface CouponDistributor extends BaseContract {
 
   DEFAULT_ADMIN_ROLE: TypedContractMethod<[], [string], "view">;
 
+  adminClaim: TypedContractMethod<
+    [beneficiary: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+
   bond: TypedContractMethod<[], [string], "view">;
 
   claim: TypedContractMethod<[], [void], "nonpayable">;
@@ -416,6 +428,9 @@ export interface CouponDistributor extends BaseContract {
   getFunction(
     nameOrSignature: "DEFAULT_ADMIN_ROLE"
   ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "adminClaim"
+  ): TypedContractMethod<[beneficiary: AddressLike], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "bond"
   ): TypedContractMethod<[], [string], "view">;

@@ -5,8 +5,9 @@
       "bondName": "GOI Bond 2030",
       "issuer": "Govt of India",
       "category": "Sovereign",
-      "contractAddress": "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
-      "treasuryAddress": "0x60183a4f84c8102a91c6FFcd72142305eb4f95d2",
+      "distributorAddress": "0x956D938378484AbADf0873ca7bC94c0203e76584",
+      "treasuryAddress": "0xF013e47AD7d8e0EdbB8e9D2A7d7c73a23AF88A11",
+      "createdAt": "2024-03-20T10:00:00Z",
       "couponRate": 7.5,
       "minInvestment": 100,
       "maxSubscription": 1000000,
@@ -49,6 +50,8 @@
       "minInvestment": "100",
       "maxSubscription": "100000",
       "description": "",
+      "treasuryAddress": "0xF013e47AD7d8e0EdbB8e9D2A7d7c73a23AF88A11",
+      "distributorAddress": "0x956D938378484AbADf0873ca7bC94c0203e76584",
       "adminWallet": "0x3cFd863A8713DB5eFeB7A8DD41c94A4D7B5729B8",
       "createdAt": "2026-01-09T12:13:14.399Z"
     }

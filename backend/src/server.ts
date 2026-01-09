@@ -262,6 +262,50 @@ app.post('/api/invest', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * POST /api/redeem
+ * Redeem bonds without gas
+ */
+app.post('/api/redeem', async (req: Request, res: Response) => {
+    try {
+        const { address, amount, bondId } = req.body; // amount is string (GBOND)
+
+        if (!address || !amount) {
+            return res.status(400).json({ error: 'Missing address or amount' });
+        }
+
+        console.log(`[API] Processing redemption for ${address}: ${amount} GBOND`);
+
+        const result = await aaService.redeem(address, amount.toString(), bondId);
+        res.json(result);
+    } catch (error: any) {
+        console.error('[API] Redeem error:', error.message);
+        res.status(500).json({ error: 'Redemption failed: ' + error.message });
+    }
+});
+
+/**
+ * POST /api/claim
+ * Claim yield without gas
+ */
+app.post('/api/claim', async (req: Request, res: Response) => {
+    try {
+        const { address, bondId } = req.body;
+
+        if (!address) {
+            return res.status(400).json({ error: 'Missing address' });
+        }
+
+        console.log(`[API] Processing claim for ${address}`);
+
+        const result = await aaService.claim(address, bondId);
+        res.json(result);
+    } catch (error: any) {
+        console.error('[API] Claim error:', error.message);
+        res.status(500).json({ error: 'Claim failed: ' + error.message });
+    }
+});
+
 // ============================================
 // USDT FAUCET API (For Testing)
 // ============================================

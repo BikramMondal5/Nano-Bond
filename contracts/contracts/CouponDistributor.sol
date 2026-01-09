@@ -20,9 +20,9 @@ interface ISovereignBond {
 contract CouponDistributor is AccessControl {
     using SafeERC20 for IERC20;
 
-    IERC20 public paymentToken;     // USDT
-    ISovereignBond public bond;     // GBOND
-    
+    IERC20 public paymentToken; // USDT
+    ISovereignBond public bond; // GBOND
+
     event CouponDistributed(uint256 totalAmount, uint256 ratePerShare);
     event CouponClaimed(address indexed user, uint256 amount);
 
@@ -40,10 +40,10 @@ contract CouponDistributor is AccessControl {
      *      OR Implement a simple Pull mechanism.
      *      Let's implement PULL for scalability.
      */
-    
+
     // Total Yield Per Token (Accumulated)
-    uint256 public cumulativeYieldPerToken; 
-    
+    uint256 public cumulativeYieldPerToken;
+
     // User's paid checkpoint
     mapping(address => uint256) public userPaidPerToken;
     // Unclaimed rewards buffer
@@ -51,7 +51,8 @@ contract CouponDistributor is AccessControl {
 
     modifier updateReward(address account) {
         if (account != address(0)) {
-            uint256 earned = bond.balanceOf(account) * (cumulativeYieldPerToken - userPaidPerToken[account]) / 1e18;
+            uint256 earned = (bond.balanceOf(account) *
+                (cumulativeYieldPerToken - userPaidPerToken[account])) / 1e18;
             rewards[account] += earned;
             userPaidPerToken[account] = cumulativeYieldPerToken;
         }
@@ -70,7 +71,8 @@ contract CouponDistributor is AccessControl {
 
     function _updateRewardLocal(address account) internal {
         if (account != address(0)) {
-            uint256 earned = bond.balanceOf(account) * (cumulativeYieldPerToken - userPaidPerToken[account]) / 1e18;
+            uint256 earned = (bond.balanceOf(account) *
+                (cumulativeYieldPerToken - userPaidPerToken[account])) / 1e18;
             rewards[account] += earned;
             userPaidPerToken[account] = cumulativeYieldPerToken;
         }
@@ -95,21 +97,23 @@ contract CouponDistributor is AccessControl {
      * @notice Distribute a specific Rate (e.g. 0.08 USDT per Bond).
      * @param ratePerToken Amount of Yield per 1 Bond (18 decimals).
      */
-    function distribute(uint256 ratePerToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function distribute(
+        uint256 ratePerToken
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 supply = bond.totalSupply();
         require(supply > 0, "No bonds minted");
 
         uint256 totalCost = (supply * ratePerToken) / 1e18; // supply is 18 dec, rate is 18 dec. result should be 18 dec?
-        // Wait. Supply 100 * 1e18. Rate 0.08 * 1e18. 
+        // Wait. Supply 100 * 1e18. Rate 0.08 * 1e18.
         // Cost = (100e18 * 0.08e18) / 1e18 = 8e18. Correct.
-        
+
         // Wait, supply is 18 decimals? Yes, Bond is ERC20.
         // Rate is "USDT per 1.0 Bond".
         // Example: Rate 1e6 (1 USDT) per 1e18 Bond.
         // Cost = 100e18 * 1e6 / 1e18 = 100e6. Correct.
-        
+
         require(reserve >= totalCost, "Insufficient Reserve");
-        
+
         reserve -= totalCost;
         cumulativeYieldPerToken += ratePerToken; // Rate must be scaled to 18 decimals for accumulating?
         // cumulativeYieldPerToken is used as: balance * (cum - paid) / 1e18.
@@ -118,7 +122,7 @@ contract CouponDistributor is AccessControl {
         // If PaymentToken is 6 decimals. Rate is 6 decimals?
         // If Rate is 6 decimals (e.g. 1e6).
         // Result = 100e18 * 1e6 / 1e18 = 100e6. Correct.
-        
+
         emit YieldDistributed(ratePerToken, totalCost);
     }
 
@@ -127,16 +131,16 @@ contract CouponDistributor is AccessControl {
      */
     function depositYield(uint256 amount) external {
         paymentToken.safeTransferFrom(msg.sender, address(this), amount);
-        
+
         uint256 supply = bond.totalSupply();
         require(supply > 0, "No bonds minted");
-        
+
         // Rate = (Amount * 1e18) / Supply
         // If Amount 100e6. Supply 100e18.
         // Rate = 100e6 * 1e18 / 100e18 = 1e6.
         uint256 rate = (amount * 1e18) / supply;
         cumulativeYieldPerToken += rate;
-        
+
         emit CouponDistributed(amount, rate);
     }
 
@@ -146,18 +150,35 @@ contract CouponDistributor is AccessControl {
     function claim() external updateReward(msg.sender) {
         uint256 reward = rewards[msg.sender];
         require(reward > 0, "Nothing to claim");
-        
+
         rewards[msg.sender] = 0;
-        
+
         paymentToken.safeTransfer(msg.sender, reward);
-        
+
         emit CouponClaimed(msg.sender, reward);
+    }
+
+    /**
+     * @notice Admin claims on behalf of a user (Gasless Claim).
+     */
+    function adminClaim(
+        address beneficiary
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) updateReward(beneficiary) {
+        uint256 reward = rewards[beneficiary];
+        require(reward > 0, "Nothing to claim");
+
+        rewards[beneficiary] = 0;
+
+        paymentToken.safeTransfer(beneficiary, reward);
+
+        emit CouponClaimed(beneficiary, reward);
     }
 
     // View function for UI
     function claimableYield(address user) external view returns (uint256) {
         uint256 current = rewards[user];
-        uint256 pending = bond.balanceOf(user) * (cumulativeYieldPerToken - userPaidPerToken[user]) / 1e18;
+        uint256 pending = (bond.balanceOf(user) *
+            (cumulativeYieldPerToken - userPaidPerToken[user])) / 1e18;
         return current + pending;
     }
 }

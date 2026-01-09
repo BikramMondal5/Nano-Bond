@@ -93,8 +93,85 @@ export function useGaslessInvestment() {
         }
     }
 
+    /**
+     * One-click gasless redemption
+     */
+    const redeem = async (amount: string, bondId: string = 'GOI-2030') => {
+        if (!walletAddress) {
+            toast.error('Please connect your wallet first')
+            return
+        }
+
+        setIsPending(true)
+        setError(null)
+        setIsSuccess(false)
+
+        try {
+            console.log(`[Gasless] Redeeming ${amount} GBOND for ${walletAddress}`)
+
+            const response = await axios.post(`${BACKEND_URL}/api/redeem`, {
+                address: walletAddress,
+                amount: amount, // sending as string/number
+                bondId
+            })
+
+            if (response.data.success) {
+                setTxHash(response.data.txHash)
+                setIsSuccess(true)
+                toast.success(`Successfully redeemed ${amount} GBOND!`)
+            } else {
+                throw new Error(response.data.error || 'Redemption failed')
+            }
+        } catch (err: any) {
+            console.error('[Gasless] Redemption error:', err)
+            setError(err)
+            toast.error('Redemption failed: ' + (err.response?.data?.error || err.message))
+        } finally {
+            setIsPending(false)
+        }
+    }
+
+    /**
+     * One-click gasless claim
+     */
+    const claim = async (bondId: string = 'GOI-2030') => {
+        if (!walletAddress) {
+            toast.error('Please connect your wallet first')
+            return
+        }
+
+        setIsPending(true)
+        setError(null)
+        setIsSuccess(false)
+
+        try {
+            console.log(`[Gasless] Claiming yield for ${walletAddress}`)
+
+            const response = await axios.post(`${BACKEND_URL}/api/claim`, {
+                address: walletAddress,
+                bondId
+            })
+
+            if (response.data.success) {
+                setTxHash(response.data.txHash)
+                setIsSuccess(true)
+                toast.success(response.data.message || `Successfully claimed yield!`)
+            } else {
+                throw new Error(response.data.error || 'Claim failed')
+            }
+        } catch (err: any) {
+            console.error('[Gasless] Claim error:', err)
+            setError(err)
+            toast.error('Claim failed: ' + (err.response?.data?.error || err.message))
+        } finally {
+            setIsPending(false)
+        }
+    }
+
     return {
         invest,
+        redeem,
+        claim,
         requestFaucet,
         getBalance,
         isPending,

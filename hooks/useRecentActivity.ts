@@ -37,28 +37,33 @@ export function useRecentActivity() {
             console.log("DEBUG: Fetching Activity for", walletAddress)
 
             const currentBlock = await provider.getBlockNumber()
-            const fromBlock = currentBlock - 100000 > 0 ? currentBlock - 100000 : 0
+            // REDUCED RANGE: 5,000 blocks to stay well under the 10,000 RPC limit
+            const fromBlock = currentBlock - 5000 > 0 ? currentBlock - 5000 : 0
 
             const treasury = new ethers.Contract(TREASURY_SWAP.address, TREASURY_SWAP.abi, provider)
             const bond = new ethers.Contract(SOVEREIGN_BOND.address, SOVEREIGN_BOND.abi, provider)
 
             // Fetch BondPurchased events
             const buyFilter = treasury.filters.BondPurchased(walletAddress)
-            const buyLogs = await treasury.queryFilter(buyFilter, fromBlock)
-
-            console.log("DEBUG: User Buy Logs:", buyLogs.length)
+            const buyLogsRaw = await treasury.queryFilter(buyFilter, fromBlock)
 
             // Fetch Transfer events (both from and to user)
             const transferFromFilter = bond.filters.Transfer(walletAddress, null)
             const transferToFilter = bond.filters.Transfer(null, walletAddress)
 
-            const [transferFromLogs, transferToLogs] = await Promise.all([
+            const [transferFromLogsRaw, transferToLogsRaw] = await Promise.all([
                 bond.queryFilter(transferFromFilter, fromBlock),
                 bond.queryFilter(transferToFilter, fromBlock)
             ])
 
-            const transferLogs = [...transferFromLogs, ...transferToLogs]
-            console.log("DEBUG: User Transfer Logs:", transferLogs.length)
+            const transferLogsRaw = [...transferFromLogsRaw, ...transferToLogsRaw]
+
+            // OPTIMIZATION: Take only the last 10 logs from each category to avoid rate limits
+            // logs are usually sorted by blockNumber ascending.
+            const buyLogs = buyLogsRaw.slice(-10)
+            const transferLogs = transferLogsRaw.slice(-10)
+
+            console.log("DEBUG: Processing Logs:", buyLogs.length + transferLogs.length)
 
             // Process Buys
             const formattedBuys = await Promise.all(buyLogs.map(async (log: any) => {

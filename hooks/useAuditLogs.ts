@@ -37,11 +37,15 @@ export function useAuditLogs() {
 
             // Fetch BondPurchased events
             const buyFilter = treasury.filters.BondPurchased()
-            const buyLogs = await treasury.queryFilter(buyFilter, fromBlock)
+            const buyLogsRaw = await treasury.queryFilter(buyFilter, fromBlock)
 
             // Fetch Transfer events
             const transferFilter = bond.filters.Transfer()
-            const transferLogs = await bond.queryFilter(transferFilter, fromBlock)
+            const transferLogsRaw = await bond.queryFilter(transferFilter, fromBlock)
+
+            // OPTIMIZATION: Limit to last 20 logs to avoid Rate Limits (Concurrent getBlock calls)
+            const buyLogs = buyLogsRaw.slice(-20)
+            const transferLogs = transferLogsRaw.slice(-20)
 
             const processedBuys = await Promise.all(buyLogs.map(async (log: any) => {
                 const block = await log.getBlock()

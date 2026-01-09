@@ -84,11 +84,18 @@ export const SOVEREIGN_BOND = {
 }
 
 export const COUPON_DISTRIBUTOR = {
-    address: "0x9e4c32d3f1e06cc56177438e46A478575462cb0b" as `0x${string}`,
+    address: "0x956D938378484AbADf0873ca7bC94c0203e76584" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
             "name": "depositYield",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [{ "internalType": "address", "name": "beneficiary", "type": "address" }],
+            "name": "adminClaim",
             "outputs": [],
             "stateMutability": "nonpayable",
             "type": "function"
@@ -192,7 +199,7 @@ export const USDT = {
 }
 
 export const TREASURY_SWAP = {
-    address: "0x60183a4f84c8102a91c6FFcd72142305eb4f95d2" as `0x${string}`,
+    address: "0xF013e47AD7d8e0EdbB8e9D2A7d7c73a23AF88A11" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],

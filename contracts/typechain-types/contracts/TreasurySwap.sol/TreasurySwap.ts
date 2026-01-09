@@ -28,6 +28,7 @@ export interface TreasurySwapInterface extends Interface {
     nameOrSignature:
       | "DEFAULT_ADMIN_ROLE"
       | "adminMint"
+      | "adminRedeem"
       | "bond"
       | "buy"
       | "buyFor"
@@ -57,6 +58,10 @@ export interface TreasurySwapInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "adminMint",
+    values: [AddressLike, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "adminRedeem",
     values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "bond", values?: undefined): string;
@@ -107,6 +112,10 @@ export interface TreasurySwapInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "adminMint", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "adminRedeem",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "bond", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "buy", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "buyFor", data: BytesLike): Result;
@@ -271,6 +280,12 @@ export interface TreasurySwap extends BaseContract {
     "nonpayable"
   >;
 
+  adminRedeem: TypedContractMethod<
+    [user: AddressLike, bondAmount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   bond: TypedContractMethod<[], [string], "view">;
 
   buy: TypedContractMethod<[amount: BigNumberish], [void], "nonpayable">;
@@ -334,6 +349,13 @@ export interface TreasurySwap extends BaseContract {
     nameOrSignature: "adminMint"
   ): TypedContractMethod<
     [beneficiary: AddressLike, amount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "adminRedeem"
+  ): TypedContractMethod<
+    [user: AddressLike, bondAmount: BigNumberish],
     [void],
     "nonpayable"
   >;
