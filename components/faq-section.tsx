@@ -30,11 +30,6 @@ export function FaqSection() {
       answer:
         "Absolutely. Unlike traditional bonds, you can trade your tokenized bond fractions on our secondary marketplace 24/7. This provides instant liquidity, allowing you to exit positions whenever needed without waiting for bond maturity.",
     },
-    {
-      question: "Which blockchain networks do you support?",
-      answer:
-        "We currently support Ethereum mainnet and Polygon. We're planning to expand to other EVM-compatible chains and implement cross-chain bridges in Q4 2025 to provide maximum flexibility for our users.",
-    },
   ]
 
   return (

@@ -52,7 +52,7 @@ export function FeatureSteps({
                         {features.map((feature, index) => (
                             <motion.div
                                 key={index}
-                                className="flex items-center gap-6 md:gap-8 cursor-pointer"
+                                className="flex items-start md:items-center gap-6 md:gap-8 cursor-pointer"
                                 initial={{ opacity: 0.3 }}
                                 animate={{ opacity: index === currentFeature ? 1 : 0.3 }}
                                 transition={{ duration: 0.5 }}

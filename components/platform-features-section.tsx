@@ -19,32 +19,6 @@ export function PlatformFeaturesSection() {
                 </div>
             ),
         },
-        {
-            step: "Step 2",
-            title: "Real-Time Analytics",
-            content: "AI-powered bond analytics with real-time performance tracking and yield predictions.",
-            component: (
-                <div className="w-full h-full flex items-center justify-center p-8">
-                    <CpuArchitecture
-                        imageUrl="/crypto-logo.png"
-                        className="w-full h-full"
-                    />
-                </div>
-            ),
-        },
-        {
-            step: "Step 3",
-            title: "Platform Architecture",
-            content: "Built on cutting-edge blockchain infrastructure for maximum performance and reliability.",
-            component: (
-                <div className="w-full h-full flex items-center justify-center p-8">
-                    <CpuArchitecture
-                        imageUrl="/crypto-logo.png"
-                        className="w-full h-full"
-                    />
-                </div>
-            ),
-        },
     ]
 
     return (
