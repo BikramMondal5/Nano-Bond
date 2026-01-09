@@ -1,25 +1,23 @@
 "use client"
 
 import { useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import { useSession } from 'next-auth/react'
 import axios from 'axios'
+import { useWeb3AuthContext } from '@/components/providers'
 
 export function WalletSync() {
-    const { address, isConnected } = useAccount()
+    const { walletAddress, loggedIn } = useWeb3AuthContext()
     const { data: session, update } = useSession()
 
     useEffect(() => {
         const syncWallet = async () => {
-            if (isConnected && address && session?.user) {
-                // Determine if wallet address needs to be updated (compare case-insensitively)
+            if (loggedIn && walletAddress && session?.user) {
                 const currentSessionWallet = session.user.walletAddress?.toLowerCase();
-                const currentWallet = address.toLowerCase();
+                const currentWallet = walletAddress.toLowerCase();
 
                 if (currentWallet !== currentSessionWallet) {
                     try {
-                        await axios.post('/api/user/wallet', { walletAddress: address })
-                        // Update session with new wallet address
+                        await axios.post('/api/user/wallet', { walletAddress })
                         await update()
                     } catch (error) {
                         console.error('Failed to sync wallet:', error)
@@ -29,7 +27,7 @@ export function WalletSync() {
         }
 
         syncWallet()
-    }, [address, isConnected, session, update])
+    }, [walletAddress, loggedIn, session, update])
 
     return null
 }

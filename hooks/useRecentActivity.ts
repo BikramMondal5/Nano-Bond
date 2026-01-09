@@ -1,10 +1,10 @@
 "use client"
 
-import { usePublicClient, useAccount } from 'wagmi'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { ethers } from 'ethers'
 import { SOVEREIGN_BOND, TREASURY_SWAP } from '@/lib/contracts'
-import { formatUnits, parseAbiItem } from 'viem'
 import { ShoppingCart, RefreshCw, CheckCircle2, ArrowRightLeft } from "lucide-react"
+import { useWeb3AuthContext } from '@/components/providers'
 
 export type ActivityItem = {
     type: string
@@ -14,142 +14,126 @@ export type ActivityItem = {
     icon: any
     color: string
     txHash: string
-    blockNumber: bigint
+    blockNumber: number
+    timestamp?: number
 }
 
 export function useRecentActivity() {
-    const { address } = useAccount()
-    const publicClient = usePublicClient()
+    const { walletAddress, getEthersProvider, loggedIn } = useWeb3AuthContext()
     const [activities, setActivities] = useState<ActivityItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
-    useEffect(() => {
-        if (!address || !publicClient) return
-
-        const fetchActivity = async () => {
-            setIsLoading(true)
-            try {
-                console.log("DEBUG: Fetching Activity for", address)
-
-                const currentBlock = await publicClient.getBlockNumber()
-                // Fetch last 100,000 blocks only to avoid RPC timeout
-                const fromBlock = currentBlock - 100000n > 0n ? currentBlock - 100000n : 0n
-
-                // 1. Fetch "BondPurchased" from TreasurySwap (BUYS)
-                // Relaxed filter: fetch all and filter in JS to debug "indexed" issues.
-                const buyLogs = await publicClient.getLogs({
-                    address: TREASURY_SWAP.address, // Corrected variable usage if undefined
-                    event: parseAbiItem('event BondPurchased(address indexed buyer, uint256 amount)'),
-                    fromBlock: fromBlock
-                })
-
-                console.log("DEBUG: All Buy Logs Found:", buyLogs.length)
-
-                const userBuyLogs = buyLogs.filter(log =>
-                    // Compare addresses case-insensitive
-                    log.args.buyer?.toLowerCase() === address.toLowerCase()
-                )
-
-                console.log("DEBUG: User Buy Logs:", userBuyLogs.length)
-
-                // 2. Fetch "Transfer" from SovereignBond (Redemptions = Burn, Transfers)
-                const transferLogs = await publicClient.getLogs({
-                    address: SOVEREIGN_BOND.address,
-                    event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)'),
-                    fromBlock: fromBlock
-                })
-
-                console.log("DEBUG: All Transfer Logs Found:", transferLogs.length)
-
-                const userTransferLogs = transferLogs.filter(log =>
-                    log.args.from?.toLowerCase() === address.toLowerCase() ||
-                    log.args.to?.toLowerCase() === address.toLowerCase()
-                )
-
-                console.log("DEBUG: User Transfer Logs:", userTransferLogs.length)
-
-                // Process Buys
-                const formattedBuys = await Promise.all(userBuyLogs.map(async (log) => {
-                    const block = await publicClient.getBlock({ blockNumber: log.blockNumber })
-                    const amount = formatUnits(log.args.amount!, 18) // GBOND is 18 decimals? Checking contract...
-                    // Wait, TreasurySwap mints 1:1 from USDT (6 dec) to Bond? 
-                    // Let's assume Bond is 18 decimals usually. 
-                    // Actually, let's verify. Standard ERC20 is 18.
-                    // If TreasurySwap takes 6 dec input and mints X amount...
-                    // In usePortfolioData we saw: balance = formatUnits(balance, 6). 
-                    // So GBOND seems to be treated as 6 decimals in the UI currently?
-                    // Or maybe it's 18 but we format as 6? 
-                    // Let's stick to formatUnits(..., 6) to match the UI consistency for now.
-
-                    return {
-                        type: "Bought GBOND",
-                        amount: `+${Number(formatUnits(log.args.amount!, 18)).toLocaleString()} GBOND`, // Assuming 18 for now, will check.
-                        sub: "Purchase via Treasury",
-                        time: getTimeAgo(Number(block.timestamp)),
-                        icon: ShoppingCart,
-                        color: "text-primary",
-                        txHash: log.transactionHash,
-                        blockNumber: log.blockNumber,
-                        timestamp: Number(block.timestamp)
-                    }
-                }))
-
-                // Process Redemptions (Transfers to 0x0) or Transfers Out
-                const formattedTransfers = await Promise.all(userTransferLogs.map(async (log) => {
-                    // Check if it's a burn (to 0x0)
-                    const isBurn = log.args.to === '0x0000000000000000000000000000000000000000'
-                    const block = await publicClient.getBlock({ blockNumber: log.blockNumber })
-
-                    if (isBurn) {
-                        return {
-                            type: "Redemption Processed",
-                            amount: `-${Number(formatUnits(log.args.value!, 18)).toLocaleString()} GBOND`,
-                            sub: "Bond Matured",
-                            time: getTimeAgo(Number(block.timestamp)),
-                            icon: CheckCircle2,
-                            color: "text-[#9CA3AF]",
-                            txHash: log.transactionHash,
-                            blockNumber: log.blockNumber,
-                            timestamp: Number(block.timestamp)
-                        }
-                    } else {
-                        return {
-                            type: "Transfer Out",
-                            amount: `-${Number(formatUnits(log.args.value!, 18)).toLocaleString()} GBOND`,
-                            sub: `To: ${log.args.to?.slice(0, 6)}...`,
-                            time: getTimeAgo(Number(block.timestamp)),
-                            icon: ArrowRightLeft,
-                            color: "text-red-400",
-                            txHash: log.transactionHash,
-                            blockNumber: log.blockNumber,
-                            timestamp: Number(block.timestamp)
-                        }
-                    }
-                }))
-
-                // Combine and sort (newest first)
-                const all = [...formattedBuys, ...formattedTransfers].sort((a, b) => b.timestamp - a.timestamp)
-
-                // Fix decimals if needed.
-                // Assuming GBOND is 18 decimals from standard OpenZeppelin.
-                // But wait, the user said "10 GBOND worth 10 USDT". 
-                // USDT is 6 decimals.
-                // If Treasury mints 1:1, usually it normalizes decimals.
-                // Let's rely on standard debug: if numbers look huge/tiny, I'll adjust.
-
-                setActivities(all as ActivityItem[])
-
-            } catch (err) {
-                console.error("Failed to fetch activity:", err)
-            } finally {
-                setIsLoading(false)
-            }
+    const fetchActivity = useCallback(async () => {
+        if (!walletAddress || !loggedIn) {
+            setIsLoading(false)
+            return
         }
 
-        fetchActivity()
-    }, [address, publicClient])
+        setIsLoading(true)
+        try {
+            const provider = getEthersProvider()
+            if (!provider) return
 
-    return { activities, isLoading }
+            console.log("DEBUG: Fetching Activity for", walletAddress)
+
+            const currentBlock = await provider.getBlockNumber()
+            // REDUCED RANGE: 5,000 blocks to stay well under the 10,000 RPC limit
+            const fromBlock = currentBlock - 5000 > 0 ? currentBlock - 5000 : 0
+
+            const treasury = new ethers.Contract(TREASURY_SWAP.address, TREASURY_SWAP.abi, provider)
+            const bond = new ethers.Contract(SOVEREIGN_BOND.address, SOVEREIGN_BOND.abi, provider)
+
+            // Fetch BondPurchased events
+            const buyFilter = treasury.filters.BondPurchased(walletAddress)
+            const buyLogsRaw = await treasury.queryFilter(buyFilter, fromBlock)
+
+            // Fetch Transfer events (both from and to user)
+            const transferFromFilter = bond.filters.Transfer(walletAddress, null)
+            const transferToFilter = bond.filters.Transfer(null, walletAddress)
+
+            const [transferFromLogsRaw, transferToLogsRaw] = await Promise.all([
+                bond.queryFilter(transferFromFilter, fromBlock),
+                bond.queryFilter(transferToFilter, fromBlock)
+            ])
+
+            const transferLogsRaw = [...transferFromLogsRaw, ...transferToLogsRaw]
+
+            // OPTIMIZATION: Take only the last 10 logs from each category to avoid rate limits
+            // logs are usually sorted by blockNumber ascending.
+            const buyLogs = buyLogsRaw.slice(-10)
+            const transferLogs = transferLogsRaw.slice(-10)
+
+            console.log("DEBUG: Processing Logs:", buyLogs.length + transferLogs.length)
+
+            // Process Buys
+            const formattedBuys = await Promise.all(buyLogs.map(async (log: any) => {
+                const block = await log.getBlock()
+                const amount = log.args?.[1] || BigInt(0)
+
+                return {
+                    type: "Bought GBOND",
+                    amount: `+${Number(ethers.formatUnits(amount, 18)).toLocaleString()} GBOND`,
+                    sub: "Purchase via Treasury",
+                    time: getTimeAgo(block?.timestamp || 0),
+                    icon: ShoppingCart,
+                    color: "text-primary",
+                    txHash: log.transactionHash,
+                    blockNumber: log.blockNumber,
+                    timestamp: block?.timestamp || 0
+                }
+            }))
+
+            // Process Transfers
+            const formattedTransfers = await Promise.all(transferLogs.map(async (log: any) => {
+                const block = await log.getBlock()
+                const to = log.args?.[1] || ''
+                const value = log.args?.[2] || BigInt(0)
+
+                const isBurn = to === '0x0000000000000000000000000000000000000000'
+
+                if (isBurn) {
+                    return {
+                        type: "Redemption Processed",
+                        amount: `-${Number(ethers.formatUnits(value, 18)).toLocaleString()} GBOND`,
+                        sub: "Bond Matured",
+                        time: getTimeAgo(block?.timestamp || 0),
+                        icon: CheckCircle2,
+                        color: "text-[#9CA3AF]",
+                        txHash: log.transactionHash,
+                        blockNumber: log.blockNumber,
+                        timestamp: block?.timestamp || 0
+                    }
+                } else {
+                    return {
+                        type: "Transfer Out",
+                        amount: `-${Number(ethers.formatUnits(value, 18)).toLocaleString()} GBOND`,
+                        sub: `To: ${String(to).slice(0, 6)}...`,
+                        time: getTimeAgo(block?.timestamp || 0),
+                        icon: ArrowRightLeft,
+                        color: "text-red-400",
+                        txHash: log.transactionHash,
+                        blockNumber: log.blockNumber,
+                        timestamp: block?.timestamp || 0
+                    }
+                }
+            }))
+
+            // Combine and sort (newest first)
+            const all = [...formattedBuys, ...formattedTransfers].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            setActivities(all as ActivityItem[])
+
+        } catch (err) {
+            console.error("Failed to fetch activity:", err)
+        } finally {
+            setIsLoading(false)
+        }
+    }, [walletAddress, loggedIn, getEthersProvider])
+
+    useEffect(() => {
+        fetchActivity()
+    }, [fetchActivity])
+
+    return { activities, isLoading, refetch: fetchActivity }
 }
 
 function getTimeAgo(timestamp: number) {

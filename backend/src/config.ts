@@ -2,11 +2,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const config = {
-    bybit: {
-        key: process.env.BYBIT_API_KEY || '',
-        secret: process.env.BYBIT_API_SECRET || '',
-        testnet: true,
-    },
     rpc: {
         url: process.env.RPC_URL || 'https://rpc.sepolia.mantle.xyz',
     },
@@ -16,8 +11,10 @@ export const config = {
         usdtAddress: process.env.USDT_ADDRESS || '',
         registryAddress: process.env.IDENTITY_REGISTRY_ADDRESS || '',
         gatewayAddress: process.env.SWAP_GATEWAY_ADDRESS || '',
+        treasuryAddress: process.env.TREASURY_SWAP_ADDRESS || '',
     },
     admin: {
         privateKey: process.env.PRIVATE_KEY || '',
     }
 };
+

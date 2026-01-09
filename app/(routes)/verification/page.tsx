@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { useAccount } from "wagmi"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -9,12 +9,11 @@ import { Badge } from "@/components/ui/badge"
 import { Camera, Upload, CheckCircle2, XCircle, Loader2, ShieldCheck } from "lucide-react"
 import { useRouter } from "next/navigation"
 import axios from "axios"
-import { useSignMessage } from "wagmi"
+import { useWeb3Auth } from "@/hooks/use-web3auth"
 
 export default function KYCPage() {
-  const { address } = useAccount()
+  const { walletAddress: address, getSigner, userInfo } = useWeb3Auth()
   const router = useRouter()
-  const { signMessageAsync } = useSignMessage()
 
   const [step, setStep] = useState(1)
   const [aadhaarFile, setAadhaarFile] = useState<File | null>(null)
@@ -97,12 +96,17 @@ export default function KYCPage() {
 
     try {
       const message = `I authorize KYC verification for wallet ${address}`
-      const signature = await signMessageAsync({ message })
+      const signer = await getSigner()
+      if (!signer) throw new Error("Wallet not connected")
+      const signature = await signer.signMessage(message)
 
       const formData = new FormData()
       formData.append('aadhaar', aadhaarFile)
       formData.append('video', videoFile)  // Only video, no selfie
       formData.append('walletAddress', address)
+      if (userInfo?.email) {
+        formData.append('email', userInfo.email)
+      }
       formData.append('walletSignature', signature)
       formData.append('signedMessage', message)
 

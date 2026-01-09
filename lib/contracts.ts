@@ -1,5 +1,5 @@
 export const SOVEREIGN_BOND = {
-    address: "0xDAF1155390b64E15CCDedD54Ed42CD5A1C7db5CD" as `0x${string}`,
+    address: "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02" as `0x${string}`,
     abi: [
         {
             "inputs": [],
@@ -57,6 +57,7 @@ export const SOVEREIGN_BOND = {
                 { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
                 { "indexed": false, "internalType": "uint256", "name": "value", "type": "uint256" }
             ],
+            "name": "Transfer",
             "type": "event"
         },
         {
@@ -83,11 +84,18 @@ export const SOVEREIGN_BOND = {
 }
 
 export const COUPON_DISTRIBUTOR = {
-    address: "0x42bCA77915BBb75324B61b650F84772A4ed7a400" as `0x${string}`,
+    address: "0x956D938378484AbADf0873ca7bC94c0203e76584" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
             "name": "depositYield",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [{ "internalType": "address", "name": "beneficiary", "type": "address" }],
+            "name": "adminClaim",
             "outputs": [],
             "stateMutability": "nonpayable",
             "type": "function"
@@ -152,7 +160,7 @@ export const COUPON_DISTRIBUTOR = {
 }
 
 export const USDT = {
-    address: "0xB1fC9a11C50Ce3DD6943AeBdAe1951c9191a19ca" as `0x${string}`,
+    address: "0xfa472BdAa91C805eB6d664FEC24b0d355FDA2999" as `0x${string}`,
     abi: [
         {
             "constant": true,
@@ -191,7 +199,7 @@ export const USDT = {
 }
 
 export const TREASURY_SWAP = {
-    address: "0x99A68DfD1c2209b7f76f1E9cF83fFec3F31974a1" as `0x${string}`,
+    address: "0xF013e47AD7d8e0EdbB8e9D2A7d7c73a23AF88A11" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
@@ -239,7 +247,7 @@ export const TREASURY_SWAP = {
 }
 
 export const IDENTITY_REGISTRY_V2 = {
-    address: "0xc34dF48D64Ab0bD94Ce9dc48A53723e872a9B17F" as `0x${string}`,
+    address: "0x216eB267d21096cec82Ad40B9CD8Ce576213AbEc" as `0x${string}`,
     abi: [
         {
             "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],

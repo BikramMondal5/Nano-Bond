@@ -1,34 +1,52 @@
 'use client';
 
 import * as React from 'react';
-import {
-    RainbowKitProvider,
-    darkTheme,
-} from '@rainbow-me/rainbowkit';
+import { createContext, useContext, ReactNode } from 'react';
+import { useWeb3Auth } from '@/hooks/use-web3auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider } from 'wagmi';
-import { config } from '@/lib/wagmi';
-import { WalletSync } from './wallet-sync';
 
 const queryClient = new QueryClient();
 
+// Create Web3Auth Context
+interface Web3AuthContextType {
+    provider: any;
+    loggedIn: boolean;
+    login: () => Promise<any>;
+    logout: () => Promise<void>;
+    userInfo: any;
+    walletAddress: string | null;
+    balance: string | null;
+    isInitializing: boolean;
+    getEthersProvider: () => any;
+    getSigner: () => Promise<any>;
+}
+
+const Web3AuthContext = createContext<Web3AuthContextType | null>(null);
+
+export function useWeb3AuthContext() {
+    const context = useContext(Web3AuthContext);
+    if (!context) {
+        throw new Error('useWeb3AuthContext must be used within Web3AuthProvider');
+    }
+    return context;
+}
+
+function Web3AuthContextProvider({ children }: { children: ReactNode }) {
+    const web3auth = useWeb3Auth();
+
+    return (
+        <Web3AuthContext.Provider value={web3auth}>
+            {children}
+        </Web3AuthContext.Provider>
+    );
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
-        <WagmiProvider config={config}>
-            <QueryClientProvider client={queryClient}>
-                <RainbowKitProvider
-                    theme={darkTheme({
-                        accentColor: '#FD8C00',
-                        accentColorForeground: 'white',
-                        borderRadius: 'medium',
-                        fontStack: 'system',
-                        overlayBlur: 'small',
-                    })}
-                >
-                    <WalletSync />
-                    {children}
-                </RainbowKitProvider>
-            </QueryClientProvider>
-        </WagmiProvider>
+        <QueryClientProvider client={queryClient}>
+            <Web3AuthContextProvider>
+                {children}
+            </Web3AuthContextProvider>
+        </QueryClientProvider>
     );
 }
