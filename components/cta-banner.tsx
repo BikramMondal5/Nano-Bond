@@ -24,26 +24,27 @@ export function CtaBanner() {
           <div className="relative z-10 max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-sm mb-8">
               <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Join the Future of Investing</span>
+              <span className="text-sm font-medium text-primary">Mobile Experience</span>
             </div>
 
             <h2 className="text-4xl md:text-5xl font-black text-foreground mb-5 leading-tight text-balance">
-              Ready to earn stable returns from tokenized bonds?
+              Trade Bonds on the Go
             </h2>
 
             <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto text-pretty leading-relaxed">
-              Join thousands of investors already earning yields from government bonds. No minimums, no boundaries, no
-              complexity.
+              Experience the power of NanoBond on your mobile device. Download our professionally architected app to manage your portfolio, track real-time yields, and invest with bank-grade security anywhere, anytime.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground px-10 h-14 rounded-2xl text-lg font-bold group shadow-lg shadow-primary/25"
-              >
-                Launch App
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              <a href="/NanoBond.apk" download="NanoBond.apk" className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-10 h-14 rounded-2xl text-lg font-bold group shadow-lg shadow-primary/25"
+                >
+                  Launch App
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </a>
               <Button
                 size="lg"
                 variant="outline"

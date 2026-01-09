@@ -17,9 +17,10 @@ import { IBond } from "@/lib/models/Bond"
 
 interface GovtBondsGridProps {
     bonds: (IBond & { _id: string })[];
+    basePath?: string;
 }
 
-export function GovtBondsGrid({ bonds }: GovtBondsGridProps) {
+export function GovtBondsGrid({ bonds, basePath = "/govt-bonds" }: GovtBondsGridProps) {
     if (!bonds || bonds.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -43,7 +44,7 @@ export function GovtBondsGrid({ bonds }: GovtBondsGridProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                    <Card className="bg-[#100F14] border-gray-800 hover:border-[#FD8C00]/50 transition-colors duration-300 h-full flex flex-col group overflow-hidden">
+                    <Card className="relative bg-[#100F14] border-gray-800 hover:border-[#FD8C00]/50 transition-colors duration-300 h-full flex flex-col group overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-[#FD8C00] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                         <CardHeader className="pb-3">
@@ -107,7 +108,7 @@ export function GovtBondsGrid({ bonds }: GovtBondsGridProps) {
                         </CardContent>
 
                         <CardFooter className="pt-4 border-t border-gray-800/50">
-                            <Button className="w-full bg-white text-black hover:bg-gray-200 font-semibold" onClick={() => window.location.href = `/bond/${bond.bondId}`}>
+                            <Button className="w-full bg-[#FD8C00] hover:bg-[#FD8C00]/90 text-white font-bold" onClick={() => window.location.href = `${basePath}/${bond.bondId}`}>
                                 View Details
                             </Button>
                         </CardFooter>

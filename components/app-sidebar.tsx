@@ -19,10 +19,10 @@ import { cn } from "@/lib/utils"
 
 const mainNavItems = [
   { label: "Dashboard", icon: Home, href: "/portfolio" },
-  { label: "My Bonds", icon: Wallet, href: "/bond/us-treasury" },
   { label: "Invest", icon: PlusCircle, href: "/invest" },
-  { label: "Govt Bonds", icon: Landmark, href: "/govt-bonds" },
   { label: "Redeem", icon: ArrowDownLeft, href: "/redeem" },
+  { label: "My Bonds", icon: Wallet, href: "/bond/us-treasury" },
+  { label: "Govt Bonds", icon: Landmark, href: "/govt-bonds" },
   { label: "Verification", icon: ShieldCheck, href: "/verification" },
   { label: "Transactions", icon: History, href: "/transactions" },
   { label: "Settings", icon: Settings, href: "/settings" },

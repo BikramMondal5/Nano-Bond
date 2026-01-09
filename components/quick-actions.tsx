@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Plus, History, ExternalLink } from "lucide-react"
+import Link from "next/link"
 
 export function QuickActions() {
   return (
@@ -8,23 +9,29 @@ export function QuickActions() {
       <h3 className="text-lg font-bold text-[#E5E7EB]">Quick Actions</h3>
 
       <div className="grid gap-3">
-        <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 shadow-[0_0_20px_rgba(253,140,0,0.2)]">
-          <Plus className="w-4 h-4 mr-2" />
-          Invest More
-        </Button>
+        <Link href="/invest" className="w-full">
+          <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 shadow-[0_0_20px_rgba(253,140,0,0.2)]">
+            <Plus className="w-4 h-4 mr-2" />
+            Invest More
+          </Button>
+        </Link>
 
-        <Button
-          variant="outline"
-          className="w-full border-white/10 hover:bg-white/5 text-[#E5E7EB] font-bold h-12 bg-transparent"
-        >
-          <History className="w-4 h-4 mr-2" />
-          View Reports
-        </Button>
+        <Link href="/bond/us-treasury" className="w-full">
+          <Button
+            variant="outline"
+            className="w-full border-white/10 hover:bg-white/5 text-[#E5E7EB] font-bold h-12 bg-transparent"
+          >
+            <History className="w-4 h-4 mr-2" />
+            View Reports
+          </Button>
+        </Link>
 
-        <Button variant="ghost" className="w-full text-primary hover:text-primary hover:bg-primary/5 font-bold h-12">
-          <ExternalLink className="w-4 h-4 mr-2" />
-          Redeem Matured
-        </Button>
+        <Link href="/redeem" className="w-full">
+          <Button variant="ghost" className="w-full text-primary hover:text-primary hover:bg-primary/5 font-bold h-12">
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Redeem Matured
+          </Button>
+        </Link>
       </div>
 
       <div className="pt-2">

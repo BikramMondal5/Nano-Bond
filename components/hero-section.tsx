@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Wallet, ArrowRight, Eye, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import LiquidEther from "./liquid-ether";
 
 export function HeroSection() {
+  const router = useRouter();
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
       {/* Liquid Ether Background - Full Screen */}
@@ -67,6 +69,7 @@ export function HeroSection() {
             <Button
               size="lg"
               className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-black font-bold text-lg px-8 py-6 rounded-xl shadow-lg shadow-primary/50 hover:shadow-primary/70 transition-all duration-300"
+              onClick={() => router.push("/invest")}
             >
               <Wallet className="w-5 h-5 mr-2" />
               Start Investing
@@ -76,6 +79,7 @@ export function HeroSection() {
               size="lg"
               variant="outline"
               className="border-2 border-primary/50 text-primary hover:bg-primary/10 hover:border-primary font-bold text-lg px-8 py-6 rounded-xl backdrop-blur-sm transition-all duration-300"
+              onClick={() => router.push("/govt-bonds")}
             >
               <Eye className="w-5 h-5 mr-2" />
               View All Bonds
