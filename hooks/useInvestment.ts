@@ -1,153 +1,163 @@
-import { useWriteContract, useReadContract, useAccount, useWaitForTransactionReceipt } from 'wagmi'
+import { useState, useCallback } from 'react'
+import { ethers } from 'ethers'
 import { TREASURY_SWAP, USDT, COUPON_DISTRIBUTOR } from '@/lib/contracts'
-import { parseUnits, formatUnits } from 'viem'
 import { toast } from 'sonner'
-import { useState, useEffect } from 'react'
+import { useWeb3AuthContext } from '@/components/providers'
 
 export function useInvestment() {
-  const { address } = useAccount()
+  const { walletAddress, getSigner, getEthersProvider, loggedIn } = useWeb3AuthContext()
 
-  // 1. Data Fetching (Read Hooks)
-  // Check Allowance (Safe to define early)
-  const { data: allowance, refetch: refetchAllowance, error: allowanceError } = useReadContract({
-    address: USDT.address,
-    abi: USDT.abi,
-    functionName: 'allowance',
-    args: [address!, TREASURY_SWAP.address],
-    query: {
-      enabled: !!address,
-      refetchInterval: 2000
+  const [isApprovePending, setIsApprovePending] = useState(false)
+  const [isBuyPending, setIsBuyPending] = useState(false)
+  const [approveHash, setApproveHash] = useState<string | null>(null)
+  const [buyHash, setBuyHash] = useState<string | null>(null)
+  const [buyError, setBuyError] = useState<Error | null>(null)
+  const [allowance, setAllowance] = useState<bigint>(BigInt(0))
+  const [usdtBalance, setUsdtBalance] = useState<string>("0")
+  const [isBuyConfirmed, setIsBuyConfirmed] = useState(false)
+
+  // Fetch allowance
+  const refetchAllowance = useCallback(async () => {
+    if (!walletAddress || !loggedIn) return
+
+    try {
+      const provider = getEthersProvider()
+      if (!provider) return
+
+      const usdt = new ethers.Contract(USDT.address, USDT.abi, provider)
+      const allowanceValue = await usdt.allowance(walletAddress, TREASURY_SWAP.address)
+      setAllowance(allowanceValue)
+    } catch (error) {
+      console.error('Failed to fetch allowance:', error)
     }
-  })
+  }, [walletAddress, loggedIn, getEthersProvider])
 
-  // Get USDT Balance
-  const { data: rawBalance, refetch: refetchBalance } = useReadContract({
-    address: USDT.address,
-    abi: USDT.abi,
-    functionName: 'balanceOf',
-    args: [address!],
-    query: {
-      enabled: !!address,
-      refetchInterval: 5000
+  // Fetch USDT balance
+  const refetchBalance = useCallback(async () => {
+    if (!walletAddress || !loggedIn) return
+
+    try {
+      const provider = getEthersProvider()
+      if (!provider) return
+
+      const usdt = new ethers.Contract(USDT.address, USDT.abi, provider)
+      const balance = await usdt.balanceOf(walletAddress)
+      setUsdtBalance(ethers.formatUnits(balance, 6))
+    } catch (error) {
+      console.error('Failed to fetch balance:', error)
     }
-  })
+  }, [walletAddress, loggedIn, getEthersProvider])
 
-  // 2. Mutations (Write Hooks)
-  const {
-    writeContract: writeApprove,
-    isPending: isApprovePending,
-    data: approveHash
-  } = useWriteContract()
-
-  const {
-    writeContract: writeBuy,
-    isPending: isBuyPending,
-    data: buyHash,
-    error: buyError
-  } = useWriteContract()
-
-  // 3. Side Effects (Wait for Receipts)
-  // Wait for Approve TX
-  const { isLoading: isApproveConfirming, isSuccess: isApproveConfirmed } =
-    useWaitForTransactionReceipt({
-      hash: approveHash,
-    })
-
-  // Refetch allowance when confirmed
-  useEffect(() => {
-    if (isApproveConfirmed) {
-      refetchAllowance()
-      toast.success('USDT Approved successfully!')
-    }
-  }, [isApproveConfirmed, refetchAllowance])
-
-  // Watch for Buy Success to refetch balance
-  const { isSuccess: isBuyConfirmed } = useWaitForTransactionReceipt({ hash: buyHash })
-
-  useEffect(() => {
-    if (isBuyConfirmed) {
-      refetchBalance()
-      toast.success('Bond purchased successfully!')
-    }
-  }, [isBuyConfirmed, refetchBalance])
-
-  // 4. Action Functions
   // Approve USDT for TreasurySwap
   const approve = async (amount: string) => {
     try {
-      writeApprove({
-        address: USDT.address,
-        abi: USDT.abi,
-        functionName: 'approve',
-        args: [TREASURY_SWAP.address, parseUnits(amount, 6)]
-      })
-    } catch (err) {
+      setIsApprovePending(true)
+      const signer = await getSigner()
+      if (!signer) throw new Error('No signer available')
+
+      const usdt = new ethers.Contract(USDT.address, USDT.abi, signer)
+      const amountBig = ethers.parseUnits(amount, 6)
+
+      const tx = await usdt.approve(TREASURY_SWAP.address, amountBig)
+      setApproveHash(tx.hash)
+
+      await tx.wait()
+      toast.success('USDT Approved successfully!')
+      await refetchAllowance()
+    } catch (err: any) {
       console.error(err)
-      toast.error('Failed to approve USDT')
+      toast.error('Failed to approve USDT: ' + err.message)
+    } finally {
+      setIsApprovePending(false)
     }
   }
 
   // Buy Bond
   const buy = async (amount: string) => {
     try {
-      writeBuy({
-        address: TREASURY_SWAP.address,
-        abi: TREASURY_SWAP.abi,
-        functionName: 'buy',
-        args: [parseUnits(amount, 6)]
-      })
-    } catch (err) {
+      setIsBuyPending(true)
+      setIsBuyConfirmed(false)
+      setBuyError(null)
+
+      const signer = await getSigner()
+      if (!signer) throw new Error('No signer available')
+
+      const treasury = new ethers.Contract(TREASURY_SWAP.address, TREASURY_SWAP.abi, signer)
+      const amountBig = ethers.parseUnits(amount, 6)
+
+      const tx = await treasury.buy(amountBig)
+      setBuyHash(tx.hash)
+
+      await tx.wait()
+      setIsBuyConfirmed(true)
+      toast.success('Bond purchased successfully!')
+      await refetchBalance()
+    } catch (err: any) {
       console.error(err)
-      toast.error('Failed to buy bond')
+      setBuyError(err)
+      toast.error('Failed to buy bond: ' + err.message)
+    } finally {
+      setIsBuyPending(false)
     }
   }
 
   // Redeem Bond
   const redeem = async (amount: string) => {
     try {
-      writeBuy({
-        address: TREASURY_SWAP.address,
-        abi: TREASURY_SWAP.abi,
-        functionName: 'redeem',
-        args: [parseUnits(amount, 18)] // Redeem amount is in GBOND (18 decimals)
-      })
-    } catch (err) {
+      setIsBuyPending(true)
+      const signer = await getSigner()
+      if (!signer) throw new Error('No signer available')
+
+      const treasury = new ethers.Contract(TREASURY_SWAP.address, TREASURY_SWAP.abi, signer)
+      const amountBig = ethers.parseUnits(amount, 18) // GBOND is 18 decimals
+
+      const tx = await treasury.redeem(amountBig)
+      await tx.wait()
+      toast.success('Bond redeemed successfully!')
+      await refetchBalance()
+    } catch (err: any) {
       console.error(err)
-      toast.error('Failed to redeem bond')
+      toast.error('Failed to redeem bond: ' + err.message)
+    } finally {
+      setIsBuyPending(false)
     }
   }
 
   // Claim Yield
   const claim = async () => {
     try {
-      writeBuy({
-        address: COUPON_DISTRIBUTOR.address,
-        abi: COUPON_DISTRIBUTOR.abi,
-        functionName: 'claim'
-      })
-    } catch (err) {
+      setIsBuyPending(true)
+      const signer = await getSigner()
+      if (!signer) throw new Error('No signer available')
+
+      const distributor = new ethers.Contract(COUPON_DISTRIBUTOR.address, COUPON_DISTRIBUTOR.abi, signer)
+
+      const tx = await distributor.claim()
+      await tx.wait()
+      toast.success('Yield claimed successfully!')
+    } catch (err: any) {
       console.error(err)
-      toast.error('Failed to claim yield')
+      toast.error('Failed to claim yield: ' + err.message)
+    } finally {
+      setIsBuyPending(false)
     }
   }
-
-  // Format as 6 decimals
-  const usdtBalance = rawBalance ? formatUnits(rawBalance as bigint, 6) : "0"
 
   return {
     approve,
     buy,
     redeem,
     claim,
-    allowance: allowance ? allowance : BigInt(0),
+    allowance,
     refetchAllowance,
-    isApprovePending: isApprovePending || isApproveConfirming,
+    isApprovePending,
     approveHash,
     isBuyPending,
     buyHash,
     buyError,
-    allowanceError,
+    allowanceError: null,
     usdtBalance,
-    isBuyConfirmed
+    isBuyConfirmed,
+    refetchBalance
   }
 }

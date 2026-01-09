@@ -64,6 +64,16 @@ contract TreasurySwap is AccessControl {
     }
 
     /**
+     * @notice Admin-only Mint (Gasless Service Flow).
+     * @dev Does NOT collect payment here. We assume payment was burned/collected via AA Service.
+     */
+    function adminMint(address beneficiary, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 bondAmount = amount * 1e12; // Convert 6 -> 18 decimals
+        bond.mint(beneficiary, bondAmount);
+        emit BondPurchased(beneficiary, bondAmount);
+    }
+
+    /**
      * @notice Redeem Bonds for USDT after maturity.
      * @param bondAmount Amount of GBOND to redeem (18 decimals).
      */

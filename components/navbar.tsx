@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Wallet, ChevronDown, User, Settings, LogOut, Menu } from "lucide-react"
+import { ChevronDown, User, Settings, LogOut, Menu } from "lucide-react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/components/auth-provider"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
 
 const publicLinks = [
   { label: "Features", href: "/#features" },
@@ -112,9 +112,7 @@ export function Navbar() {
                 >
                   <Link href="/sign-up">Register</Link>
                 </Button>
-                <div className="flex items-center">
-                  <ConnectButton showBalance={false} />
-                </div>
+                <Web3AuthConnectButton />
               </div>
             )}
 
@@ -129,3 +127,4 @@ export function Navbar() {
     </nav>
   )
 }
+

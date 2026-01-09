@@ -7,14 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Wallet, ArrowRightLeft, Clock, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-import { useAccount } from "wagmi"
+import { useWeb3AuthContext } from "@/components/providers"
 import { useInvestment } from "@/hooks/useInvestment"
 import { usePortfolioData } from "@/hooks/usePortfolioData"
 import { useBondStats } from "@/hooks/useAdminActions"
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
 
 export function RedemptionCard() {
-  const { isConnected } = useAccount()
+  const { loggedIn: isConnected } = useWeb3AuthContext()
   const { balance, claimable } = usePortfolioData()
   const { maturityDate } = useBondStats()
   const { redeem, claim, isBuyPending: isRedeemPending, isBuyConfirmed: isRedeemConfirmed } = useInvestment() // Reusing hooks
@@ -104,7 +104,7 @@ export function RedemptionCard() {
               </p>
             </div>
             <div className="transform scale-110">
-              <ConnectButton />
+              <Web3AuthConnectButton />
             </div>
           </div>
         ) : (
