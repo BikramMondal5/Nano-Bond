@@ -7,21 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Wallet, ArrowRightLeft, Clock, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-import { useAccount } from "wagmi"
+import { useWeb3AuthContext } from "@/components/providers"
 import { useInvestment } from "@/hooks/useInvestment"
+import { useGaslessInvestment } from "@/hooks/useGaslessInvestment"
 import { usePortfolioData } from "@/hooks/usePortfolioData"
 import { useBondStats } from "@/hooks/useAdminActions"
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
 
 export function RedemptionCard() {
-  const { isConnected } = useAccount()
+  const { loggedIn: isConnected } = useWeb3AuthContext()
   const { balance, claimable } = usePortfolioData()
   const { maturityDate } = useBondStats()
-  const { redeem, claim, isBuyPending: isRedeemPending, isBuyConfirmed: isRedeemConfirmed } = useInvestment() // Reusing hooks
+
+  // Use Gasless Hook for Redeem AND Claim
+  const { redeem, claim, isPending: isRedeemPending, isSuccess: isRedeemConfirmed, txHash } = useGaslessInvestment()
+  // const { claim } = useInvestment() // Deprecated for gasless flow
 
   const [amount, setAmount] = useState("")
-  // const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle")
-  // Using hook state instead
 
   // Real Data
   const gbondBalance = balance ? Number(balance) : 0
@@ -65,10 +67,20 @@ export function RedemptionCard() {
             <Button variant="outline" className="border-white/10 bg-transparent" onClick={() => { setShowSuccess(false); setAmount(""); }}>
               Back to Dashboard
             </Button>
-            <Button className="bg-primary hover:bg-primary/90">View Transaction</Button>
+            {txHash && (
+              <Button asChild className="bg-primary hover:bg-primary/90">
+                <a
+                  href={`https://explorer.sepolia.mantle.xyz/tx/${txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View Transaction
+                </a>
+              </Button>
+            )}
           </div>
         </CardContent>
-      </Card>
+      </Card >
     )
   }
 
@@ -104,7 +116,7 @@ export function RedemptionCard() {
               </p>
             </div>
             <div className="transform scale-110">
-              <ConnectButton />
+              <Web3AuthConnectButton />
             </div>
           </div>
         ) : (

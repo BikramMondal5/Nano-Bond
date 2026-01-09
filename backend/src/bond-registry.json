@@ -1,0 +1,59 @@
+{
+  "bonds": [
+    {
+      "bondId": "GOI-2030",
+      "bondName": "GOI Bond 2030",
+      "issuer": "Govt of India",
+      "category": "Sovereign",
+      "distributorAddress": "0x956D938378484AbADf0873ca7bC94c0203e76584",
+      "treasuryAddress": "0xF013e47AD7d8e0EdbB8e9D2A7d7c73a23AF88A11",
+      "createdAt": "2024-03-20T10:00:00Z",
+      "couponRate": 7.5,
+      "minInvestment": 100,
+      "maxSubscription": 1000000,
+      "startDate": "2024-01-01",
+      "maturityDate": "2030-01-01",
+      "description": "Government of India Sovereign Bond maturing in 2030 with 7.5% annual yield",
+      "proofUrl": "https://rbi.org.in/sovereign-bonds"
+    },
+    {
+      "bondName": "rojgar beema",
+      "bondId": "419873",
+      "issuer": "RBI",
+      "couponRate": "7",
+      "startDate": "2026-01-16",
+      "maturityDate": "2026-01-31",
+      "minInvestment": "100",
+      "maxSubscription": "500",
+      "description": "",
+      "createdAt": "2026-01-09T09:25:51.844Z"
+    },
+    {
+      "bondName": "rojgar beema2",
+      "bondId": "419874",
+      "issuer": "RBI",
+      "couponRate": "7",
+      "startDate": "2026-01-12",
+      "maturityDate": "2026-01-23",
+      "minInvestment": "100",
+      "maxSubscription": "100000",
+      "description": "",
+      "createdAt": "2026-01-09T09:55:34.819Z"
+    },
+    {
+      "bondName": "rojgar beema3",
+      "bondId": "419875",
+      "issuer": "RBI",
+      "couponRate": "7",
+      "startDate": "2026-01-12",
+      "maturityDate": "2026-01-23",
+      "minInvestment": "100",
+      "maxSubscription": "100000",
+      "description": "",
+      "treasuryAddress": "0xF013e47AD7d8e0EdbB8e9D2A7d7c73a23AF88A11",
+      "distributorAddress": "0x956D938378484AbADf0873ca7bC94c0203e76584",
+      "adminWallet": "0x3cFd863A8713DB5eFeB7A8DD41c94A4D7B5729B8",
+      "createdAt": "2026-01-09T12:13:14.399Z"
+    }
+  ]
+}

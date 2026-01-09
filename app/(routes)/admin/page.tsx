@@ -6,6 +6,8 @@ import { BondForm } from "@/components/admin/bond-form"
 import { UploadProof } from "@/components/admin/upload-proof"
 import { VaultControls } from "@/components/admin/vault-controls"
 import { AuditLogs } from "@/components/admin/audit-logs"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 export default function AdminPage() {
     const [bondCreated, setBondCreated] = useState(false)
@@ -17,7 +19,14 @@ export default function AdminPage() {
             {/* Header / Title */}
             <div className="space-y-1 animate-in fade-in slide-in-from-top-4 duration-500">
                 <h1 className="text-3xl font-bold text-white tracking-tight">Admin Control Panel</h1>
-                <p className="text-gray-400">Create new bonds, upload proof documents, and manage vault configurations.</p>
+                <div className="flex justify-between items-end">
+                    <p className="text-gray-400">Create new bonds, upload proof documents, and manage vault configurations.</p>
+                    <Link href="/admin/bonds">
+                        <Button className="bg-gray-800 hover:bg-gray-700 text-white border border-gray-700">
+                            View My Bonds
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Bond Creation Form */}

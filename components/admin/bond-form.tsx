@@ -48,7 +48,10 @@ interface BondFormProps {
     onSuccess: () => void
 }
 
+import { useAccount } from 'wagmi'
+
 export function BondForm({ onSuccess }: BondFormProps) {
+    const { address } = useAccount()
     const [loading, setLoading] = useState(false)
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -69,12 +72,17 @@ export function BondForm({ onSuccess }: BondFormProps) {
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setLoading(true)
         try {
+            const payload = {
+                ...values,
+                adminWallet: address // Attach connected wallet
+            }
+
             const response = await fetch('/api/bonds', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(values),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {

@@ -19,17 +19,25 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { useAdminActions, useBondStats, useTreasuryStats, useDistributorStats } from "@/hooks/useAdminActions"
+import {
+    useAdminActions,
+    useAdminBondStats,
+    useAdminDistributorStats
+} from "@/hooks/useAdminActions"
 
 interface VaultControlsProps {
     enabled: boolean
+    bondAddress?: string
+    distributorAddress?: string
 }
 
-export function VaultControls({ enabled }: VaultControlsProps) {
+export function VaultControls({ enabled, bondAddress, distributorAddress }: VaultControlsProps) {
     const [locked, setLocked] = useState(false)
-    const { distributeYield, fundReserve, distributeRate, approveUSDT, setMaturityDate, isPending } = useAdminActions()
-    const { totalSupply, backedValue, maturityDate } = useBondStats()
-    const { distributorBalance, cumulativeYield } = useDistributorStats()
+
+    // Pass dynamic addresses to hooks
+    const { distributeYield, fundReserve, distributeRate, approveUSDT, setMaturityDate, isPending } = useAdminActions(bondAddress, distributorAddress)
+    const { totalSupply, backedValue, maturityDate } = useAdminBondStats(bondAddress)
+    const { distributorBalance, cumulativeYield } = useAdminDistributorStats(distributorAddress)
 
     // Calculations
     // Bond and Backed Value are 18 decimals now

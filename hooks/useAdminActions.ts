@@ -1,107 +1,159 @@
-import { useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useState } from 'react'
+import { ethers } from 'ethers'
 import { SOVEREIGN_BOND, COUPON_DISTRIBUTOR, USDT, TREASURY_SWAP } from '@/lib/contracts'
 import { toast } from 'sonner'
-import { parseUnits } from 'viem'
+import { useWalletClient, useAccount } from 'wagmi'
+import { clientToSigner } from '@/lib/wagmi-ethers-adapters'
 
-export function useAdminActions() {
-    const {
-        writeContract: write,
-        data: hash,
-        isPending,
-        error: writeError
-    } = useWriteContract()
+export * from './useStats'
+
+export function useAdminActions(bondAddress?: string, distributorAddress?: string) {
+    const { data: walletClient } = useWalletClient()
+    const { isConnected } = useAccount()
+
+    const [hash, setHash] = useState<string | null>(null)
+    const [isPending, setIsPending] = useState(false)
+    const [writeError, setWriteError] = useState<Error | null>(null)
+
+    // Fallback to defaults
+    const BOND_ADDR = bondAddress || SOVEREIGN_BOND.address
+    const DIST_ADDR = distributorAddress || COUPON_DISTRIBUTOR.address
+
+    const getSigner = async () => {
+        if (!walletClient) throw new Error('Wallet not connected')
+        return clientToSigner(walletClient)
+    }
 
     // Helper to add asset (Bond Proof)
     const addAsset = async (uri: string, value: string) => {
         try {
-            write({
-                address: SOVEREIGN_BOND.address,
-                abi: SOVEREIGN_BOND.abi,
-                functionName: 'addAsset',
-                args: [uri, parseUnits(value, 18)], // SovereignBond backing must match Minting decimals (18)
-                // Note: Even if backing asset is USDT (6 decimals), we record its VALUE in standard units (18)
-                // to allow 1:1 minting of 18-decimal GBONDs.
-            })
-        } catch (err) {
+            if (!isConnected) throw new Error('Please connect your admin wallet')
+            setIsPending(true)
+            setWriteError(null)
+
+            const signer = await getSigner()
+            const bond = new ethers.Contract(BOND_ADDR, SOVEREIGN_BOND.abi, signer)
+            const valueBig = ethers.parseUnits(value, 18)
+
+            const tx = await bond.addAsset(uri, valueBig)
+            setHash(tx.hash)
+            await tx.wait()
+            toast.success('Asset added successfully!')
+        } catch (err: any) {
             console.error(err)
-            toast.error('Failed to initiate transaction')
+            setWriteError(err)
+            toast.error('Failed to add asset: ' + err.message)
+        } finally {
+            setIsPending(false)
         }
     }
 
     // Helper to fund reserve (No distribution)
     const fundReserve = async (amount: string) => {
         try {
-            write({
-                address: COUPON_DISTRIBUTOR.address,
-                abi: COUPON_DISTRIBUTOR.abi,
-                functionName: 'fundReserve',
-                args: [parseUnits(amount, 6)], // Reserve in USDT (6 decimals)
-            })
-        } catch (err) {
+            if (!isConnected) throw new Error('Please connect your admin wallet')
+            setIsPending(true)
+            const signer = await getSigner()
+
+            const distributor = new ethers.Contract(DIST_ADDR, COUPON_DISTRIBUTOR.abi, signer)
+            const amountBig = ethers.parseUnits(amount, 6)
+
+            const tx = await distributor.fundReserve(amountBig)
+            setHash(tx.hash)
+            await tx.wait()
+            toast.success('Reserve funded successfully!')
+        } catch (err: any) {
             console.error(err)
-            toast.error('Failed to fund reserve')
+            toast.error('Failed to fund reserve: ' + err.message)
+        } finally {
+            setIsPending(false)
         }
     }
 
-    // Helper to distribute yield BY RATE (e.g. 0.08 per token)
+    // Helper to distribute yield BY RATE
     const distributeRate = async (rate: string) => {
         try {
-            write({
-                address: COUPON_DISTRIBUTOR.address,
-                abi: COUPON_DISTRIBUTOR.abi,
-                functionName: 'distribute',
-                args: [parseUnits(rate, 6)], // Rate is "USDT per Token". If Token is 18 dec, and USDT is 6 dec. 
-                // Logic in contract: Cost = Supply * Rate / 1e18.
-                // If we want 1 USDT per token, Rate should be 1e6.
-            })
-        } catch (err) {
+            if (!isConnected) throw new Error('Please connect your admin wallet')
+            setIsPending(true)
+            const signer = await getSigner()
+
+            const distributor = new ethers.Contract(DIST_ADDR, COUPON_DISTRIBUTOR.abi, signer)
+            const rateBig = ethers.parseUnits(rate, 6)
+
+            const tx = await distributor.distribute(rateBig)
+            setHash(tx.hash)
+            await tx.wait()
+            toast.success('Yield distributed successfully!')
+        } catch (err: any) {
             console.error(err)
-            toast.error('Failed to distribute rate')
+            toast.error('Failed to distribute rate: ' + err.message)
+        } finally {
+            setIsPending(false)
         }
     }
 
-    // Legacy Support (Optional)
+    // Legacy Support
     const distributeYield = async (amount: string) => {
         try {
-            write({
-                address: COUPON_DISTRIBUTOR.address,
-                abi: COUPON_DISTRIBUTOR.abi,
-                functionName: 'depositYield',
-                args: [parseUnits(amount, 6)],
-            })
-        } catch (err) {
+            if (!isConnected) throw new Error('Please connect your admin wallet')
+            setIsPending(true)
+            const signer = await getSigner()
+
+            const distributor = new ethers.Contract(DIST_ADDR, COUPON_DISTRIBUTOR.abi, signer)
+            const amountBig = ethers.parseUnits(amount, 6)
+
+            const tx = await distributor.depositYield(amountBig)
+            setHash(tx.hash)
+            await tx.wait()
+            toast.success('Yield deposited successfully!')
+        } catch (err: any) {
             console.error(err)
-            toast.error('Failed to initiate yield distribution')
+            toast.error('Failed to deposit yield: ' + err.message)
+        } finally {
+            setIsPending(false)
         }
     }
 
     // Helper to approve USDT
     const approveUSDT = async (amount: string) => {
         try {
-            write({
-                address: USDT.address,
-                abi: USDT.abi,
-                functionName: 'approve',
-                args: [COUPON_DISTRIBUTOR.address, parseUnits(amount, 6)]
-            })
-        } catch (err) {
+            if (!isConnected) throw new Error('Please connect your admin wallet')
+            setIsPending(true)
+            const signer = await getSigner()
+
+            const usdt = new ethers.Contract(USDT.address, USDT.abi, signer)
+            const amountBig = ethers.parseUnits(amount, 6)
+
+            const tx = await usdt.approve(DIST_ADDR, amountBig)
+            setHash(tx.hash)
+            await tx.wait()
+            toast.success('USDT approved successfully!')
+        } catch (err: any) {
             console.error(err)
-            toast.error('Failed to approve USDT')
+            toast.error('Failed to approve USDT: ' + err.message)
+        } finally {
+            setIsPending(false)
         }
     }
 
     // Helper to set maturity date
     const setMaturityDate = async (timestamp: number) => {
         try {
-            write({
-                address: SOVEREIGN_BOND.address,
-                abi: SOVEREIGN_BOND.abi,
-                functionName: 'setMaturityDate',
-                args: [BigInt(timestamp)]
-            })
-        } catch (err) {
+            if (!isConnected) throw new Error('Please connect your admin wallet')
+            setIsPending(true)
+            const signer = await getSigner()
+
+            const bond = new ethers.Contract(BOND_ADDR, SOVEREIGN_BOND.abi, signer)
+
+            const tx = await bond.setMaturityDate(BigInt(timestamp))
+            setHash(tx.hash)
+            await tx.wait()
+            toast.success('Maturity date set successfully!')
+        } catch (err: any) {
             console.error(err)
-            toast.error('Failed to set maturity date')
+            toast.error('Failed to set maturity date: ' + err.message)
+        } finally {
+            setIsPending(false)
         }
     }
 
@@ -118,82 +170,117 @@ export function useAdminActions() {
     }
 }
 
-export function useBondStats() {
-    const { data: totalSupply } = useReadContract({
-        address: SOVEREIGN_BOND.address,
-        abi: SOVEREIGN_BOND.abi,
-        functionName: 'totalSupply',
-        query: {
-            refetchInterval: 2000
-        }
-    })
+// ADMIN-SPECIFIC STATS HOOKS (Use Wagmi Provider)
+import { useEthersProvider } from '@/lib/wagmi-ethers-adapters'
+import { useCallback, useEffect } from 'react'
 
-    const { data: backedValue } = useReadContract({
-        address: SOVEREIGN_BOND.address,
-        abi: SOVEREIGN_BOND.abi,
-        functionName: 'totalBackedValue',
-        query: {
-            refetchInterval: 2000
-        }
-    })
+export function useAdminBondStats(bondAddr?: string) {
+    const provider = useEthersProvider()
+    const ADDR = bondAddr || SOVEREIGN_BOND.address
 
-    const { data: maturityDate } = useReadContract({
-        address: SOVEREIGN_BOND.address,
-        abi: SOVEREIGN_BOND.abi,
-        functionName: 'maturityDate',
-        query: {
-            refetchInterval: 5000
+    const [totalSupply, setTotalSupply] = useState<bigint | null>(null)
+    const [backedValue, setBackedValue] = useState<bigint | null>(null)
+    const [maturityDate, setMaturityDate] = useState<bigint | null>(null)
+
+    const fetchStats = useCallback(async () => {
+        try {
+            if (!provider) return
+
+            const bond = new ethers.Contract(ADDR, SOVEREIGN_BOND.abi, provider)
+
+            const [supply, backed, maturity] = await Promise.all([
+                bond.totalSupply(),
+                bond.totalBackedValue(),
+                bond.maturityDate()
+            ])
+
+            setTotalSupply(supply)
+            setBackedValue(backed)
+            setMaturityDate(maturity)
+        } catch (error) {
+            console.error('Failed to fetch admin bond stats:', error)
         }
-    })
+    }, [provider, ADDR])
+
+    useEffect(() => {
+        fetchStats()
+        const interval = setInterval(fetchStats, 5000)
+        return () => clearInterval(interval)
+    }, [fetchStats])
 
     return {
         totalSupply,
         backedValue,
-        maturityDate
+        maturityDate,
+        refetch: fetchStats
     }
 }
-// ... existing exports ...
 
-export function useTreasuryStats() {
-    const { data: usdtBalance } = useReadContract({
-        address: USDT.address,
-        abi: USDT.abi,
-        functionName: 'balanceOf',
-        args: [TREASURY_SWAP.address], // TREASURY_SWAP is imported
-        query: {
-            refetchInterval: 2000
+export function useAdminTreasuryStats(treasuryAddr?: string) {
+    const provider = useEthersProvider()
+    const ADDR = treasuryAddr || TREASURY_SWAP.address
+
+    const [usdtBalance, setUsdtBalance] = useState<bigint | null>(null)
+
+    const fetchStats = useCallback(async () => {
+        try {
+            if (!provider) return
+
+            const usdt = new ethers.Contract(USDT.address, USDT.abi, provider)
+            const balance = await usdt.balanceOf(ADDR)
+            setUsdtBalance(balance)
+        } catch (error) {
+            console.error('Failed to fetch admin treasury stats:', error)
         }
-    })
+    }, [provider, ADDR])
+
+    useEffect(() => {
+        fetchStats()
+        const interval = setInterval(fetchStats, 5000)
+        return () => clearInterval(interval)
+    }, [fetchStats])
 
     return {
-        usdtBalance
+        usdtBalance,
+        refetch: fetchStats
     }
 }
 
-export function useDistributorStats() {
-    // 1. Get Distributor USDT Balance (Tokens Left to be Claimed)
-    const { data: distributorBalance } = useReadContract({
-        address: USDT.address,
-        abi: USDT.abi,
-        functionName: 'balanceOf',
-        args: [COUPON_DISTRIBUTOR.address],
-        query: {
-            refetchInterval: 5000
-        }
-    })
+export function useAdminDistributorStats(distributorAddr?: string) {
+    const provider = useEthersProvider()
+    const ADDR = distributorAddr || COUPON_DISTRIBUTOR.address
 
-    // 2. Get Cumulative Yield Per Token (For Total Distributed calc)
-    const { data: cumulativeYield } = useReadContract({
-        address: COUPON_DISTRIBUTOR.address,
-        abi: COUPON_DISTRIBUTOR.abi,
-        functionName: 'cumulativeYieldPerToken',
-        query: {
-            refetchInterval: 5000
+    const [distributorBalance, setDistributorBalance] = useState<bigint | null>(null)
+    const [cumulativeYield, setCumulativeYield] = useState<bigint | null>(null)
+
+    const fetchStats = useCallback(async () => {
+        try {
+            if (!provider) return
+
+            const usdt = new ethers.Contract(USDT.address, USDT.abi, provider)
+            const distributor = new ethers.Contract(ADDR, COUPON_DISTRIBUTOR.abi, provider)
+
+            const [balance, cumYield] = await Promise.all([
+                usdt.balanceOf(ADDR),
+                distributor.cumulativeYieldPerToken()
+            ])
+
+            setDistributorBalance(balance)
+            setCumulativeYield(cumYield)
+        } catch (error) {
+            console.error('Failed to fetch admin distributor stats:', error)
         }
-    })
+    }, [provider, ADDR])
+
+    useEffect(() => {
+        fetchStats()
+        const interval = setInterval(fetchStats, 5000)
+        return () => clearInterval(interval)
+    }, [fetchStats])
 
     return {
         distributorBalance,
-        cumulativeYield
+        cumulativeYield,
+        refetch: fetchStats
     }
 }

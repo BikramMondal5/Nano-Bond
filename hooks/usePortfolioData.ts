@@ -1,55 +1,56 @@
-import { useAccount, useReadContract } from 'wagmi'
+import { useState, useCallback, useEffect } from 'react'
+import { ethers } from 'ethers'
 import { SOVEREIGN_BOND, COUPON_DISTRIBUTOR, TREASURY_SWAP } from '@/lib/contracts'
-import { formatUnits } from 'viem'
+import { useWeb3AuthContext } from '@/components/providers'
 
 export function usePortfolioData() {
-    const { address } = useAccount()
+    const { walletAddress, getEthersProvider, loggedIn } = useWeb3AuthContext()
 
-    // 1. Get GBOND Balance
-    const { data: balance, isLoading: loadingBalance, refetch: refetchBalance } = useReadContract({
-        address: SOVEREIGN_BOND.address,
-        abi: SOVEREIGN_BOND.abi,
-        functionName: 'balanceOf',
-        args: [address!],
-        query: {
-            enabled: !!address
-        }
-    })
-
-    // 2. Get Claimable Logic (Replaced manual calc with Contract View because of Checkpointing)
-    const { data: claimableRaw, refetch: refetchClaimable } = useReadContract({
-        address: COUPON_DISTRIBUTOR.address,
-        abi: COUPON_DISTRIBUTOR.abi,
-        functionName: 'claimableYield',
-        args: [address!],
-        query: {
-            enabled: !!address
-        }
-    })
-
-    let claimable = "0"
-    if (claimableRaw !== undefined) {
-        claimable = formatUnits(claimableRaw as bigint, 6)
-    }
-
-    // 4. Verify TreasurySwap Linkage (Debug)
-    // We can't read 'bond()' from Treasury (older version?).
-    // Check if Treasury has MINTER_ROLE on SovereignBond instead.
+    const [balance, setBalance] = useState<string>("0")
+    const [claimable, setClaimable] = useState<string>("0")
+    const [hasMinterRole, setHasMinterRole] = useState<boolean | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
 
     // MINTER_ROLE = keccak256("MINTER_ROLE")
-    // Pre-computed: 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6
     const MINTER_ROLE = "0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6"
 
-    const { data: hasMinterRole, isLoading: loadingRole } = useReadContract({
-        address: SOVEREIGN_BOND.address,
-        abi: SOVEREIGN_BOND.abi,
-        functionName: 'hasRole',
-        args: [MINTER_ROLE, TREASURY_SWAP.address]
-    })
+    const fetchData = useCallback(async () => {
+        if (!walletAddress || !loggedIn) {
+            setIsLoading(false)
+            return
+        }
+
+        try {
+            setIsLoading(true)
+            const provider = getEthersProvider()
+            if (!provider) return
+
+            const bond = new ethers.Contract(SOVEREIGN_BOND.address, SOVEREIGN_BOND.abi, provider)
+            const distributor = new ethers.Contract(COUPON_DISTRIBUTOR.address, COUPON_DISTRIBUTOR.abi, provider)
+
+            const [balanceRaw, claimableRaw, hasRole] = await Promise.all([
+                bond.balanceOf(walletAddress),
+                distributor.claimableYield(walletAddress),
+                bond.hasRole(MINTER_ROLE, TREASURY_SWAP.address)
+            ])
+
+            setBalance(ethers.formatUnits(balanceRaw, 18))
+            setClaimable(ethers.formatUnits(claimableRaw, 6))
+            setHasMinterRole(hasRole)
+        } catch (error) {
+            console.error('Failed to fetch portfolio data:', error)
+        } finally {
+            setIsLoading(false)
+        }
+    }, [walletAddress, loggedIn, getEthersProvider])
+
+    useEffect(() => {
+        fetchData()
+    }, [fetchData])
 
     const refetch = () => {
         console.log("DEBUG: Refreshing Data...", {
-            address,
+            address: walletAddress,
             bond: SOVEREIGN_BOND.address,
             treasury: TREASURY_SWAP.address,
             hasMinterRole,
@@ -59,17 +60,14 @@ export function usePortfolioData() {
         if (hasMinterRole === false) {
             console.error("CRITICAL CONFIG ERROR: TreasurySwap does NOT have MINTER_ROLE on the Bond contract.")
         }
-        refetchBalance()
-        refetchClaimable()
+        fetchData()
     }
 
     return {
-        // Since TreasurySwap now correctly mints 18-decimal Bonds (scaled up),
-        // we must parse the balance as 18 decimals.
-        balance: balance ? formatUnits(balance as bigint, 18) : "0",
+        balance,
         claimable,
-        isLoading: loadingBalance,
-        address,
+        isLoading,
+        address: walletAddress,
         refetch
     }
 }

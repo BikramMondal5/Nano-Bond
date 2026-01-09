@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
     const walletAddress = formData.get('walletAddress') as string
     const walletSignature = formData.get('walletSignature') as string
     const signedMessage = formData.get('signedMessage') as string
+    const email = formData.get('email') as string
 
     if (!walletAddress || !walletSignature || !signedMessage) {
       return NextResponse.json(
@@ -42,19 +43,31 @@ export async function POST(req: NextRequest) {
 
     // Debug: Check if wallet exists but with different case
     if (!user) {
-      const allUsers = await User.find({ walletAddress: { $exists: true, $ne: null } })
-      console.log('All wallet addresses in DB:', allUsers.map(u => u.walletAddress))
+      // 1. Try to find by email if provided
+      if (email) {
+        console.log('Searching for user by email:', email)
+        user = await User.findOne({ email })
 
-      return NextResponse.json(
-        {
-          error: 'User not found. Please ensure your wallet is connected.',
-          debug: {
-            searchedWallet: normalizedWallet,
-            foundWallets: allUsers.map(u => u.walletAddress)
-          }
-        },
-        { status: 404 }
-      )
+        if (user) {
+          console.log('Found user by email. Linking wallet...')
+          user.walletAddress = walletAddress
+          await user.save()
+        }
+      }
+
+      // 2. If still not found, create new user
+      if (!user) {
+        console.log('Creating new user for wallet:', normalizedWallet)
+        const userEmail = email || `${normalizedWallet}@wallet.placeholder`
+
+        user = await User.create({
+          email: userEmail,
+          walletAddress: walletAddress,
+          name: 'Investor',
+          provider: email ? 'google' : 'credentials',
+          kycStatus: 'NOT_SUBMITTED'
+        })
+      }
     }
 
     console.log('Found user:', user._id, user.email)

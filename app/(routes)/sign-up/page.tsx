@@ -79,15 +79,16 @@ function SignUpFormContent() {
   const handleWeb3SignUp = async () => {
     setIsLoading(true)
     try {
-      const user = await login()
-      if (user && user.email) {
-        const result = await signIn("credentials", {
-          web3auth_email: user.email,
-          web3auth_name: user.name,
+      const result = await login()
+      if (result && result.user && result.user.email) {
+        const signInResult = await signIn("credentials", {
+          web3auth_email: result.user.email,
+          web3auth_name: result.user.name,
+          wallet_address: result.address,
           redirect: false,
         })
 
-        if (result?.ok) {
+        if (signInResult?.ok) {
           router.push("/portfolio")
         } else {
           setError("Failed to create session with Web3Auth")
