@@ -67,7 +67,9 @@ export class BondService {
         try {
             const data = fs.readFileSync(registryPath, 'utf-8');
             const parsed = JSON.parse(data);
-            return parsed.bonds || [];
+            const bonds = parsed.bonds || [];
+            console.log(`[BondService] Loaded ${bonds.length} bonds from registry at ${registryPath}`);
+            return bonds;
         } catch (error) {
             console.error('[BondService] Failed to load registry:', error);
             return [];
@@ -116,13 +118,17 @@ export class BondService {
         const results: BondDto[] = [];
 
         for (const rb of registryBonds) {
-            const onChain = await this.fetchOnChainData(rb.contractAddress);
+            // Fallback: If registry doesn't specify a contract, use the default Sovereign Bond address
+            const targetAddress = rb.contractAddress || config.contracts.bondAddress;
+            if (!targetAddress) continue; // Skip if no address available at all
+
+            const onChain = await this.fetchOnChainData(targetAddress);
 
             results.push({
                 bondId: rb.bondId,
                 bondName: rb.bondName,
                 issuer: rb.issuer,
-                contractAddress: rb.contractAddress,
+                contractAddress: targetAddress,
                 treasuryAddress: rb.treasuryAddress,
                 couponRate: rb.couponRate,
                 minInvestment: rb.minInvestment,
@@ -146,7 +152,10 @@ export class BondService {
     async getBondByAddress(contractAddress: string): Promise<BondDto | null> {
         const registryBonds = this.loadRegistry();
         const rb = registryBonds.find(
-            b => b.contractAddress.toLowerCase() === contractAddress.toLowerCase()
+            b => {
+                const addr = b.contractAddress || config.contracts.bondAddress;
+                return addr && addr.toLowerCase() === contractAddress.toLowerCase();
+            }
         );
 
         if (!rb) {
@@ -220,7 +229,10 @@ export class BondService {
 
         for (const rb of registryBonds) {
             try {
-                const contract = new ethers.Contract(rb.contractAddress, BOND_ABI, this.provider);
+                const targetAddress = rb.contractAddress || config.contracts.bondAddress;
+                if (!targetAddress) continue;
+
+                const contract = new ethers.Contract(targetAddress, BOND_ABI, this.provider);
                 const balanceBig = await contract.balanceOf(userAddress);
 
                 if (balanceBig > BigInt(0)) {

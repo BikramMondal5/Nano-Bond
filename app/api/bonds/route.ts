@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 // Path to the shared JSON registry
-const REGISTRY_PATH = path.join(process.cwd(), 'backend', 'src', 'bond-registry.json');
+const REGISTRY_PATH = path.join(process.cwd(), 'backend', 'bond-registry.json');
 
 // Helper to read registry
 function getRegistry() {
