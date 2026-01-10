@@ -1,8 +1,43 @@
-import { ethers } from 'ethers';
-import { config } from '../config';
-import * as fs from 'fs';
-import * as path from 'path';
-
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BondService = void 0;
+const ethers_1 = require("ethers");
+const config_1 = require("../config");
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 // Bond ABI - Essential functions only
 const BOND_ABI = [
     "function name() external view returns (string)",
@@ -13,82 +48,31 @@ const BOND_ABI = [
     "function decimals() external view returns (uint8)",
     "function balanceOf(address account) external view returns (uint256)"
 ];
-
-// Registry bond entry (from JSON file)
-interface RegistryBond {
-    bondId: string;
-    bondName: string;
-    issuer: string;
-    category?: string;
-    contractAddress: string;
-    treasuryAddress?: string;
-    distributorAddress?: string;
-    couponRate: number;
-    minInvestment: number;
-    maxSubscription: number;
-    startDate?: string;
-    maturityDate?: string;
-    description?: string;
-    proofUrl?: string;
-}
-
-// API response format
-export interface BondDto {
-    bondId: string;
-    bondName: string;
-    issuer: string;
-    contractAddress: string;
-    treasuryAddress?: string;
-    couponRate: number;
-    minInvestment: number;
-    maxSubscription: number;
-    startDate: string | null;
-    maturityDate: string | null;
-    description: string | null;
-    proofUrl: string | null;
-    // On-chain data
-    totalSupply: string;
-    totalBackedValue: string;
-    symbol: string;
-}
-
-export class BondService {
-    private provider: ethers.JsonRpcProvider;
-
+class BondService {
     constructor() {
-        this.provider = new ethers.JsonRpcProvider(config.rpc.url);
+        this.provider = new ethers_1.ethers.JsonRpcProvider(config_1.config.rpc.url);
     }
-
     /**
      * Load bond registry from JSON file
      */
-    private loadRegistry(): RegistryBond[] {
+    loadRegistry() {
         const registryPath = path.join(process.cwd(), 'bond-registry.json');
         try {
             const data = fs.readFileSync(registryPath, 'utf-8');
             const parsed = JSON.parse(data);
-            const bonds = parsed.bonds || [];
-            console.log(`[BondService] Loaded ${bonds.length} bonds from registry at ${registryPath}`);
-            return bonds;
-        } catch (error) {
+            return parsed.bonds || [];
+        }
+        catch (error) {
             console.error('[BondService] Failed to load registry:', error);
             return [];
         }
     }
-
     /**
      * Fetch on-chain data for a bond contract
      */
-    private async fetchOnChainData(contractAddress: string): Promise<{
-        name: string;
-        symbol: string;
-        totalSupply: string;
-        totalBackedValue: string;
-        maturityDateOnChain: number;
-    } | null> {
+    async fetchOnChainData(contractAddress) {
         try {
-            const contract = new ethers.Contract(contractAddress, BOND_ABI, this.provider);
-
+            const contract = new ethers_1.ethers.Contract(contractAddress, BOND_ABI, this.provider);
             const [name, symbol, totalSupply, totalBackedValue, maturityDateOnChain] = await Promise.all([
                 contract.name().catch(() => 'Unknown'),
                 contract.symbol().catch(() => 'BOND'),
@@ -96,39 +80,32 @@ export class BondService {
                 contract.totalBackedValue().catch(() => BigInt(0)),
                 contract.maturityDate().catch(() => BigInt(0)),
             ]);
-
             return {
                 name,
                 symbol,
-                totalSupply: ethers.formatUnits(totalSupply, 6),
-                totalBackedValue: ethers.formatUnits(totalBackedValue, 6),
+                totalSupply: ethers_1.ethers.formatUnits(totalSupply, 6),
+                totalBackedValue: ethers_1.ethers.formatUnits(totalBackedValue, 6),
                 maturityDateOnChain: Number(maturityDateOnChain),
             };
-        } catch (error) {
+        }
+        catch (error) {
             console.error(`[BondService] Failed to fetch on-chain data for ${contractAddress}:`, error);
             return null;
         }
     }
-
     /**
      * List all bonds from registry with on-chain data
      */
-    async listBonds(): Promise<BondDto[]> {
+    async listBonds() {
         const registryBonds = this.loadRegistry();
-        const results: BondDto[] = [];
-
+        const results = [];
         for (const rb of registryBonds) {
-            // Fallback: If registry doesn't specify a contract, use the default Sovereign Bond address
-            const targetAddress = rb.contractAddress || config.contracts.bondAddress;
-            if (!targetAddress) continue; // Skip if no address available at all
-
-            const onChain = await this.fetchOnChainData(targetAddress);
-
+            const onChain = await this.fetchOnChainData(rb.contractAddress);
             results.push({
                 bondId: rb.bondId,
                 bondName: rb.bondName,
                 issuer: rb.issuer,
-                contractAddress: targetAddress,
+                contractAddress: rb.contractAddress,
                 treasuryAddress: rb.treasuryAddress,
                 couponRate: rb.couponRate,
                 minInvestment: rb.minInvestment,
@@ -142,28 +119,18 @@ export class BondService {
                 symbol: onChain?.symbol || 'BOND',
             });
         }
-
         return results;
     }
-
     /**
      * Get a single bond by contract address
      */
-    async getBondByAddress(contractAddress: string): Promise<BondDto | null> {
+    async getBondByAddress(contractAddress) {
         const registryBonds = this.loadRegistry();
-        const rb = registryBonds.find(
-            b => {
-                const addr = b.contractAddress || config.contracts.bondAddress;
-                return addr && addr.toLowerCase() === contractAddress.toLowerCase();
-            }
-        );
-
+        const rb = registryBonds.find(b => b.contractAddress.toLowerCase() === contractAddress.toLowerCase());
         if (!rb) {
             return null;
         }
-
         const onChain = await this.fetchOnChainData(rb.contractAddress);
-
         return {
             bondId: rb.bondId,
             bondName: rb.bondName,
@@ -182,34 +149,24 @@ export class BondService {
             symbol: onChain?.symbol || 'BOND',
         };
     }
-
     /**
      * Get bond details by ID (internal helper)
      */
-    getBondByIdSync(bondId: string): RegistryBond | undefined {
+    getBondByIdSync(bondId) {
         const registryBonds = this.loadRegistry();
         return registryBonds.find(b => b.bondId === bondId);
     }
-
     /**
      * Get debt status (supply vs backed value) for all bonds
      */
-    async getDebtStatus(): Promise<{
-        totalDebtIssued: number;
-        totalAssetBacking: number;
-        isHealthy: boolean;
-        timestamp: string;
-    }> {
+    async getDebtStatus() {
         const bonds = await this.listBonds();
-
         let totalDebt = 0;
         let totalBacking = 0;
-
         for (const bond of bonds) {
             totalDebt += parseFloat(bond.totalSupply) || 0;
             totalBacking += parseFloat(bond.totalBackedValue) || 0;
         }
-
         return {
             totalDebtIssued: totalDebt,
             totalAssetBacking: totalBacking,
@@ -217,28 +174,21 @@ export class BondService {
             timestamp: new Date().toISOString(),
         };
     }
-
     /**
      * Get user portfolio summary
      */
-    async getPortfolio(userAddress: string): Promise<PortfolioDto> {
+    async getPortfolio(userAddress) {
         const registryBonds = this.loadRegistry();
-        const holdings: PortfolioHolding[] = [];
+        const holdings = [];
         let totalValue = 0;
         let weightedApySum = 0;
-
         for (const rb of registryBonds) {
             try {
-                const targetAddress = rb.contractAddress || config.contracts.bondAddress;
-                if (!targetAddress) continue;
-
-                const contract = new ethers.Contract(targetAddress, BOND_ABI, this.provider);
+                const contract = new ethers_1.ethers.Contract(rb.contractAddress, BOND_ABI, this.provider);
                 const balanceBig = await contract.balanceOf(userAddress);
-
                 if (balanceBig > BigInt(0)) {
-                    const balance = parseFloat(ethers.formatUnits(balanceBig, 18));
+                    const balance = parseFloat(ethers_1.ethers.formatUnits(balanceBig, 18));
                     const value = balance;
-
                     holdings.push({
                         bondId: rb.bondId,
                         bondName: rb.bondName,
@@ -249,21 +199,19 @@ export class BondService {
                         maturityDate: rb.maturityDate || '',
                         nextPaymentDate: rb.startDate
                     });
-
                     totalValue += value;
                     weightedApySum += value * rb.couponRate;
                 }
-            } catch (error) {
+            }
+            catch (error) {
                 console.error(`[BondService] Failed to fetch balance for ${rb.contractAddress}:`, error);
             }
         }
-
         const averageApy = totalValue > 0 ? weightedApySum / totalValue : 0;
         const nextMaturity = holdings
             .map(h => h.maturityDate)
             .filter(d => d)
             .sort()[0] || null;
-
         return {
             totalValue,
             currency: 'USDC',
@@ -273,22 +221,4 @@ export class BondService {
         };
     }
 }
-
-export interface PortfolioDto {
-    totalValue: number;
-    currency: string;
-    averageApy: number;
-    nextMaturityDate: string | null;
-    holdings: PortfolioHolding[];
-}
-
-export interface PortfolioHolding {
-    bondId: string;
-    bondName: string;
-    symbol: string;
-    balance: number;
-    value: number;
-    apy: number;
-    maturityDate: string;
-    nextPaymentDate?: string;
-}
+exports.BondService = BondService;
