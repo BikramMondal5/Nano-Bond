@@ -54,13 +54,17 @@ export class AAService {
             if (!bondData) throw new Error(`Bond not found: ${bondId}`);
             if (!bondData.treasuryAddress) throw new Error(`Treasury not configured for: ${bondId}`);
 
+            // Check for Gateway Address
+            const gatewayAddress = config.contracts.gatewayAddress;
+            if (!gatewayAddress) throw new Error('Investment Gateway not configured in backend');
+
             const treasuryAddress = bondData.treasuryAddress;
             console.log(`[AAService] Processing gasless investment for ${userAddress}: ${amount} USDT in ${bondId}`);
 
             // Admin wallet executes the transaction
             const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
 
-            // 1. Check KYC and auto-register if needed
+            // 1. Check KYC
             const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
             const isVerified = await registry.isVerified(userAddress);
 
@@ -72,14 +76,38 @@ export class AAService {
                 console.log(`[AAService] KYC registered: ${registerTx.hash}`);
             }
 
-            // 2. Call adminMint on Treasury
-            const treasury = new ethers.Contract(treasuryAddress, TREASURY_SWAP_ABI, adminWallet);
+            // 2. Prepare Investment via Gateway
+            // Gateway ABI
+            const GATEWAY_ABI = [
+                "function investWithPermit(address user, uint256 amount, address treasury, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external"
+            ];
+
+            const gateway = new ethers.Contract(gatewayAddress, GATEWAY_ABI, adminWallet);
             const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
 
-            console.log(`[AAService] Calling adminMint for ${userAddress} with amount ${amountBig}...`);
+            // Generate Dummy Permit (Since MockUSDT is in Demo Mode)
+            // In production, these params would come from the frontend user's signature.
+            // For now, we simulate a valid permit because MockUSDT.permit() accepts anything in testnet.
+            const deadline = Math.floor(Date.now() / 1000) + 3600;
+            const dummyV = 27;
+            const dummyR = ethers.ZeroHash;
+            const dummyS = ethers.ZeroHash;
+
+            console.log(`[AAService] Calling Gateway for ${userAddress} amount ${amountBig}...`);
 
             try {
-                const investTx = await treasury.adminMint(userAddress, amountBig);
+                // This call will fail if the User has not Approved the Gateway OR if MockUSDT.permit is not working.
+                // Since user hasn't signed a real permit, we rely on MockUSDT.permit to treat dummy sig as an Approval.
+                const investTx = await gateway.investWithPermit(
+                    userAddress,
+                    amountBig,
+                    treasuryAddress,
+                    deadline,
+                    dummyV,
+                    dummyR,
+                    dummyS
+                );
+
                 const receipt = await investTx.wait();
                 console.log(`[AAService] Investment confirmed: ${investTx.hash}`);
 
@@ -89,14 +117,14 @@ export class AAService {
                     message: `Invested ${amount} USDT in ${bondId} (gasless)`
                 };
             } catch (error: any) {
-                console.error(`[AAService] adminMint failed:`, error.message);
+                console.error(`[AAService] Gateway invest failed:`, error.message);
 
                 // Check for common errors
                 if (error.message?.includes('ExceedsBackedLogic')) {
-                    throw new Error('Investment exceeds available bond backing. Admin needs to add more assets.');
+                    throw new Error('Investment exceeds available bond backing.');
                 }
-                if (error.message?.includes('NotVerified')) {
-                    throw new Error('KYC verification failed. Please try again.');
+                if (error.message?.includes('transfer amount exceeds balance')) {
+                    throw new Error('User has insufficient USDT balance.');
                 }
                 throw error;
             }
