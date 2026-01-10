@@ -3,7 +3,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { useWeb3AuthContext } from '@/components/providers'
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000'
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
 
 export function useGaslessInvestment() {
     const { walletAddress } = useWeb3AuthContext()

@@ -17,7 +17,8 @@ export function Web3AuthConnectButton() {
         loggedIn,
         walletAddress,
         balance,
-        isInitializing
+        isInitializing,
+        error
     } = useWeb3AuthContext();
 
     const formatAddress = (address: string) => {
@@ -68,6 +69,18 @@ export function Web3AuthConnectButton() {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center gap-2">
+                <Button variant="destructive" className="bg-red-900/50 border-red-500 hover:bg-red-900/70" onClick={() => window.location.reload()}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Retry
+                </Button>
+                <span className="text-xs text-red-500 max-w-[200px] text-center">{error}</span>
+            </div>
         );
     }
 
