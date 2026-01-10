@@ -3,12 +3,12 @@ import Image from "next/image"
 
 export function Footer() {
   return (
-    <footer className="relative pt-20 pb-2 px-4 border-t border-border/50 bg-card/20 backdrop-blur-sm">
+    <footer className="relative pt-10 md:pt-20 pb-2 px-4 border-t border-border/50 bg-card/20 backdrop-blur-sm">
       {/* Background glow effect */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/10 blur-[150px] rounded-full -z-10" />
 
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-8 md:mb-16">
           {/* Brand section */}
           <div className="col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-6">
