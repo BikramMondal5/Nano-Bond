@@ -15,6 +15,11 @@ export const config = {
     },
     admin: {
         privateKey: process.env.PRIVATE_KEY || '',
+    },
+    bybit: {
+        key: process.env.BYBIT_KEY || '',
+        secret: process.env.BYBIT_SECRET || '',
+        testnet: process.env.BYBIT_TESTNET === 'true',
     }
 };
 
