@@ -56,7 +56,7 @@ class BondService {
      * Load bond registry from JSON file
      */
     loadRegistry() {
-        const registryPath = path.join(__dirname, '..', 'bond-registry.json');
+        const registryPath = path.join(process.cwd(), 'bond-registry.json');
         try {
             const data = fs.readFileSync(registryPath, 'utf-8');
             const parsed = JSON.parse(data);
