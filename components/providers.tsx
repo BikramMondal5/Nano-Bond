@@ -4,6 +4,7 @@ import * as React from 'react';
 import { createContext, useContext, ReactNode } from 'react';
 import { useWeb3Auth } from '@/hooks/use-web3auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThreeJsProvider } from '@/utils/ThreeJsContext';
 
 const queryClient = new QueryClient();
 
@@ -45,9 +46,11 @@ function Web3AuthContextProvider({ children }: { children: ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <QueryClientProvider client={queryClient}>
-            <Web3AuthContextProvider>
-                {children}
-            </Web3AuthContextProvider>
-        </QueryClientProvider>
+            <ThreeJsProvider>
+                <Web3AuthContextProvider>
+                    {children}
+                </Web3AuthContextProvider>
+            </ThreeJsProvider>
+        </QueryClientProvider >
     );
 }
