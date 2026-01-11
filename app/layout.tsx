@@ -5,6 +5,7 @@ import "./globals.css"
 import { AuthProvider } from "@/components/auth-provider"
 import { Providers } from "@/components/providers"
 import '@rainbow-me/rainbowkit/styles.css';
+import ChatWidget from "@/components/ChatWidget";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         <AuthProvider>
           <Providers>
             {children}
+            <ChatWidget />
           </Providers>
         </AuthProvider>
       </body>
