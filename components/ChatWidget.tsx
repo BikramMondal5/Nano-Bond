@@ -125,12 +125,10 @@ const ChatWidget = () => {
 
                 vapiClient.on("speech-start", () => {
                     console.log("VAPI: User speaking");
-                    setCallStatus("🗣️ Listening...");
                 });
 
                 vapiClient.on("speech-end", () => {
                     console.log("VAPI: User stopped speaking");
-                    setCallStatus("🤖 AI Responding...");
                 });
 
                 vapiClient.on("message", (message: any) => {
@@ -453,7 +451,7 @@ User message: ${userMessage}`
                     </svg>
                 ) : (
                     <img
-                        src="https://avatars.githubusercontent.com/u/170235967?v=4"
+                        src="/nano-advisor.png"
                         alt="Chat Bot"
                         className="w-13 h-13 rounded-full object-cover"
                     />
@@ -474,7 +472,7 @@ User message: ${userMessage}`
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
                                 <img
-                                    src="https://avatars.githubusercontent.com/u/170235967?v=4"
+                                    src="/nano-advisor.png"
                                     alt="AI Assistant"
                                     className="w-full h-full object-cover"
                                 />
@@ -579,13 +577,7 @@ User message: ${userMessage}`
                                     </motion.div>
 
                                     {/* Status text */}
-                                    <motion.p
-                                        className="absolute bottom-20 text-purple-300 text-center text-sm font-medium"
-                                        animate={{ opacity: [0.7, 1, 0.7] }}
-                                        transition={{ duration: 2, repeat: Infinity }}
-                                    >
-                                        {callStatus || "Voice call active"}
-                                    </motion.p>
+
                                 </div>
                             ) : (
                                 // Regular text chat UI
