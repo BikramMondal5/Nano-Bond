@@ -9,7 +9,7 @@ export interface IUser {
     password?: string;
     image?: string;
     emailVerified?: Date;
-    provider?: 'credentials' | 'google';
+    provider?: 'credentials' | 'google' | 'web3auth';
     walletAddress?: string;
     portfolio?: {
         totalInvested: number;
@@ -62,7 +62,7 @@ const UserSchema = new Schema<IUser>(
         },
         provider: {
             type: String,
-            enum: ['credentials', 'google'],
+            enum: ['credentials', 'google', 'web3auth'],
             default: 'credentials',
         },
         walletAddress: {

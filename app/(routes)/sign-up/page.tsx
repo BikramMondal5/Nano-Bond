@@ -1,17 +1,14 @@
 "use client"
 
-import Image from "next/image"
-
 import type React from "react"
 import { useState, Suspense, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { MatrixRain } from "@/components/cyber-hero"
-import { Shield, User, Mail, Lock, ArrowRight, Github, Wallet, Rocket, Loader2 } from "lucide-react"
+import { Rocket, Wallet, Loader2, ArrowRight } from "lucide-react"
 import { useWeb3Auth } from "@/hooks/use-web3auth"
 
 function SignUpFormContent() {

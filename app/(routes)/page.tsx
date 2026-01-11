@@ -9,6 +9,7 @@ import { FaqSection } from "@/components/faq-section"
 import { CtaBanner } from "@/components/cta-banner"
 import { PricingSection } from "@/components/pricing-section"
 import TestimonialCarousel from "@/components/testimonial-carousel"
+import { MobileAppSection } from "@/components/mobile-app-section"
 
 export default function LandingPage() {
   return (
@@ -17,6 +18,7 @@ export default function LandingPage() {
       <HeroSection />
       <EcosystemSection />
       <ValuePropositionCards />
+      <MobileAppSection />
       <HowItWorks />
       {/* <RoadmapSection /> */}
       {/* <StatsSection /> */}

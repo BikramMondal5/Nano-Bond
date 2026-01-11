@@ -19,7 +19,7 @@ function AppSidebarWrapper() {
   const isLanding = pathname === "/"
   const isAuthPage = pathname === "/login" || pathname === "/sign-up"
 
-  if (!user || isLanding || isAuthPage) return null
+  if (isLanding || isAuthPage) return null
 
   if (pathname.startsWith("/admin")) {
     return <AdminSidebar />
