@@ -1,7 +1,6 @@
 import { ethers } from 'ethers';
 import { config } from '../config';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Bond, IBond } from '../models/Bond';
 
 // Bond ABI - Essential functions only
 const BOND_ABI = [
@@ -13,24 +12,6 @@ const BOND_ABI = [
     "function decimals() external view returns (uint8)",
     "function balanceOf(address account) external view returns (uint256)"
 ];
-
-// Registry bond entry (from JSON file)
-interface RegistryBond {
-    bondId: string;
-    bondName: string;
-    issuer: string;
-    category?: string;
-    contractAddress: string;
-    treasuryAddress?: string;
-    distributorAddress?: string;
-    couponRate: number;
-    minInvestment: number;
-    maxSubscription: number;
-    startDate?: string;
-    maturityDate?: string;
-    description?: string;
-    proofUrl?: string;
-}
 
 // API response format
 export interface BondDto {
@@ -60,20 +41,23 @@ export class BondService {
     }
 
     /**
-     * Load bond registry from JSON file
+     * Helper to map Mongo document to DTO partial (without on-chain data)
      */
-    private loadRegistry(): RegistryBond[] {
-        const registryPath = path.join(process.cwd(), 'bond-registry.json');
-        try {
-            const data = fs.readFileSync(registryPath, 'utf-8');
-            const parsed = JSON.parse(data);
-            const bonds = parsed.bonds || [];
-            console.log(`[BondService] Loaded ${bonds.length} bonds from registry at ${registryPath}`);
-            return bonds;
-        } catch (error) {
-            console.error('[BondService] Failed to load registry:', error);
-            return [];
-        }
+    private mapDocToPartial(doc: IBond): any {
+        return {
+            bondId: doc.bondId,
+            bondName: doc.bondName,
+            issuer: doc.issuer,
+            contractAddress: doc.contractAddress || config.contracts.bondAddress,
+            treasuryAddress: doc.treasuryAddress,
+            couponRate: doc.couponRate,
+            minInvestment: doc.minInvestment,
+            maxSubscription: doc.maxSubscription,
+            startDate: doc.startDate ? doc.startDate.toISOString() : null,
+            maturityDate: doc.maturityDate ? doc.maturityDate.toISOString() : null,
+            description: doc.description || null,
+            proofUrl: doc.proofUrl || null,
+        };
     }
 
     /**
@@ -111,32 +95,22 @@ export class BondService {
     }
 
     /**
-     * List all bonds from registry with on-chain data
+     * List all bonds from DB with on-chain data
      */
     async listBonds(): Promise<BondDto[]> {
-        const registryBonds = this.loadRegistry();
+        const dbBonds = await Bond.find({});
         const results: BondDto[] = [];
 
-        for (const rb of registryBonds) {
+        for (const b of dbBonds) {
             // Fallback: If registry doesn't specify a contract, use the default Sovereign Bond address
-            const targetAddress = rb.contractAddress || config.contracts.bondAddress;
+            const targetAddress = b.contractAddress || config.contracts.bondAddress;
             if (!targetAddress) continue; // Skip if no address available at all
 
             const onChain = await this.fetchOnChainData(targetAddress);
 
             results.push({
-                bondId: rb.bondId,
-                bondName: rb.bondName,
-                issuer: rb.issuer,
-                contractAddress: targetAddress,
-                treasuryAddress: rb.treasuryAddress,
-                couponRate: rb.couponRate,
-                minInvestment: rb.minInvestment,
-                maxSubscription: rb.maxSubscription,
-                startDate: rb.startDate || null,
-                maturityDate: rb.maturityDate || null,
-                description: rb.description || null,
-                proofUrl: rb.proofUrl || null,
+                ...this.mapDocToPartial(b),
+                contractAddress: targetAddress, // ensure we use the resolved one
                 totalSupply: onChain?.totalSupply || '0',
                 totalBackedValue: onChain?.totalBackedValue || '0',
                 symbol: onChain?.symbol || 'BOND',
@@ -150,33 +124,45 @@ export class BondService {
      * Get a single bond by contract address
      */
     async getBondByAddress(contractAddress: string): Promise<BondDto | null> {
-        const registryBonds = this.loadRegistry();
-        const rb = registryBonds.find(
-            b => {
-                const addr = b.contractAddress || config.contracts.bondAddress;
-                return addr && addr.toLowerCase() === contractAddress.toLowerCase();
-            }
-        );
+        // We might not be able to query by contractAddress directly if it's dynamic or fallback
+        // So we might search all and filter, or add contractAddress to schema index
+        // Since we have low volume, findOne based on precise match first
+        let doc = await Bond.findOne({ contractAddress: { $regex: new RegExp(`^${contractAddress}$`, 'i') } });
 
-        if (!rb) {
+        // If not found, it might be using the default address but not stored in DB with it?
+        // But logic says if DB entry has NO address, it uses default.
+        if (!doc) {
+            // If the queried address IS the default address, we might return the first bond that uses it?
+            // Or maybe we should improve the query. For now, let's just stick to DB structure.
+            // If you query for a specific address, we expect it to be in the DB or be the default one.
+            if (config.contracts.bondAddress && contractAddress.toLowerCase() === config.contracts.bondAddress.toLowerCase()) {
+                // Return the first one that has no address or matching address
+                doc = await Bond.findOne({
+                    $or: [
+                        { contractAddress: { $exists: false } },
+                        { contractAddress: null },
+                        { contractAddress: { $regex: new RegExp(`^${contractAddress}$`, 'i') } }
+                    ]
+                });
+            }
+        }
+
+        if (!doc) {
             return null;
         }
 
-        const onChain = await this.fetchOnChainData(rb.contractAddress);
+        const targetAddress = doc.contractAddress || config.contracts.bondAddress;
+
+        // Safety check
+        if (targetAddress && targetAddress.toLowerCase() !== contractAddress.toLowerCase()) {
+            // This might happen if we fetched based on "default" fallback logical path
+        }
+
+        const onChain = await this.fetchOnChainData(targetAddress!);
 
         return {
-            bondId: rb.bondId,
-            bondName: rb.bondName,
-            issuer: rb.issuer,
-            contractAddress: rb.contractAddress,
-            treasuryAddress: rb.treasuryAddress,
-            couponRate: rb.couponRate,
-            minInvestment: rb.minInvestment,
-            maxSubscription: rb.maxSubscription,
-            startDate: rb.startDate || null,
-            maturityDate: rb.maturityDate || null,
-            description: rb.description || null,
-            proofUrl: rb.proofUrl || null,
+            ...this.mapDocToPartial(doc),
+            contractAddress: targetAddress!,
             totalSupply: onChain?.totalSupply || '0',
             totalBackedValue: onChain?.totalBackedValue || '0',
             symbol: onChain?.symbol || 'BOND',
@@ -186,9 +172,16 @@ export class BondService {
     /**
      * Get bond details by ID (internal helper)
      */
-    getBondByIdSync(bondId: string): RegistryBond | undefined {
-        const registryBonds = this.loadRegistry();
-        return registryBonds.find(b => b.bondId === bondId);
+    async getBondById(bondId: string): Promise<any | null> {
+        const doc = await Bond.findOne({ bondId });
+        return doc ? this.mapDocToPartial(doc) : null;
+    }
+
+    // Kept for backward compatibility if needed, but made async now
+    // NOTE: This changes signature from synchronous to Promise!
+    // Callers must await.
+    async getBondByIdSync(bondId: string): Promise<any | undefined> {
+        return this.getBondById(bondId);
     }
 
     /**
@@ -222,12 +215,12 @@ export class BondService {
      * Get user portfolio summary
      */
     async getPortfolio(userAddress: string): Promise<PortfolioDto> {
-        const registryBonds = this.loadRegistry();
+        const dbBonds = await Bond.find({});
         const holdings: PortfolioHolding[] = [];
         let totalValue = 0;
         let weightedApySum = 0;
 
-        for (const rb of registryBonds) {
+        for (const rb of dbBonds) {
             try {
                 const targetAddress = rb.contractAddress || config.contracts.bondAddress;
                 if (!targetAddress) continue;
@@ -246,8 +239,8 @@ export class BondService {
                         balance: balance,
                         value: value,
                         apy: rb.couponRate,
-                        maturityDate: rb.maturityDate || '',
-                        nextPaymentDate: rb.startDate
+                        maturityDate: rb.maturityDate ? rb.maturityDate.toISOString() : '',
+                        nextPaymentDate: rb.startDate ? rb.startDate.toISOString() : undefined
                     });
 
                     totalValue += value;

@@ -1,29 +1,12 @@
 import { NextResponse } from 'next/server';
-import path from 'path';
-import fs from 'fs';
-
-// Path to the shared JSON registry
-const REGISTRY_PATH = path.join(process.cwd(), 'backend', 'bond-registry.json');
-
-// Helper to read registry
-function getRegistry() {
-    try {
-        if (!fs.existsSync(REGISTRY_PATH)) {
-            return { bonds: [] };
-        }
-        const data = fs.readFileSync(REGISTRY_PATH, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error reading details:', error);
-        return { bonds: [] };
-    }
-}
+import connectDB from '@/lib/mongodb';
+import Bond from '@/lib/models/Bond';
 
 export async function GET() {
     try {
-        const registry = getRegistry();
-        // Sort by creation or just return as is
-        return NextResponse.json(registry.bonds || []);
+        await connectDB();
+        const bonds = await Bond.find({}).sort({ createdAt: -1 });
+        return NextResponse.json(bonds);
     } catch (error) {
         console.error('Error fetching bonds:', error);
         return NextResponse.json(
@@ -36,10 +19,10 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const registry = getRegistry();
+        await connectDB();
 
-        // Basic duplicate check
-        const exists = registry.bonds.some((b: any) => b.bondId === body.bondId);
+        // Check if bondId already exists
+        const exists = await Bond.findOne({ bondId: body.bondId });
         if (exists) {
             return NextResponse.json(
                 { error: 'Bond ID already exists' },
@@ -47,18 +30,14 @@ export async function POST(req: Request) {
             );
         }
 
-        // Add timestamps roughly
-        const newBond = {
+        // Create new bond
+        // Mongoose will handle type casting for numbers/dates defined in schema
+        // and ignore fields not in schema (unless strict is false)
+        const newBond = await Bond.create({
             ...body,
-            // Ensure adminWallet is saved if sent, fallback if not
-            adminWallet: body.adminWallet || null,
-            createdAt: new Date().toISOString()
-        };
-
-        registry.bonds.push(newBond);
-
-        // Write back
-        fs.writeFileSync(REGISTRY_PATH, JSON.stringify(registry, null, 2));
+            // adminWallet is now in schema
+            // timestamps are handled by schema
+        });
 
         return NextResponse.json(newBond, { status: 201 });
     } catch (error: any) {
