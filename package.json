@@ -14,6 +14,8 @@
     "@auth/mongodb-adapter": "^3.11.1",
     "@emotion/is-prop-valid": "latest",
     "@hookform/resolvers": "^3.10.0",
+    "@layerzerolabs/lz-evm-oapp-v2": "^3.0.152",
+    "@layerzerolabs/lz-evm-protocol-v2": "^3.0.152",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
     "@radix-ui/react-aspect-ratio": "1.1.1",

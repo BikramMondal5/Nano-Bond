@@ -71,7 +71,21 @@ async function main() {
     const distributorAddr = await distributor.getAddress();
     console.log("CouponDistributor deployed to:", distributorAddr);
 
-    // 9. Link Bond to Distributor (For Hooks)
+    // 9. Deploy CrossChainInvestmentGateway
+    console.log("Deploying CrossChainInvestmentGateway...");
+    const mantleSepoliaEndpoint = "0x6EDCE65403992e310A62460808c4b910D972f10f"; // LayerZero V2 Endpoint
+    const CrossChainGateway = await ethers.getContractFactory("CrossChainInvestmentGateway");
+    const crossChainGateway = await CrossChainGateway.deploy(
+        mantleSepoliaEndpoint,
+        usdtAddr,
+        treasuryAddr,
+        deployer.address
+    );
+    await crossChainGateway.waitForDeployment();
+    const crossChainGatewayAddr = await crossChainGateway.getAddress();
+    console.log("CrossChainInvestmentGateway deployed to:", crossChainGatewayAddr);
+
+    // 10. Link Bond to Distributor (For Hooks)
     console.log("Linking Bond to Distributor...");
     await bond.setDistributor(distributorAddr);
     console.log("Bond Linked.");
@@ -82,7 +96,8 @@ async function main() {
         Bond: bondAddr,
         Treasury: treasuryAddr,
         Gateway: gatewayAddr,
-        Distributor: distributorAddr
+        Distributor: distributorAddr,
+        CrossChainGateway: crossChainGatewayAddr
     };
 
     const outputPath = path.join(__dirname, "../deployed_addresses.json");
