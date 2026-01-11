@@ -1,6 +1,6 @@
-import mongoose, { Schema, model, models } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IBond {
+export interface IBond extends Document {
     bondName: string;
     bondId: string;
     issuer: string;
@@ -92,6 +92,4 @@ const BondSchema = new Schema<IBond>(
     }
 );
 
-const Bond = models.Bond || model<IBond>('Bond', BondSchema);
-
-export default Bond;
+export const Bond = mongoose.models.Bond || mongoose.model<IBond>('Bond', BondSchema);
