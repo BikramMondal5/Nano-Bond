@@ -16,6 +16,25 @@ if (fs.existsSync(backendEnvPath)) {
     dotenv.config({ path: localEnv });
 }
 
+// Try to load deployed_addresses.json
+let deployedAddresses: any = {};
+try {
+    const addressesPath = path.resolve(process.cwd(), 'contracts/deployed_addresses.json');
+    if (fs.existsSync(addressesPath)) {
+        console.log(`[Config] Loading addresses from ${addressesPath}`);
+        deployedAddresses = JSON.parse(fs.readFileSync(addressesPath, 'utf8'));
+    } else {
+        // Try one level up if we are in backend dir
+        const addressesPathUp = path.resolve(process.cwd(), '../contracts/deployed_addresses.json');
+        if (fs.existsSync(addressesPathUp)) {
+            console.log(`[Config] Loading addresses from ${addressesPathUp}`);
+            deployedAddresses = JSON.parse(fs.readFileSync(addressesPathUp, 'utf8'));
+        }
+    }
+} catch (error) {
+    console.warn('[Config] Failed to load deployed_addresses.json:', error);
+}
+
 console.log(`[Config] PRIVATE_KEY present: ${!!process.env.PRIVATE_KEY}`);
 console.log(`[Config] RPC_URL present: ${!!process.env.RPC_URL}`);
 
@@ -25,12 +44,12 @@ export const config = {
         url: process.env.RPC_URL || 'https://rpc.sepolia.mantle.xyz',
     },
     contracts: {
-        distributorAddress: process.env.COUPON_DISTRIBUTOR_ADDRESS || '',
-        bondAddress: process.env.SOVEREIGN_BOND_ADDRESS || '',
-        usdtAddress: process.env.USDT_ADDRESS || '',
-        registryAddress: process.env.IDENTITY_REGISTRY_ADDRESS || '',
-        gatewayAddress: process.env.SWAP_GATEWAY_ADDRESS || '',
-        treasuryAddress: process.env.TREASURY_SWAP_ADDRESS || '',
+        distributorAddress: process.env.COUPON_DISTRIBUTOR_ADDRESS || deployedAddresses.Distributor || '',
+        bondAddress: process.env.SOVEREIGN_BOND_ADDRESS || deployedAddresses.Bond || '',
+        usdtAddress: process.env.USDT_ADDRESS || deployedAddresses.USDT || '',
+        registryAddress: process.env.IDENTITY_REGISTRY_ADDRESS || deployedAddresses.Registry || '',
+        gatewayAddress: process.env.SWAP_GATEWAY_ADDRESS || deployedAddresses.Gateway || '',
+        treasuryAddress: process.env.TREASURY_SWAP_ADDRESS || deployedAddresses.Treasury || '',
     },
     admin: {
         privateKey: process.env.PRIVATE_KEY || '',
