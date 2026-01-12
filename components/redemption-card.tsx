@@ -11,13 +11,18 @@ import { useWeb3AuthContext } from "@/components/providers"
 import { useInvestment } from "@/hooks/useInvestment"
 import { useGaslessInvestment } from "@/hooks/useGaslessInvestment"
 import { usePortfolioData } from "@/hooks/usePortfolioData"
+import type { IBond } from "@/lib/models/Bond"
 import { useBondStats } from "@/hooks/useAdminActions"
 import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
 
-export function RedemptionCard() {
+interface RedemptionCardProps {
+  bond: IBond;
+}
+
+export function RedemptionCard({ bond }: RedemptionCardProps) {
   const { loggedIn: isConnected } = useWeb3AuthContext()
-  const { balance, claimable } = usePortfolioData()
-  const { maturityDate } = useBondStats()
+  const { balance, claimable } = usePortfolioData(bond.contractAddress, bond.distributorAddress)
+  const { maturityDate } = useBondStats(bond.contractAddress)
 
   // Use Gasless Hook for Redeem AND Claim
   const { redeem, claim, isPending: isRedeemPending, isSuccess: isRedeemConfirmed, txHash } = useGaslessInvestment()
@@ -39,7 +44,7 @@ export function RedemptionCard() {
 
   const handleAction = async () => {
     // setStatus("processing")
-    await redeem(amount)
+    await redeem(amount, bond.bondId)
   }
 
   // Effect to handle success via hook
@@ -132,7 +137,7 @@ export function RedemptionCard() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={() => claim()}
+                  onClick={() => claim(bond.bondId)}
                   disabled={isRedeemPending}
                   className="bg-green-600 hover:bg-green-700 text-white border-none"
                 >
