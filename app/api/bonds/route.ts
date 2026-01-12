@@ -5,8 +5,27 @@ import { BondService } from '../../../backend/src/services/bond.service';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load backend environment variables for DeploymentService (needs PRIVATE_KEY)
-dotenv.config({ path: path.resolve(process.cwd(), 'backend/.env') });
+// Load backend environment variables
+const backendEnvPath = path.resolve(process.cwd(), 'backend/.env');
+const rootEnvPath = path.resolve(process.cwd(), '.env');
+
+console.log('[API] Loading Env. CWD:', process.cwd());
+
+if (process.env.PRIVATE_KEY) {
+    console.log('[API] PRIVATE_KEY already set in process.env');
+} else {
+    // Try backend/.env
+    const resultBackend = dotenv.config({ path: backendEnvPath });
+    if (resultBackend.error) {
+        console.log('[API] Failed to load backend/.env');
+        // Try .env at root
+        const resultRoot = dotenv.config({ path: rootEnvPath });
+        if (resultRoot.error) console.log('[API] Failed to load .env at root');
+        else console.log('[API] Loaded .env from root');
+    } else {
+        console.log('[API] Loaded backend/.env');
+    }
+}
 
 // Define a bond data interface if possible, or use any
 interface BondData {
