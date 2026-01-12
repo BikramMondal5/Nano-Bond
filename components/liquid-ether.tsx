@@ -134,18 +134,33 @@ export default function LiquidEther({
                 this.container = container;
                 this.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
                 this.resize();
-                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                // Always transparent
-                this.renderer.autoClear = false;
-                this.renderer.setClearColor(new THREE.Color(0x000000), 0);
-                this.renderer.setPixelRatio(this.pixelRatio);
-                this.renderer.setSize(this.width, this.height);
-                const el = this.renderer.domElement;
-                el.style.width = '100%';
-                el.style.height = '100%';
-                el.style.display = 'block';
-                this.clock = new THREE.Clock();
-                this.clock.start();
+
+                // Check if WebGL is available before attempting to create renderer
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) {
+                    console.warn('WebGL not supported, LiquidEther animation disabled');
+                    this.renderer = null;
+                    return;
+                }
+
+                try {
+                    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                    // Always transparent
+                    this.renderer.autoClear = false;
+                    this.renderer.setClearColor(new THREE.Color(0x000000), 0);
+                    this.renderer.setPixelRatio(this.pixelRatio);
+                    this.renderer.setSize(this.width, this.height);
+                    const el = this.renderer.domElement;
+                    el.style.width = '100%';
+                    el.style.height = '100%';
+                    el.style.display = 'block';
+                    this.clock = new THREE.Clock();
+                    this.clock.start();
+                } catch (error) {
+                    console.warn('WebGL not available, LiquidEther animation disabled:', error);
+                    this.renderer = null;
+                }
             }
             resize() {
                 if (!this.container) return;
@@ -1001,7 +1016,7 @@ export default function LiquidEther({
 
         class WebGLManager implements LiquidEtherWebGL {
             props: any;
-            output!: Output;
+            output?: Output;
             autoDriver?: AutoDriver;
             lastUserInteraction = performance.now();
             running = false;
@@ -1010,7 +1025,12 @@ export default function LiquidEther({
             private _onVisibility?: () => void;
             constructor(props: any) {
                 this.props = props;
-                Common.init(props.$wrapper);
+                try {
+                    Common.init(props.$wrapper);
+                } catch (error) {
+                    console.warn('LiquidEther: Failed to initialize WebGL context:', error);
+                    return;
+                }
                 Mouse.init(props.$wrapper);
                 Mouse.autoIntensity = props.autoIntensity;
                 Mouse.takeoverDuration = props.takeoverDuration;
@@ -1037,15 +1057,19 @@ export default function LiquidEther({
                 document.addEventListener('visibilitychange', this._onVisibility);
             }
             init() {
-                if (!Common.renderer) return;
+                if (!Common.renderer) {
+                    console.warn('LiquidEther: WebGL renderer not available, skipping initialization');
+                    return;
+                }
                 this.props.$wrapper.prepend(Common.renderer.domElement);
                 this.output = new Output();
             }
             resize() {
                 Common.resize();
-                this.output.resize();
+                if (this.output) this.output.resize();
             }
             render() {
+                if (!this.output) return;
                 if (this.autoDriver) this.autoDriver.update();
                 Mouse.update();
                 Common.update();
