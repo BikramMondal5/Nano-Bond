@@ -42,13 +42,16 @@ const formSchema = z.object({
     minInvestment: z.string().regex(/^\d+$/, "Must be a whole number"),
     maxSubscription: z.string().regex(/^\d+$/, "Must be a whole number"),
     description: z.string().optional(),
+    autoDeploy: z.boolean().default(false),
 })
 
 interface BondFormProps {
-    onSuccess: () => void
+    onSuccess: (data: any) => void
 }
 
 import { useAccount } from 'wagmi'
+import { Rocket } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export function BondForm({ onSuccess }: BondFormProps) {
     const { address } = useAccount()
@@ -66,6 +69,7 @@ export function BondForm({ onSuccess }: BondFormProps) {
             minInvestment: "",
             maxSubscription: "",
             description: "",
+            autoDeploy: false,
         },
     })
 
@@ -92,7 +96,7 @@ export function BondForm({ onSuccess }: BondFormProps) {
 
             const data = await response.json();
             console.log("Bond Saved:", data);
-            onSuccess();
+            onSuccess(data);
         } catch (error) {
             console.error("Error submitting bond:", error);
             // Ideally use a toast notification here
@@ -252,6 +256,33 @@ export function BondForm({ onSuccess }: BondFormProps) {
                             />
 
                         </div>
+
+                        <FormField
+                            control={form.control}
+                            name="autoDeploy"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-orange-500/20 bg-orange-500/5 p-4">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            className="border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-black"
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel className="text-white font-bold flex items-center gap-2">
+                                            <Rocket className="w-4 h-4 text-orange-500" />
+                                            Auto-Deploy Contracts
+                                        </FormLabel>
+                                        <FormDescription className="text-gray-400 text-xs">
+                                            Automatically deploys a new Bond Token, Treasury, and Distributor for this bond.
+                                            <br />
+                                            <span className="text-yellow-500">Note: This may take 30-60 seconds. Do not close the window.</span>
+                                        </FormDescription>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
 
                         <FormField
                             control={form.control}

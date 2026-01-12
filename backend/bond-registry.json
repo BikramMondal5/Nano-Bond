@@ -58,6 +58,19 @@
       "distributorAddress": "0x956D938378484AbADf0873ca7bC94c0203e76584",
       "adminWallet": "0x3cFd863A8713DB5eFeB7A8DD41c94A4D7B5729B8",
       "createdAt": "2026-01-09T12:13:14.399Z"
+    },
+    {
+      "bondName": "rojgar beema4",
+      "bondId": "419880",
+      "issuer": "RBI",
+      "couponRate": "7",
+      "startDate": "2026-01-12",
+      "maturityDate": "2026-01-23",
+      "minInvestment": "100",
+      "maxSubscription": "100000",
+      "description": "",
+      "adminWallet": "0x3cFd863A8713DB5eFeB7A8DD41c94A4D7B5729B8",
+      "createdAt": "2026-01-11T18:38:00.608Z"
     }
   ]
 }
