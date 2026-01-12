@@ -4,6 +4,8 @@ exports.AAService = void 0;
 const ethers_1 = require("ethers");
 const config_1 = require("../config");
 const bond_service_1 = require("./bond.service");
+const Investment_1 = require("../models/Investment");
+// ... (ABIs remains the same) ...
 // Treasury Swap ABI for investing
 const TREASURY_SWAP_ABI = [
     "function buyFor(uint256 amount, address beneficiary) external",
@@ -72,19 +74,30 @@ class AAService {
             const gateway = new ethers_1.ethers.Contract(gatewayAddress, GATEWAY_ABI, adminWallet);
             const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
             // Generate Dummy Permit (Since MockUSDT is in Demo Mode)
-            // In production, these params would come from the frontend user's signature.
-            // For now, we simulate a valid permit because MockUSDT.permit() accepts anything in testnet.
             const deadline = Math.floor(Date.now() / 1000) + 3600;
             const dummyV = 27;
             const dummyR = ethers_1.ethers.ZeroHash;
             const dummyS = ethers_1.ethers.ZeroHash;
             console.log(`[AAService] Calling Gateway for ${userAddress} amount ${amountBig}...`);
             try {
-                // This call will fail if the User has not Approved the Gateway OR if MockUSDT.permit is not working.
-                // Since user hasn't signed a real permit, we rely on MockUSDT.permit to treat dummy sig as an Approval.
                 const investTx = await gateway.investWithPermit(userAddress, amountBig, treasuryAddress, deadline, dummyV, dummyR, dummyS);
                 const receipt = await investTx.wait();
                 console.log(`[AAService] Investment confirmed: ${investTx.hash}`);
+                // PERSIST TRANSACTION TO MONGODB
+                try {
+                    await Investment_1.Investment.create({
+                        walletAddress: userAddress,
+                        bondId: bondId,
+                        type: 'INVEST',
+                        amount: amount,
+                        txHash: investTx.hash,
+                        status: 'SUCCESS'
+                    });
+                    console.log(`[AAService] Investment recorded in DB`);
+                }
+                catch (dbErr) {
+                    console.error(`[AAService] Failed to save investment to DB:`, dbErr);
+                }
                 return {
                     success: true,
                     txHash: investTx.hash,
@@ -93,7 +106,6 @@ class AAService {
             }
             catch (error) {
                 console.error(`[AAService] Gateway invest failed:`, error.message);
-                // Check for common errors
                 if (error.message?.includes('ExceedsBackedLogic')) {
                     throw new Error('Investment exceeds available bond backing.');
                 }
@@ -146,6 +158,20 @@ class AAService {
                 console.log(`[AAService] Redemption TX sent: ${tx.hash}`);
                 await tx.wait();
                 console.log(`[AAService] Redemption confirmed`);
+                // PERSIST REDEMPTION TO MONGODB
+                try {
+                    await Investment_1.Investment.create({
+                        walletAddress: userAddress,
+                        bondId: bondId,
+                        type: 'REDEEM',
+                        amount: parseFloat(bondAmount),
+                        txHash: tx.hash,
+                        status: 'SUCCESS'
+                    });
+                }
+                catch (dbErr) {
+                    console.error('[AAService] Failed to save redemption to DB', dbErr);
+                }
                 return {
                     success: true,
                     txHash: tx.hash,
@@ -172,8 +198,6 @@ class AAService {
             const bondData = await this.bondService.getBondByIdSync(bondId);
             if (!bondData)
                 throw new Error(`Bond not found: ${bondId}`);
-            // Note: Bond Registry has "distributorAddress" but we might need to fetch it from the bond data structure in bondService
-            // The JSON structure has it.
             const distributorAddress = bondData.distributorAddress || config_1.config.contracts.distributorAddress; // Fallback
             if (!distributorAddress)
                 throw new Error(`Distributor not configured`);
@@ -188,6 +212,20 @@ class AAService {
                 console.log(`[AAService] Claim TX sent: ${tx.hash}`);
                 await tx.wait();
                 console.log(`[AAService] Claim confirmed`);
+                // PERSIST CLAIM TO MONGODB
+                try {
+                    await Investment_1.Investment.create({
+                        walletAddress: userAddress,
+                        bondId: bondId,
+                        type: 'CLAIM',
+                        amount: 0, // Yield amount is unknown here without parsing logs
+                        txHash: tx.hash,
+                        status: 'SUCCESS'
+                    });
+                }
+                catch (dbErr) {
+                    console.error('[AAService] Failed to save claim to DB', dbErr);
+                }
                 return {
                     success: true,
                     txHash: tx.hash,
