@@ -13,9 +13,10 @@ import { useAdminActions } from "@/hooks/useAdminActions"
 interface UploadProofProps {
     enabled: boolean
     onSuccess: () => void
+    bondAddress?: string
 }
 
-export function UploadProof({ enabled, onSuccess }: UploadProofProps) {
+export function UploadProof({ enabled, onSuccess, bondAddress }: UploadProofProps) {
     const [file, setFile] = useState<File | null>(null)
     const [uploading, setUploading] = useState(false)
     const [progress, setProgress] = useState(0)
@@ -23,7 +24,7 @@ export function UploadProof({ enabled, onSuccess }: UploadProofProps) {
     const [assetValue, setAssetValue] = useState("")
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const { addAsset, hash, isPending } = useAdminActions()
+    const { addAsset, hash, isPending } = useAdminActions(bondAddress)
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {

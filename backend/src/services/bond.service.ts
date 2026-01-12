@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { config } from '../config';
 import { Bond, IBond } from '../models/Bond';
+import { DeploymentService } from './deployment.service';
 
 // Bond ABI - Essential functions only
 const BOND_ABI = [
@@ -35,9 +36,18 @@ export interface BondDto {
 
 export class BondService {
     private provider: ethers.JsonRpcProvider;
+    private deploymentService: DeploymentService;
 
     constructor() {
         this.provider = new ethers.JsonRpcProvider(config.rpc.url);
+        this.deploymentService = new DeploymentService();
+    }
+
+    /**
+     * Deploy new contracts for a bond
+     */
+    async deployBondContracts(bondId: string, bondName: string) {
+        return await this.deploymentService.deployBondProduct(bondName, bondId);
     }
 
     /**
