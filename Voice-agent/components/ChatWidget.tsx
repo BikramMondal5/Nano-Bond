@@ -421,7 +421,7 @@ User message: ${userMessage}`
                 await vapi.start({
                     model: {
                         provider: "google",
-                        model: "gemini-2.0-flash-exp",
+                        model: "gemini-2.5-flash",
                         systemPrompt: BIKRAM_AI_PROMPT
                     },
                     transcriber: {

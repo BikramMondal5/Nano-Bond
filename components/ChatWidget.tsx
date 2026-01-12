@@ -52,12 +52,12 @@ const BOND_REGISTRY = [
 // API configuration - Get from environment variables
 const getApiKey = () => {
     if (typeof window !== 'undefined') {
-        return process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+        return process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
     }
     return '';
 };
 
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // Fallback responses for when the API fails
 const FALLBACK_RESPONSES = [
@@ -244,23 +244,17 @@ const ChatWidget = () => {
         return FALLBACK_RESPONSES[randomIndex];
     };
 
-    const fetchGeminiResponse = async (userMessage: string, history: Message[]) => {
+    const fetchGroqResponse = async (userMessage: string, history: Message[]) => {
         const API_KEY = getApiKey();
 
         // Check if API key is available
         if (!API_KEY) {
-            console.error('Gemini API key not found in environment variables');
-            console.log('Expected: NEXT_PUBLIC_GEMINI_API_KEY');
+            console.error('Groq API key not found in environment variables');
+            console.log('Expected: NEXT_PUBLIC_GROQ_API_KEY');
             throw new Error('API key not configured');
         }
 
-        console.log('Using API key:', API_KEY.substring(0, 10) + '...');
-
         try {
-            // Start of API call block
-
-            const historyText = history.slice(-5).map(msg => `${msg.sender === 'user' ? 'User' : 'Advisor'}: ${msg.text}`).join('\n');
-
             // Construct dynamic context
             const contextData = `
 CURRENT USER CONTEXT:
@@ -272,7 +266,7 @@ BOND MARKET DATA:
 ${JSON.stringify(BOND_REGISTRY, null, 2)}
 `;
 
-            const fullPrompt = `${SYSTEM_PROMPT_TEMPLATE}
+            const systemInstruction = `${SYSTEM_PROMPT_TEMPLATE}
 
 ${contextData}
 
@@ -302,35 +296,35 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
   "text": "Your helpful response to the user here.",
   "action": { "type": "NAVIGATE" | "INVEST" | null, "payload": ... }
 }
+`;
 
-Previous conversation (last 5 messages):
-${historyText}
+            // Map history to OpenAI format
+            const messages = history.slice(-5).map(msg => ({
+                role: msg.sender === 'user' ? 'user' : 'assistant',
+                content: msg.text
+            }));
 
-User message: ${userMessage}`;
+            // Add system prompt at the beginning
+            messages.unshift({ role: 'system', content: systemInstruction });
+
+            // Add current user message
+            messages.push({ role: 'user', content: userMessage });
 
             const requestBody = {
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: fullPrompt
-                            }
-                        ]
-                    }
-                ],
-                generationConfig: {
-                    response_mime_type: "application/json"
-                }
+                model: "llama-3.3-70b-versatile",
+                messages: messages,
+                response_format: { type: "json_object" }
             };
 
-            console.log('Sending request to Gemini API...');
+            console.log('Sending request to Groq API...');
 
             const response = await fetchWithTimeout(
-                `${API_URL}?key=${API_KEY}`,
+                API_URL,
                 {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
                     },
                     body: JSON.stringify(requestBody)
                 },
@@ -339,16 +333,15 @@ User message: ${userMessage}`;
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('API Response Error:', response.status, errorText);
-                throw new Error(`API request failed with status ${response.status}`);
+                throw new Error(`API request failed with status ${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
-            console.log('Gemini API Response:', data);
+            console.log('Groq API Response:', data);
 
-            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            if (data.choices && data.choices[0] && data.choices[0].message) {
                 setRetryCount(0);
-                return data.candidates[0].content.parts[0].text;
+                return data.choices[0].message.content;
             } else if (data.error) {
                 console.error("API Error:", data.error);
                 throw new Error(`API Error: ${data.error.message || "Unknown error"}`);
@@ -395,13 +388,29 @@ User message: ${userMessage}`;
             try {
                 let response;
                 try {
-                    response = await fetchGeminiResponse(currentMessage, messages);
-                } catch (error) {
+                    response = await fetchGroqResponse(currentMessage, messages);
+                } catch (error: any) {
                     if (retryCount < maxRetries) {
                         setRetryCount(prev => prev + 1);
                         console.log(`Retry attempt ${retryCount + 1}/${maxRetries}`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        response = await fetchGeminiResponse(currentMessage, messages);
+
+                        // Check for rate limit error (429)
+                        const isRateLimit = error.message && error.message.includes('429');
+
+                        let retryDelay = 2000;
+                        if (isRateLimit) {
+                            // Try to extract wait time from error message "retry in X s"
+                            const match = error.message.match(/retry in (\d+(\.\d+)?)s/);
+                            if (match && match[1]) {
+                                retryDelay = (parseFloat(match[1]) + 1) * 1000; // Add 1s buffer
+                            } else {
+                                retryDelay = 60000; // Default to 60s for 429 if no time found
+                            }
+                            console.log(`Rate limit hit. Waiting ${retryDelay}ms before retry...`);
+                        }
+
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                        response = await fetchGroqResponse(currentMessage, messages);
                     } else {
                         throw new Error("Max retries reached");
                     }
