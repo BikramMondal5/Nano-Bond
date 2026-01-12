@@ -1,5 +1,24 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import fs from 'fs';
+
+// specific debug for this issue
+const backendEnvPath = path.resolve(process.cwd(), 'backend', '.env');
+console.log(`[Config] Loading config. CWD: ${process.cwd()}, backendEnvPath: ${backendEnvPath}`);
+
+if (fs.existsSync(backendEnvPath)) {
+    console.log('[Config] Found backend .env at CWD/backend/.env');
+    dotenv.config({ path: backendEnvPath });
+} else {
+    // Fallback for when running inside backend dir
+    const localEnv = path.resolve(__dirname, '../.env');
+    console.log(`[Config] Trying local env: ${localEnv}`);
+    dotenv.config({ path: localEnv });
+}
+
+console.log(`[Config] PRIVATE_KEY present: ${!!process.env.PRIVATE_KEY}`);
+console.log(`[Config] RPC_URL present: ${!!process.env.RPC_URL}`);
+
 
 export const config = {
     rpc: {

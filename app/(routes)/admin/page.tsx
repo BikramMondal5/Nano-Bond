@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 export default function AdminPage() {
     const [bondCreated, setBondCreated] = useState(false)
     const [proofUploaded, setProofUploaded] = useState(false)
+    const [activeBond, setActiveBond] = useState<any>(null)
 
     return (
         <div className="flex flex-col min-h-screen bg-[#0A0A0A] p-6 lg:p-8 space-y-12 max-w-7xl mx-auto w-full pb-20">
@@ -31,7 +32,10 @@ export default function AdminPage() {
 
             {/* Bond Creation Form */}
             <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                <BondForm onSuccess={() => setBondCreated(true)} />
+                <BondForm onSuccess={(data) => {
+                    setBondCreated(true)
+                    setActiveBond(data)
+                }} />
             </section>
 
             {/* Upload Section */}
@@ -43,7 +47,11 @@ export default function AdminPage() {
                     </span>
                     <div className="h-px bg-gray-800 flex-1" />
                 </div>
-                <UploadProof enabled={bondCreated} onSuccess={() => setProofUploaded(true)} />
+                <UploadProof
+                    enabled={bondCreated}
+                    onSuccess={() => setProofUploaded(true)}
+                    bondAddress={activeBond?.contractAddress}
+                />
             </section>
 
             {/* Vault Controls */}
@@ -55,7 +63,11 @@ export default function AdminPage() {
                     </span>
                     <div className="h-px bg-gray-800 flex-1" />
                 </div>
-                <VaultControls enabled={proofUploaded} />
+                <VaultControls
+                    enabled={proofUploaded}
+                    bondAddress={activeBond?.contractAddress}
+                    distributorAddress={activeBond?.distributorAddress}
+                />
             </section>
 
             {/* Logs */}

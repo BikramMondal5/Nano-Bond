@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import { ethers } from 'ethers'
-import { SOVEREIGN_BOND, TREASURY_SWAP } from '@/lib/contracts'
-import { ShoppingCart, RefreshCw, CheckCircle2, ArrowRightLeft } from "lucide-react"
+import { CheckCircle2, ShoppingCart, ArrowRightLeft, Loader2, Receipt } from "lucide-react"
 import { useWeb3AuthContext } from '@/components/providers'
+import axios from 'axios'
 
 export type ActivityItem = {
     type: string
@@ -14,120 +13,83 @@ export type ActivityItem = {
     icon: any
     color: string
     txHash: string
-    blockNumber: number
+    blockNumber?: number
     timestamp?: number
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+
 export function useRecentActivity() {
-    const { walletAddress, getEthersProvider, loggedIn } = useWeb3AuthContext()
+    const { walletAddress, loggedIn } = useWeb3AuthContext()
     const [activities, setActivities] = useState<ActivityItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
     const fetchActivity = useCallback(async () => {
         if (!walletAddress || !loggedIn) {
+            setActivities([])
             setIsLoading(false)
             return
         }
 
         setIsLoading(true)
         try {
-            const provider = getEthersProvider()
-            if (!provider) return
-
             console.log("DEBUG: Fetching Activity for", walletAddress)
 
-            const currentBlock = await provider.getBlockNumber()
-            // REDUCED RANGE: 5,000 blocks to stay well under the 10,000 RPC limit
-            const fromBlock = currentBlock - 5000 > 0 ? currentBlock - 5000 : 0
+            // Fetch from our new local API (which gets data from MongoDB)
+            // Note: We use relative path for Next.js API routes
+            const response = await axios.get(`/api/investments?address=${walletAddress}`)
 
-            const treasury = new ethers.Contract(TREASURY_SWAP.address, TREASURY_SWAP.abi, provider)
-            const bond = new ethers.Contract(SOVEREIGN_BOND.address, SOVEREIGN_BOND.abi, provider)
+            if (response.data.success) {
+                const investments = response.data.data
+                const formattedActivities: ActivityItem[] = investments.map((inv: any) => {
+                    let type, amount, sub, icon, color
 
-            // Fetch BondPurchased events
-            const buyFilter = treasury.filters.BondPurchased(walletAddress)
-            const buyLogsRaw = await treasury.queryFilter(buyFilter, fromBlock)
-
-            // Fetch Transfer events (both from and to user)
-            const transferFromFilter = bond.filters.Transfer(walletAddress, null)
-            const transferToFilter = bond.filters.Transfer(null, walletAddress)
-
-            const [transferFromLogsRaw, transferToLogsRaw] = await Promise.all([
-                bond.queryFilter(transferFromFilter, fromBlock),
-                bond.queryFilter(transferToFilter, fromBlock)
-            ])
-
-            const transferLogsRaw = [...transferFromLogsRaw, ...transferToLogsRaw]
-
-            // OPTIMIZATION: Take only the last 10 logs from each category to avoid rate limits
-            // logs are usually sorted by blockNumber ascending.
-            const buyLogs = buyLogsRaw.slice(-10)
-            const transferLogs = transferLogsRaw.slice(-10)
-
-            console.log("DEBUG: Processing Logs:", buyLogs.length + transferLogs.length)
-
-            // Process Buys
-            const formattedBuys = await Promise.all(buyLogs.map(async (log: any) => {
-                const block = await log.getBlock()
-                const amount = log.args?.[1] || BigInt(0)
-
-                return {
-                    type: "Bought GBOND",
-                    amount: `+${Number(ethers.formatUnits(amount, 18)).toLocaleString()} GBOND`,
-                    sub: "Purchase via Treasury",
-                    time: getTimeAgo(block?.timestamp || 0),
-                    icon: ShoppingCart,
-                    color: "text-primary",
-                    txHash: log.transactionHash,
-                    blockNumber: log.blockNumber,
-                    timestamp: block?.timestamp || 0
-                }
-            }))
-
-            // Process Transfers
-            const formattedTransfers = await Promise.all(transferLogs.map(async (log: any) => {
-                const block = await log.getBlock()
-                const to = log.args?.[1] || ''
-                const value = log.args?.[2] || BigInt(0)
-
-                const isBurn = to === '0x0000000000000000000000000000000000000000'
-
-                if (isBurn) {
-                    return {
-                        type: "Redemption Processed",
-                        amount: `-${Number(ethers.formatUnits(value, 18)).toLocaleString()} GBOND`,
-                        sub: "Bond Matured",
-                        time: getTimeAgo(block?.timestamp || 0),
-                        icon: CheckCircle2,
-                        color: "text-[#9CA3AF]",
-                        txHash: log.transactionHash,
-                        blockNumber: log.blockNumber,
-                        timestamp: block?.timestamp || 0
+                    if (inv.type === 'INVEST') {
+                        type = `Bought ${inv.bondId || 'GBOND'}`
+                        amount = `+${inv.amount.toLocaleString()} GBOND`
+                        sub = "Purchase via Treasury"
+                        icon = ShoppingCart
+                        color = "text-primary"
+                    } else if (inv.type === 'REDEEM') {
+                        type = `Redeemed ${inv.bondId || 'GBOND'}`
+                        amount = `-${inv.amount.toLocaleString()} GBOND`
+                        sub = "Bond Redemption"
+                        icon = CheckCircle2
+                        color = "text-[#9CA3AF]"
+                    } else if (inv.type === 'CLAIM') {
+                        type = `Claimed Yield`
+                        amount = `+ Yield`
+                        sub = `From ${inv.bondId || 'GBOND'}`
+                        icon = Receipt
+                        color = "text-green-500"
+                    } else {
+                        type = "Transaction"
+                        amount = `${inv.amount}`
+                        sub = inv.bondId
+                        icon = ArrowRightLeft
+                        color = "text-blue-500"
                     }
-                } else {
+
                     return {
-                        type: "Transfer Out",
-                        amount: `-${Number(ethers.formatUnits(value, 18)).toLocaleString()} GBOND`,
-                        sub: `To: ${String(to).slice(0, 6)}...`,
-                        time: getTimeAgo(block?.timestamp || 0),
-                        icon: ArrowRightLeft,
-                        color: "text-red-400",
-                        txHash: log.transactionHash,
-                        blockNumber: log.blockNumber,
-                        timestamp: block?.timestamp || 0
+                        type,
+                        amount,
+                        sub,
+                        time: getTimeAgo(new Date(inv.timestamp).getTime() / 1000),
+                        icon,
+                        color,
+                        txHash: inv.txHash,
+                        timestamp: new Date(inv.timestamp).getTime()
                     }
-                }
-            }))
+                })
 
-            // Combine and sort (newest first)
-            const all = [...formattedBuys, ...formattedTransfers].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-            setActivities(all as ActivityItem[])
-
+                setActivities(formattedActivities)
+            }
         } catch (err) {
             console.error("Failed to fetch activity:", err)
         } finally {
             setIsLoading(false)
         }
-    }, [walletAddress, loggedIn, getEthersProvider])
+    }, [walletAddress, loggedIn])
 
     useEffect(() => {
         fetchActivity()

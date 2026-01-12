@@ -258,3 +258,41 @@ export const IDENTITY_REGISTRY_V2 = {
         }
     ] as const
 }
+
+export const CROSS_CHAIN_GATEWAY = {
+    // Mantle Sepolia (destination)
+    mantleSepolia: "0x..." as `0x${string}`,
+    // Source chains
+    ethereumSepolia: "0x..." as `0x${string}`,
+    arbitrumSepolia: "0x..." as `0x${string}`,
+    lineaSepolia: "0x..." as `0x${string}`,
+    polygonAmoy: "0x..." as `0x${string}`,
+    scrollSepolia: "0x..." as `0x${string}`,
+    abi: [
+        {
+            "inputs": [
+                { "internalType": "uint256", "name": "amount", "type": "uint256" },
+                { "internalType": "uint32", "name": "dstEid", "type": "uint32" },
+                { "internalType": "bytes", "name": "extraOptions", "type": "bytes" }
+            ],
+            "name": "investCrossChain",
+            "outputs": [{ "internalType": "bytes32", "name": "guid", "type": "bytes32" }],
+            "stateMutability": "payable",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                { "internalType": "uint32", "name": "dstEid", "type": "uint32" },
+                { "internalType": "uint256", "name": "amount", "type": "uint256" },
+                { "internalType": "bytes", "name": "extraOptions", "type": "bytes" }
+            ],
+            "name": "quoteCrossChainFee",
+            "outputs": [
+                { "internalType": "uint256", "name": "nativeFee", "type": "uint256" },
+                { "internalType": "uint256", "name": "lzTokenFee", "type": "uint256" }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        }
+    ] as const
+}

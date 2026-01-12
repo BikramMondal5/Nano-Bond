@@ -12,13 +12,14 @@
         "build": "tsc"
     },
     "dependencies": {
+        "bybit-api": "^3.10.0",
         "cors": "^2.8.5",
         "dotenv": "^16.4.0",
         "ethers": "^6.11.0",
         "express": "^4.21.0",
-        "multer": "^2.0.2",
         "form-data": "^4.0.0",
-        "bybit-api": "^3.10.0"
+        "mongoose": "^9.1.2",
+        "multer": "^2.0.2"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",

@@ -4,15 +4,20 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Wallet, ArrowRightLeft, ShieldCheck, AlertCircle, Loader2, CheckCircle2, Droplet } from "lucide-react"
+import { Wallet, ArrowRightLeft, ShieldCheck, AlertCircle, Loader2, CheckCircle2, Droplet, Building2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useWeb3AuthContext } from "@/components/providers"
 import { useGaslessInvestment } from "@/hooks/useGaslessInvestment"
 import { useBondStats } from "@/hooks/useAdminActions"
 import { ethers } from "ethers"
 import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
+import type { IBond } from "@/lib/models/Bond"
 
-export function InvestmentCard() {
+interface InvestmentCardProps {
+  bond: IBond;
+}
+
+export function InvestmentCard({ bond }: InvestmentCardProps) {
   const [amount, setAmount] = useState("")
   const { walletAddress, loggedIn } = useWeb3AuthContext()
   const { totalSupply, backedValue } = useBondStats()
@@ -28,6 +33,12 @@ export function InvestmentCard() {
 
   const [usdtBalance, setUsdtBalance] = useState("0")
 
+  // Reset state when bond changes
+  useEffect(() => {
+    reset()
+    setAmount("")
+  }, [bond.bondId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fetch balance on mount and after actions
   useEffect(() => {
     if (walletAddress && loggedIn) {
@@ -36,20 +47,18 @@ export function InvestmentCard() {
   }, [walletAddress, loggedIn, isSuccess])
 
   const tokenPrice = 1.00 // 1 GBOND = 1 USDT
-  const minInvest = 1
+  const minInvest = bond.minInvestment || 1
 
-  // Calculate available
-  const supply = totalSupply ? Number(totalSupply) : 0
-  const backed = backedValue ? Number(backedValue) : 0
-  const availableRaw = Number(backed || 0) - Number(supply || 0)
-  const available = availableRaw > 0 ? Number(ethers.formatUnits(BigInt(availableRaw), 18)) : 0
-  const maxInvest = available
+  // Use on-chain logic if available, else fallback to bond metadata
+  // Ideally, we'd fetch stats per bond address
+  const maxInvest = bond.maxSubscription || 1000000
 
   const expectedTokens = amount ? (Number(amount) / tokenPrice).toFixed(2) : "0"
   const isValidAmount = Number(amount) >= minInvest && Number(amount) <= maxInvest && Number(amount) <= Number(usdtBalance)
 
   const handleInvest = async () => {
-    await invest(amount)
+    // Pass the selected bond ID to the hook
+    await invest(amount, bond.bondId)
   }
 
   const handleFaucet = async () => {
@@ -68,7 +77,7 @@ export function InvestmentCard() {
           </div>
           <div className="space-y-2">
             <h3 className="text-2xl font-bold text-white">Investment Successful!</h3>
-            <p className="text-muted-foreground">You have received {expectedTokens} GBOND tokens.</p>
+            <p className="text-muted-foreground">You have received {expectedTokens} {bond.bondName} tokens.</p>
             {txHash && <p className="text-xs text-gray-500 font-mono">Tx: {txHash}</p>}
           </div>
           <Button
@@ -97,19 +106,26 @@ export function InvestmentCard() {
   }
 
   return (
-    <Card className="bg-[#100F14] border-orange-500/20 shadow-2xl overflow-hidden relative">
+    <Card className="bg-[#100F14] border-orange-500/20 shadow-2xl overflow-hidden relative transition-all duration-300">
       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16" />
 
       <CardHeader className="space-y-1">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-2xl font-bold text-white">Purchase GBOND</CardTitle>
+          <div className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
+              Purchase {bond.bondName}
+            </CardTitle>
+            <div className="text-xs text-muted-foreground font-mono bg-white/5 px-2 py-0.5 rounded w-fit">
+              ID: {bond.bondId}
+            </div>
+          </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
             <ShieldCheck className="w-4 h-4 text-green-500" />
             <span className="text-xs font-semibold text-green-500 uppercase tracking-wider">Gasless</span>
           </div>
         </div>
-        <CardDescription className="text-muted-foreground text-sm">
-          One-click investment with zero gas fees - backend pays for you!
+        <CardDescription className="text-muted-foreground text-sm pt-2">
+          {bond.description || "One-click investment with zero gas fees - backend pays for you!"}
         </CardDescription>
       </CardHeader>
 
@@ -165,13 +181,13 @@ export function InvestmentCard() {
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-muted-foreground">Amount to Invest</label>
                 <span className="text-xs font-semibold text-[#FD8C00]">
-                  Available: {available.toLocaleString(undefined, { maximumFractionDigits: 2 })} GBOND
+                  Limit: {maxInvest.toLocaleString()} USDT
                 </span>
               </div>
               <div className="relative group">
                 <Input
                   type="number"
-                  placeholder="Enter amount in USDT"
+                  placeholder={`Min ${minInvest} USDT`}
                   className="bg-[#1C1A21] border-white/5 h-16 text-xl pl-4 pr-16 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -183,9 +199,9 @@ export function InvestmentCard() {
                 <p className="text-xs text-destructive flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {Number(amount) > Number(usdtBalance)
-                    ? `Insufficient balance. You have ${usdtBalance} USDT`
+                    ? `Insufficient balance. Your balance: ${Number(usdtBalance).toFixed(2)}`
                     : Number(amount) > maxInvest
-                      ? `Amount exceeds available supply of ${maxInvest.toLocaleString()} GBOND`
+                      ? `Amount exceeds max limit`
                       : `Minimum investment is ${minInvest} USDT`}
                 </p>
               )}
@@ -211,8 +227,8 @@ export function InvestmentCard() {
                   <span className="text-white">1 GBOND = {tokenPrice} USDT</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Gas Fee</span>
-                  <span className="text-green-500 font-bold">FREE (Sponsored)</span>
+                  <span>Maturity</span>
+                  <span className="text-white">{new Date(bond.maturityDate).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
@@ -226,7 +242,7 @@ export function InvestmentCard() {
               {isPending ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Processing...
+                  Investing in {bond.bondId}...
                 </>
               ) : (
                 "Invest Now"
@@ -239,11 +255,12 @@ export function InvestmentCard() {
       {loggedIn && (
         <CardFooter className="bg-[#1C1A21]/50 border-t border-white/5 py-4">
           <p className="text-[11px] text-muted-foreground leading-tight">
-            ✨ <span className="text-green-400 font-semibold">Gasless Investment</span> - No wallet popups, no gas tokens needed.
-            The backend sponsors your transaction automatically.
+            ✨ <span className="text-green-400 font-semibold">Gasless Investment</span> -
+            You are investing in <strong>{bond.bondName}</strong>. The backend sponsors your transaction.
           </p>
         </CardFooter>
       )}
     </Card>
   )
 }
+

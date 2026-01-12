@@ -10,6 +10,12 @@ export interface IBond {
     minInvestment: number;
     maxSubscription: number;
     description?: string;
+    category?: string;
+    contractAddress?: string;
+    treasuryAddress?: string;
+    distributorAddress?: string;
+    proofUrl?: string;
+    adminWallet?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -53,6 +59,30 @@ const BondSchema = new Schema<IBond>(
             required: [true, 'Maximum subscription is required'],
         },
         description: {
+            type: String,
+            trim: true,
+        },
+        category: {
+            type: String,
+            trim: true,
+        },
+        contractAddress: {
+            type: String,
+            trim: true,
+        },
+        treasuryAddress: {
+            type: String,
+            trim: true,
+        },
+        distributorAddress: {
+            type: String,
+            trim: true,
+        },
+        proofUrl: {
+            type: String,
+            trim: true,
+        },
+        adminWallet: {
             type: String,
             trim: true,
         },
