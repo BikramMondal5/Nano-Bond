@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Voice Agent (Gemini + Deepgram)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #111827;
+            color: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: #1f2937;
+            padding: 24px;
+            border-radius: 12px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 15px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+        }
+
+        #start {
+            background: #10b981;
+            color: white;
+        }
+
+        #stop {
+            background: #ef4444;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 14px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>🎤 Voice AI Assistant</h1>
+        <button id="start">Start Talking</button>
+        <button id="stop" disabled>Stop</button>
+        <p id="status">Idle</p>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
