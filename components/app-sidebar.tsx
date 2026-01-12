@@ -21,7 +21,7 @@ const mainNavItems = [
   { label: "Dashboard", icon: Home, href: "/portfolio" },
   { label: "Invest", icon: PlusCircle, href: "/invest" },
   { label: "Redeem", icon: ArrowDownLeft, href: "/redeem" },
-  { label: "My Bonds", icon: Wallet, href: "/bond/us-treasury" },
+  { label: "My Bonds", icon: Wallet, href: "/my-bonds" },
   { label: "Govt Bonds", icon: Landmark, href: "/govt-bonds" },
   { label: "Verification", icon: ShieldCheck, href: "/verification" },
   { label: "Transactions", icon: History, href: "/transactions" },
