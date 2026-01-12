@@ -16,7 +16,38 @@ import { useThreeJs } from "../utils/ThreeJsContext";
 
 // Import VAPI client
 import { getVapi } from "../utils/vapi";
+
 import type Vapi from "@vapi-ai/web";
+import { useRouter } from "next/navigation";
+import { usePortfolioData } from "../hooks/usePortfolioData";
+
+// Bond Registry Data (Simplified for Context)
+const BOND_REGISTRY = [
+    {
+        id: "GOI-2030",
+        name: "GOI Bond 2030",
+        yield: "7.5%",
+        maturity: "2030-01-01",
+        description: "Government of India Sovereign Bond maturing in 2030 with 7.5% annual yield. Secure and backed by the sovereign.",
+        minInvest: 100
+    },
+    {
+        id: "419873",
+        name: "Rojgar Beema",
+        yield: "7%",
+        maturity: "2026-01-31",
+        description: "Short term bond issued by RBI.",
+        minInvest: 100
+    },
+    {
+        id: "US-T-BILL",
+        name: "US Treasury Bill",
+        yield: "8.5%",
+        maturity: "187 days",
+        description: "US Treasury Bill – 365 Days",
+        minInvest: 100
+    }
+];
 
 // API configuration - Get from environment variables
 const getApiKey = () => {
@@ -26,7 +57,7 @@ const getApiKey = () => {
     return '';
 };
 
-const API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
+const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 // Fallback responses for when the API fails
 const FALLBACK_RESPONSES = [
@@ -44,7 +75,7 @@ const getSystemPrompt = () => {
     return '';
 };
 
-const SYSTEM_PROMPT = getSystemPrompt();
+const SYSTEM_PROMPT_TEMPLATE = getSystemPrompt();
 
 interface Message {
     id: number | string;
@@ -57,6 +88,8 @@ interface Message {
 const ChatWidget = () => {
     // Use the ThreeJs context to manage Three.js rendering
     const { pauseThreeJs, resumeThreeJs } = useThreeJs();
+    const router = useRouter();
+    const { balance, claimable } = usePortfolioData();
 
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -224,8 +257,51 @@ const ChatWidget = () => {
         console.log('Using API key:', API_KEY.substring(0, 10) + '...');
 
         try {
+            // Start of API call block
+
             const historyText = history.slice(-5).map(msg => `${msg.sender === 'user' ? 'User' : 'Advisor'}: ${msg.text}`).join('\n');
-            const fullPrompt = `${SYSTEM_PROMPT}
+
+            // Construct dynamic context
+            const contextData = `
+CURRENT USER CONTEXT:
+- Wallet Balance: ${balance || '0'} USDT
+- Claimable Yield: ${claimable || '0'} USDT
+- Current Page: ${typeof window !== 'undefined' ? window.location.pathname : 'unknown'}
+
+BOND MARKET DATA:
+${JSON.stringify(BOND_REGISTRY, null, 2)}
+`;
+
+            const fullPrompt = `${SYSTEM_PROMPT_TEMPLATE}
+
+${contextData}
+
+INSTRUCTIONS:
+You have access to the user's wallet info and market data above.
+You can perform actions by returning a JSON object.
+1. Navigation: If user asks to go somewhere implies navigation.
+   Action: { "type": "NAVIGATE", "payload": "/path" }
+   Marketplace -> "/"
+   Settings -> "/settings"
+   Verification/KYC -> "/verification"
+   Portfolio -> "/portfolio"
+
+2. Investment: If user wants to invest in a specific bond.
+   Action: { "type": "INVEST", "payload": { "bondId": "GOI-2030", "amount": 100 } }
+   (Default amount to 0 if not specified, extract bondId from context if possible).
+
+3. KYC: If user asks to verify identity.
+   Action: { "type": "NAVIGATE", "payload": "/verification" }
+
+4. General Answer:
+   Action: null
+
+RESPONSE FORMAT:
+You MUST return a JSON object with this structure (no markdown code blocks, just raw JSON):
+{
+  "text": "Your helpful response to the user here.",
+  "action": { "type": "NAVIGATE" | "INVEST" | null, "payload": ... }
+}
 
 Previous conversation (last 5 messages):
 ${historyText}
@@ -241,7 +317,10 @@ User message: ${userMessage}`;
                             }
                         ]
                     }
-                ]
+                ],
+                generationConfig: {
+                    response_mime_type: "application/json"
+                }
             };
 
             console.log('Sending request to Gemini API...');
@@ -288,7 +367,7 @@ User message: ${userMessage}`;
 
         try {
             const newUserMessage: Message = {
-                id: messages.length + 1,
+                id: Date.now(),
                 text: inputMessage,
                 sender: "user",
                 timestamp: new Date(),
@@ -330,14 +409,40 @@ User message: ${userMessage}`;
 
                 setMessages(prev => prev.filter(msg => !msg.isTemporary));
 
+                let parsedResponse;
+                try {
+                    // Clean up potential markdown code blocks if the model ignores the JSON directive
+                    const cleanJson = response.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+                    parsedResponse = JSON.parse(cleanJson);
+                } catch (e) {
+                    // Fallback if not JSON
+                    parsedResponse = { text: response, action: null };
+                }
+
                 const botResponse: Message = {
-                    id: messages.length + 2,
-                    text: response,
+                    id: Date.now() + 1,
+                    text: parsedResponse.text,
                     sender: "bot",
                     timestamp: new Date(),
                 };
 
                 setMessages((prev) => [...prev, botResponse]);
+
+                // Handle Actions
+                if (parsedResponse.action) {
+                    console.log("Executing Action:", parsedResponse.action);
+                    const { type, payload } = parsedResponse.action;
+
+                    if (type === 'NAVIGATE') {
+                        router.push(payload);
+                    } else if (type === 'INVEST') {
+                        const { bondId, amount } = payload;
+                        // Assuming the invest page is /bond/[id]
+                        // We pass amount as query param for ActionPanel to pick up
+                        router.push(`/bond/${bondId}?investAmount=${amount || ''}#investment-panel`);
+                    }
+                }
+
             } catch (error) {
                 console.error("Error in AI response:", error);
 
@@ -345,7 +450,7 @@ User message: ${userMessage}`;
 
                 const fallbackText = getFallbackResponse();
                 const errorResponse: Message = {
-                    id: messages.length + 2,
+                    id: Date.now() + 2,
                     text: fallbackText,
                     sender: "bot",
                     timestamp: new Date(),
@@ -405,8 +510,8 @@ User message: ${userMessage}`;
                 await vapi.start({
                     model: {
                         provider: "google",
-                        model: "gemini-2.0-flash-exp",
-                        systemPrompt: SYSTEM_PROMPT
+                        model: "gemini-2.5-flash",
+                        systemPrompt: SYSTEM_PROMPT_TEMPLATE
                     } as any,
                     transcriber: {
                         provider: "deepgram",
@@ -638,7 +743,7 @@ User message: ${userMessage}`;
                                     ) : (
                                         messages.map((message) => (
                                             <motion.div
-                                                key={message.id}
+                                                key={`${message.id}-${message.timestamp.getTime()}`}
                                                 className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                                                 variants={bubbleVariants}
                                                 initial="hidden"

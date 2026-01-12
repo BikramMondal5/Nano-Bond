@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -12,13 +13,15 @@ interface ActionPanelProps {
 }
 
 export function ActionPanel({ bondStatus }: ActionPanelProps) {
-  const [amount, setAmount] = useState("")
+  const searchParams = useSearchParams()
+  const initialAmount = searchParams.get('investAmount') || ""
+  const [amount, setAmount] = useState(initialAmount)
   const conversionRate = 0.909 // 1 USDT = ~0.909 GBOND if price is 1.1
 
   const gbondsReceived = amount ? (Number.parseFloat(amount) * conversionRate).toFixed(2) : "0.00"
 
   return (
-    <Card className="bg-[#100F14] border-primary/20 shadow-2xl shadow-primary/5">
+    <Card id="investment-panel" className="bg-[#100F14] border-primary/20 shadow-2xl shadow-primary/5">
       <CardHeader className="pb-4">
         <CardTitle className="text-[#E5E7EB] text-xl font-bold flex items-center gap-2">Manage Investment</CardTitle>
       </CardHeader>
