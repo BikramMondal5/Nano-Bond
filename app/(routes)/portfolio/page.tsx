@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { usePortfolioData } from "@/hooks/usePortfolioData"
 import { PortfolioHero } from "@/components/portfolio-hero"
 import { PortfolioChart } from "@/components/portfolio-chart"
 import { BondBreakdown } from "@/components/bond-breakdown"
@@ -11,9 +12,16 @@ import type { IBond } from "@/lib/models/Bond"
 import { Loader2 } from "lucide-react"
 
 export default function PortfolioPage() {
+  const { address } = usePortfolioData()
   const [bonds, setBonds] = useState<IBond[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBondId, setSelectedBondId] = useState<string>("")
+
+  useEffect(() => {
+    if (address) {
+      console.log("Logged In User Wallet Address:", address)
+    }
+  }, [address])
 
   useEffect(() => {
     const fetchBonds = async () => {

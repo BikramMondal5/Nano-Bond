@@ -1,0 +1,41 @@
+{
+    "users": [
+        {
+            "walletAddress": "0x3725931E0D2577D76654E455a0e73A05Bc761CC1",
+            "bonds": [
+                {
+                    "id": "GOI-2030",
+                    "name": "GOI Bond 2030",
+                    "amount": 500,
+                    "purchaseDate": "2025-01-01",
+                    "yield": "7.5%",
+                    "maturityDate": "2030-01-01",
+                    "status": "Active"
+                },
+                {
+                    "id": "US-T-BILL",
+                    "name": "US Treasury Bill",
+                    "amount": 1000,
+                    "purchaseDate": "2025-02-15",
+                    "yield": "4.2%",
+                    "maturityDate": "2025-08-15",
+                    "status": "Active"
+                }
+            ]
+        },
+        {
+            "walletAddress": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+            "bonds": [
+                {
+                    "id": "UK-GILT-2028",
+                    "name": "UK Gilt 2028",
+                    "amount": 250,
+                    "purchaseDate": "2024-11-20",
+                    "yield": "4.5%",
+                    "maturityDate": "2028-10-22",
+                    "status": "Active"
+                }
+            ]
+        }
+    ]
+}

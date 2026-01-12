@@ -89,7 +89,22 @@ const ChatWidget = () => {
     // Use the ThreeJs context to manage Three.js rendering
     const { pauseThreeJs, resumeThreeJs } = useThreeJs();
     const router = useRouter();
-    const { balance, claimable } = usePortfolioData();
+    const { balance, claimable, address } = usePortfolioData();
+    const [userBonds, setUserBonds] = useState<any[]>([]);
+
+    // Fetch user bonds
+    useEffect(() => {
+        if (address) {
+            fetch(`/api/bond-holdings?address=${address}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.bonds) {
+                        setUserBonds(data.bonds);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch user bonds:", err));
+        }
+    }, [address]);
 
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -261,6 +276,9 @@ CURRENT USER CONTEXT:
 - Wallet Balance: ${balance || '0'} USDT
 - Claimable Yield: ${claimable || '0'} USDT
 - Current Page: ${typeof window !== 'undefined' ? window.location.pathname : 'unknown'}
+
+USER PORTFOLIO (BONDS OWNED):
+${JSON.stringify(userBonds, null, 2)}
 
 BOND MARKET DATA:
 ${JSON.stringify(BOND_REGISTRY, null, 2)}
