@@ -73,6 +73,37 @@ const ChatWidget = () => {
     const [isCallActive, setIsCallActive] = useState(false);
     const [callStatus, setCallStatus] = useState<string>("");
 
+    // Local Storage Configuration
+    const STORAGE_KEY = 'nano-bond-chat-history';
+
+    // Load messages from local storage on mount
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedMessages = localStorage.getItem(STORAGE_KEY);
+            if (savedMessages) {
+                try {
+                    const parsedMessages = JSON.parse(savedMessages);
+                    // Convert string timestamps back to Date objects and ensure valid format
+                    const hydratedMessages = parsedMessages.map((msg: any) => ({
+                        ...msg,
+                        timestamp: new Date(msg.timestamp)
+                    }));
+                    setMessages(hydratedMessages);
+                } catch (error) {
+                    console.error("Failed to parse chat history:", error);
+                }
+            }
+        }
+    }, []);
+
+    // Save messages to local storage whenever they change
+    useEffect(() => {
+        if (typeof window !== 'undefined' && messages.length > 0) {
+            // Keep only the last 5 messages for storage
+            const messagesToSave = messages.slice(-5).filter(msg => !msg.isTemporary);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(messagesToSave));
+        }
+    }, [messages]);
 
     // Auto scroll to bottom of chat
     useEffect(() => {
@@ -180,7 +211,7 @@ const ChatWidget = () => {
         return FALLBACK_RESPONSES[randomIndex];
     };
 
-    const fetchGeminiResponse = async (userMessage: string) => {
+    const fetchGeminiResponse = async (userMessage: string, history: Message[]) => {
         const API_KEY = getApiKey();
 
         // Check if API key is available
@@ -193,14 +224,20 @@ const ChatWidget = () => {
         console.log('Using API key:', API_KEY.substring(0, 10) + '...');
 
         try {
+            const historyText = history.slice(-5).map(msg => `${msg.sender === 'user' ? 'User' : 'Advisor'}: ${msg.text}`).join('\n');
+            const fullPrompt = `${SYSTEM_PROMPT}
+
+Previous conversation (last 5 messages):
+${historyText}
+
+User message: ${userMessage}`;
+
             const requestBody = {
                 contents: [
                     {
                         parts: [
                             {
-                                text: `${SYSTEM_PROMPT}
-
-User message: ${userMessage}`
+                                text: fullPrompt
                             }
                         ]
                     }
@@ -279,13 +316,13 @@ User message: ${userMessage}`
             try {
                 let response;
                 try {
-                    response = await fetchGeminiResponse(currentMessage);
+                    response = await fetchGeminiResponse(currentMessage, messages);
                 } catch (error) {
                     if (retryCount < maxRetries) {
                         setRetryCount(prev => prev + 1);
                         console.log(`Retry attempt ${retryCount + 1}/${maxRetries}`);
                         await new Promise(resolve => setTimeout(resolve, 1000));
-                        response = await fetchGeminiResponse(currentMessage);
+                        response = await fetchGeminiResponse(currentMessage, messages);
                     } else {
                         throw new Error("Max retries reached");
                     }
