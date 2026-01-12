@@ -5,23 +5,39 @@ import { TrendingUp, Wallet, Clock, Coins, RefreshCw, Info } from "lucide-react"
 import { usePortfolioData } from "@/hooks/usePortfolioData"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-export function PortfolioHero() {
-  const { balance, claimable, isLoading, refetch } = usePortfolioData()
+import type { IBond } from "@/lib/models/Bond"
+import { useBondStats } from "@/hooks/useStats"
 
-  // Fixed Annualized Yield from Bond Terms (8.5%)
-  const INTEREST_RATE = 0.085
+interface PortfolioHeroProps {
+  bond?: IBond;
+}
+
+export function PortfolioHero({ bond }: PortfolioHeroProps) {
+  // Pass dynamic addresses if bond is selected
+  const { balance, claimable, isLoading, refetch } = usePortfolioData(bond?.contractAddress, bond?.distributorAddress)
+  const { maturityDate } = useBondStats(bond?.contractAddress)
+
+  // Fixed Annualized Yield from Bond Terms (fallback to 8.5% if not present)
+  const INTEREST_RATE = bond?.couponRate ? (bond.couponRate / 100) : 0.085
 
   // Calculate "Total Portfolio Value" = Balance + (Balance * Rate)
   const numericBalance = Number(balance || 0)
   const projectedYield = numericBalance * INTEREST_RATE
   const totalValue = (numericBalance + projectedYield).toLocaleString(undefined, { maximumFractionDigits: 2 })
 
+  // Calculate days to maturity for display
+  const maturityDisplay = maturityDate
+    ? Math.ceil((Number(maturityDate) * 1000 - Date.now()) / (1000 * 60 * 60 * 24)) + " Days"
+    : bond?.maturityDate
+      ? Math.ceil((new Date(bond.maturityDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) + " Days"
+      : "---"
+
   const stats = [
     {
       label: "Total Portfolio Value",
       value: isLoading ? "..." : `$${totalValue} USDT`,
       icon: TrendingUp,
-      trend: "+8.5% APY",
+      trend: `+${(INTEREST_RATE * 100).toFixed(2)}% APY`,
       highlight: true,
     },
     {
@@ -29,20 +45,20 @@ export function PortfolioHero() {
       value: isLoading ? "..." : `${numericBalance.toLocaleString()} GBOND`,
       icon: Wallet,
       action: refetch,
-      debug: `Contract: 0x...${refetch.toString().slice(-4)}` // Simplified
+      debug: `Bond: ${bond?.bondName || 'All'}`
     },
     {
       label: "Interest Rate",
-      value: "8.50%",
+      value: `${(INTEREST_RATE * 100).toFixed(2)}%`,
       icon: Coins,
       color: "text-primary",
       sub: "Annualized Yield",
     },
     {
       label: "Days to Maturity",
-      value: "145 Days",
+      value: maturityDisplay,
       icon: Clock,
-      sub: "Nearest Bond",
+      sub: bond ? "Current Bond" : "Select Bond",
     },
   ]
 
