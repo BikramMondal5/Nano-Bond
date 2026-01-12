@@ -116,6 +116,30 @@ const ChatWidget = () => {
     const maxRetries = 2;
     const [isListening, setIsListening] = useState(false);
 
+    // Helper to generate dynamic system prompt with user context
+    const getDynamicSystemPrompt = () => {
+        const bondContext = userBonds.length > 0
+            ? `\n\nUSER PORTFOLIO (The user owns these bonds):\n${JSON.stringify(userBonds, null, 2)}`
+            : "\n\nUSER PORTFOLIO: The user currently has no active bonds.";
+
+        const contextData = `
+CURRENT USER CONTEXT:
+- Wallet Balance: ${balance || '0'} USDT
+- Claimable Yield: ${claimable || '0'} USDT
+- Current Page: ${typeof window !== 'undefined' ? window.location.pathname : 'unknown'}
+
+${bondContext}
+
+BOND MARKET DATA:
+${JSON.stringify(BOND_REGISTRY, null, 2)}
+
+INSTRUCTIONS:
+You are a voice assistant. Keep your responses concise (1-2 sentences) and conversational.
+You have access to the user's portfolio and market data.
+`;
+        return `${SYSTEM_PROMPT_TEMPLATE}\n${contextData}`;
+    };
+
     // VAPI state
     const [vapi, setVapi] = useState<Vapi | null>(null);
     const [isCallActive, setIsCallActive] = useState(false);
@@ -538,7 +562,7 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                     model: {
                         provider: "google",
                         model: "gemini-2.5-flash",
-                        systemPrompt: SYSTEM_PROMPT_TEMPLATE
+                        systemPrompt: getDynamicSystemPrompt()
                     } as any,
                     transcriber: {
                         provider: "deepgram",
