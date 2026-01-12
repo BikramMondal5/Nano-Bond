@@ -3,7 +3,7 @@ import { ethers } from 'ethers'
 import { SOVEREIGN_BOND, COUPON_DISTRIBUTOR, TREASURY_SWAP } from '@/lib/contracts'
 import { useWeb3AuthContext } from '@/components/providers'
 
-export function usePortfolioData() {
+export function usePortfolioData(bondAddress?: string, distributorAddress?: string) {
     const { walletAddress, getEthersProvider, loggedIn } = useWeb3AuthContext()
 
     const [balance, setBalance] = useState<string>("0")
@@ -25,8 +25,10 @@ export function usePortfolioData() {
             const provider = getEthersProvider()
             if (!provider) return
 
-            const bond = new ethers.Contract(SOVEREIGN_BOND.address, SOVEREIGN_BOND.abi, provider)
-            const distributor = new ethers.Contract(COUPON_DISTRIBUTOR.address, COUPON_DISTRIBUTOR.abi, provider)
+            const bondAddr = bondAddress || SOVEREIGN_BOND.address
+            const distAddr = distributorAddress || COUPON_DISTRIBUTOR.address
+            const bond = new ethers.Contract(bondAddr, SOVEREIGN_BOND.abi, provider)
+            const distributor = new ethers.Contract(distAddr, COUPON_DISTRIBUTOR.abi, provider)
 
             const [balanceRaw, claimableRaw, hasRole] = await Promise.all([
                 bond.balanceOf(walletAddress),
@@ -42,7 +44,7 @@ export function usePortfolioData() {
         } finally {
             setIsLoading(false)
         }
-    }, [walletAddress, loggedIn, getEthersProvider])
+    }, [walletAddress, loggedIn, getEthersProvider, bondAddress, distributorAddress])
 
     useEffect(() => {
         fetchData()

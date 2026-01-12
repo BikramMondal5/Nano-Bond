@@ -20,7 +20,7 @@ interface InvestmentCardProps {
 export function InvestmentCard({ bond }: InvestmentCardProps) {
   const [amount, setAmount] = useState("")
   const { walletAddress, loggedIn } = useWeb3AuthContext()
-  const { totalSupply, backedValue } = useBondStats()
+  const { totalSupply, backedValue } = useBondStats(bond.contractAddress)
   const {
     invest,
     requestFaucet,

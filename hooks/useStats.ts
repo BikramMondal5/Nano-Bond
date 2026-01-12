@@ -3,7 +3,7 @@ import { ethers } from 'ethers'
 import { SOVEREIGN_BOND, COUPON_DISTRIBUTOR, USDT, TREASURY_SWAP } from '@/lib/contracts'
 import { useWeb3AuthContext } from '@/components/providers'
 
-export function useBondStats() {
+export function useBondStats(bondAddress?: string) {
     const { getEthersProvider, loggedIn } = useWeb3AuthContext()
 
     const [totalSupply, setTotalSupply] = useState<bigint | null>(null)
@@ -15,7 +15,8 @@ export function useBondStats() {
             const provider = getEthersProvider()
             if (!provider) return
 
-            const bond = new ethers.Contract(SOVEREIGN_BOND.address, SOVEREIGN_BOND.abi, provider)
+            const addr = bondAddress || SOVEREIGN_BOND.address
+            const bond = new ethers.Contract(addr, SOVEREIGN_BOND.abi, provider)
 
             const [supply, backed, maturity] = await Promise.all([
                 bond.totalSupply(),
@@ -29,7 +30,7 @@ export function useBondStats() {
         } catch (error) {
             console.error('Failed to fetch bond stats:', error)
         }
-    }, [getEthersProvider])
+    }, [getEthersProvider, bondAddress])
 
     useEffect(() => {
         fetchStats()

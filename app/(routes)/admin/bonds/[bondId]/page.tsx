@@ -79,6 +79,10 @@ export default function BondDetailsPage() {
                     <p className="font-semibold text-gray-500 mb-1">Treasury Address</p>
                     <p className="font-mono text-white break-all">{bond.treasuryAddress || "Not Configured"}</p>
                 </div>
+                <div className="p-4 bg-[#100F14] rounded-lg border border-gray-800/50">
+                    <p className="font-semibold text-gray-500 mb-1">Distributor Address</p>
+                    <p className="font-mono text-white break-all">{bond.distributorAddress || "Not Configured"}</p>
+                </div>
             </div>
 
             {/* Vault Controls */}
@@ -96,7 +100,7 @@ export default function BondDetailsPage() {
                     <VaultControls
                         enabled={true}
                         bondAddress={bond.contractAddress}
-                    // distributorAddress can be passed if we had it in registry
+                        distributorAddress={bond.distributorAddress}
                     />
                 </section>
             ) : (
