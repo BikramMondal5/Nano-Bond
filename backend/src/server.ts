@@ -437,8 +437,31 @@ app.post('/api/admin/distribute-yield', async (req: Request, res: Response) => {
 
 export default app;
 
-app.listen(PORT, () => {
-    console.log(`
+// Mongoose Connection
+import mongoose from 'mongoose';
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+const connectDB = async () => {
+    try {
+        const MONGODB_URI = process.env.MONGODB_URI;
+        if (!MONGODB_URI) {
+            console.error('[CRITICAL] MONGODB_URI is NOT defined in environment variables.');
+            console.error('Please add MONGODB_URI=... to your backend/.env file.');
+            process.exit(1);
+        }
+        await mongoose.connect(MONGODB_URI);
+        console.log('[API] Connected to MongoDB successfully.');
+    } catch (error) {
+        console.error('[CRITICAL] MongoDB connection error:', error);
+        process.exit(1);
+    }
+};
+
+// Start Server
+connectDB().then(() => {
+    app.listen(PORT, () => {
+        console.log(`
     =============================================
        SOVEREIGN BOND UNIFIED API SERVER
     =============================================
@@ -460,6 +483,8 @@ app.listen(PORT, () => {
     
     RPC: ${config.rpc.url}
     Admin Wallet: ${adminWallet ? adminWallet.address : 'NOT CONFIGURED'}
+    MongoDB: Connected
     =============================================
     `);
+    });
 });
