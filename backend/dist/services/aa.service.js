@@ -41,7 +41,7 @@ class AAService {
                 throw new Error('Admin private key not configured');
             }
             // Resolve Bond
-            const bondData = this.bondService.getBondByIdSync(bondId);
+            const bondData = await this.bondService.getBondByIdSync(bondId);
             if (!bondData)
                 throw new Error(`Bond not found: ${bondId}`);
             if (!bondData.treasuryAddress)
@@ -128,7 +128,7 @@ class AAService {
             if (!config_1.config.admin.privateKey)
                 throw new Error('Admin key not configured');
             // Resolve Bond
-            const bondData = this.bondService.getBondByIdSync(bondId);
+            const bondData = await this.bondService.getBondByIdSync(bondId);
             if (!bondData)
                 throw new Error(`Bond not found: ${bondId}`);
             if (!bondData.treasuryAddress)
@@ -169,7 +169,7 @@ class AAService {
             if (!config_1.config.admin.privateKey)
                 throw new Error('Admin key not configured');
             // Resolve Bond
-            const bondData = this.bondService.getBondByIdSync(bondId);
+            const bondData = await this.bondService.getBondByIdSync(bondId);
             if (!bondData)
                 throw new Error(`Bond not found: ${bondId}`);
             // Note: Bond Registry has "distributorAddress" but we might need to fetch it from the bond data structure in bondService
