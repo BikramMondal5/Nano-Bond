@@ -1,4 +1,5 @@
 import mongoose, { Schema, model, models } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export interface IUser {
     _id?: string;
@@ -25,6 +26,8 @@ export interface IUser {
     kycExpiresAt?: Date;
     kycRejectionReason?: string;
     aadhaarHash?: string;
+    role?: 'Regular' | 'Admin';
+    sessionId?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -113,11 +116,29 @@ const UserSchema = new Schema<IUser>(
         aadhaarHash: {
             type: String,
         },
+        role: {
+            type: String,
+            enum: ['Regular', 'Admin'],
+            default: 'Regular',
+        },
+        sessionId: {
+            type: String,
+        },
     },
     {
         timestamps: true,
     }
 );
+
+// Middleware to assign role and sessionId
+UserSchema.pre("save", async function () {
+    if (this.isNew) {
+        // Assign Session ID
+        if (!this.sessionId) {
+            this.sessionId = randomUUID();
+        }
+    }
+});
 
 const User = models.User || model<IUser>('User', UserSchema);
 
