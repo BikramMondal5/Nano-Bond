@@ -92,20 +92,6 @@ const ChatWidget = () => {
     const { balance, claimable, address } = usePortfolioData();
     const [userBonds, setUserBonds] = useState<any[]>([]);
 
-    // Fetch user bonds
-    useEffect(() => {
-        if (address) {
-            fetch(`/api/bond-holdings?address=${address}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.bonds) {
-                        setUserBonds(data.bonds);
-                    }
-                })
-                .catch(err => console.error("Failed to fetch user bonds:", err));
-        }
-    }, [address]);
-
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputMessage, setInputMessage] = useState("");
@@ -115,6 +101,20 @@ const ChatWidget = () => {
     const [retryCount, setRetryCount] = useState(0);
     const maxRetries = 2;
     const [isListening, setIsListening] = useState(false);
+
+    // Fetch user bonds
+    useEffect(() => {
+        if (address && (isOpen || userBonds.length === 0)) {
+            fetch(`/api/bond-holdings?address=${address}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.bonds) {
+                        setUserBonds(data.bonds);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch user bonds:", err));
+        }
+    }, [address, isOpen]);
 
     // Helper to generate dynamic system prompt with user context
     const getDynamicSystemPrompt = () => {
@@ -136,6 +136,15 @@ ${JSON.stringify(BOND_REGISTRY, null, 2)}
 INSTRUCTIONS:
 You are a voice assistant. Keep your responses concise (1-2 sentences) and conversational.
 You have access to the user's portfolio and market data.
+You can guide users to these sections:
+- Marketplace: /
+- Settings: /settings
+- Verification: /verification
+- Portfolio: /portfolio
+- Redeem: /redeem
+- Invest: /invest
+- Government Bonds: /govt-bonds
+- My Bonds: /my-bonds
 `;
         return `${SYSTEM_PROMPT_TEMPLATE}\n${contextData}`;
     };
@@ -321,6 +330,10 @@ You can perform actions by returning a JSON object.
    Settings -> "/settings"
    Verification/KYC -> "/verification"
    Portfolio -> "/portfolio"
+   Redeem -> "/redeem"
+   Invest -> "/invest"
+   Government Bonds -> "/govt-bonds"
+   My Bonds -> "/my-bonds"
 
 2. Investment: If user wants to invest in a specific bond.
    Action: { "type": "INVEST", "payload": { "bondId": "GOI-2030", "amount": 100 } }

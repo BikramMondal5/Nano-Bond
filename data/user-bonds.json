@@ -6,19 +6,10 @@
                 {
                     "id": "GOI-2030",
                     "name": "GOI Bond 2030",
-                    "amount": 500,
-                    "purchaseDate": "2025-01-01",
+                    "amount": 200,
+                    "purchaseDate": "2026-01-13",
                     "yield": "7.5%",
                     "maturityDate": "2030-01-01",
-                    "status": "Active"
-                },
-                {
-                    "id": "US-T-BILL",
-                    "name": "US Treasury Bill",
-                    "amount": 1000,
-                    "purchaseDate": "2025-02-15",
-                    "yield": "4.2%",
-                    "maturityDate": "2025-08-15",
                     "status": "Active"
                 }
             ]
