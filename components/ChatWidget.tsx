@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FiSend, FiMic, FiMinimize2, FiMaximize2 } from "react-icons/fi";
+import { FiSend, FiMic, FiMinimize2, FiMaximize2, FiPlus, FiClock, FiTrash2, FiMessageSquare, FiChevronLeft } from "react-icons/fi";
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
@@ -85,6 +85,13 @@ interface Message {
     isTemporary?: boolean;
 }
 
+interface ChatSession {
+    id: string;
+    timestamp: number;
+    preview: string;
+    messages: Message[];
+}
+
 const ChatWidget = () => {
     // Use the ThreeJs context to manage Three.js rendering
     const { pauseThreeJs, resumeThreeJs } = useThreeJs();
@@ -102,6 +109,10 @@ const ChatWidget = () => {
     const maxRetries = 2;
     const [isListening, setIsListening] = useState(false);
 
+    // History State
+    const [showHistory, setShowHistory] = useState(false);
+    const [savedSessions, setSavedSessions] = useState<ChatSession[]>([]);
+
     // Fetch user bonds
     useEffect(() => {
         if (address && (isOpen || userBonds.length === 0)) {
@@ -117,7 +128,7 @@ const ChatWidget = () => {
     }, [address, isOpen]);
 
     // Helper to generate dynamic system prompt with user context
-    const getDynamicSystemPrompt = () => {
+    const getDynamicSystemPrompt = (history: Message[] = []) => {
         const bondContext = userBonds.length > 0
             ? `\n\nUSER PORTFOLIO (The user owns these bonds):\n${JSON.stringify(userBonds, null, 2)}`
             : "\n\nUSER PORTFOLIO: The user currently has no active bonds.";
@@ -146,7 +157,15 @@ You can guide users to these sections:
 - Government Bonds: /govt-bonds
 - My Bonds: /my-bonds
 `;
-        return `${SYSTEM_PROMPT_TEMPLATE}\n${contextData}`;
+
+        // Add conversation history for context
+        const recentHistory = history.slice(-5).map(msg =>
+            `${msg.sender === 'user' ? 'User' : 'Assistant'}: ${msg.text}`
+        ).join('\n');
+
+        const historyContext = recentHistory ? `\n\nRECENT CONVERSATION HISTORY:\n${recentHistory}` : "";
+
+        return `${SYSTEM_PROMPT_TEMPLATE}\n${contextData}${historyContext}`;
     };
 
     // VAPI state
@@ -156,6 +175,7 @@ You can guide users to these sections:
 
     // Local Storage Configuration
     const STORAGE_KEY = 'nano-bond-chat-history';
+    const SESSIONS_KEY = 'nano-bond-chat-sessions';
 
     // Load messages from local storage on mount
     useEffect(() => {
@@ -164,7 +184,6 @@ You can guide users to these sections:
             if (savedMessages) {
                 try {
                     const parsedMessages = JSON.parse(savedMessages);
-                    // Convert string timestamps back to Date objects and ensure valid format
                     const hydratedMessages = parsedMessages.map((msg: any) => ({
                         ...msg,
                         timestamp: new Date(msg.timestamp)
@@ -174,26 +193,42 @@ You can guide users to these sections:
                     console.error("Failed to parse chat history:", error);
                 }
             }
+
+            // Load saved sessions
+            const sessionsData = localStorage.getItem(SESSIONS_KEY);
+            if (sessionsData) {
+                try {
+                    const parsedSessions = JSON.parse(sessionsData);
+                    // Rehydrate dates in messages within sessions if needed, 
+                    // or just store raw and rehydrate on load.
+                    // For simplicity, we just safely parse.
+                    setSavedSessions(parsedSessions);
+                } catch (error) {
+                    console.error("Failed to parse sessions:", error);
+                }
+            }
         }
     }, []);
 
     // Save messages to local storage whenever they change
     useEffect(() => {
         if (typeof window !== 'undefined' && messages.length > 0) {
-            // Keep only the last 5 messages for storage
-            const messagesToSave = messages.slice(-5).filter(msg => !msg.isTemporary);
+            // Save all messages (not just the last 5)
+            const messagesToSave = messages.filter(msg => !msg.isTemporary);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(messagesToSave));
         }
     }, [messages]);
 
     // Auto scroll to bottom of chat
     useEffect(() => {
-        try {
-            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        } catch (error) {
-            console.warn('Scroll error:', error);
+        if (!showHistory) {
+            try {
+                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            } catch (error) {
+                console.warn('Scroll error:', error);
+            }
         }
-    }, [messages]);
+    }, [messages, showHistory]);
 
     // Handle pausing/resuming Three.js when chat opens/closes
     useEffect(() => {
@@ -575,7 +610,7 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                     model: {
                         provider: "google",
                         model: "gemini-2.5-flash",
-                        systemPrompt: getDynamicSystemPrompt()
+                        systemPrompt: getDynamicSystemPrompt(messages)
                     } as any,
                     transcriber: {
                         provider: "deepgram",
@@ -601,6 +636,76 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                 timestamp: new Date(),
             };
             setMessages((prev) => [...prev, errorMsg]);
+        }
+    };
+
+    const archiveCurrentSession = () => {
+        if (messages.length === 0) return;
+
+        // Don't save empty or very short failed sessions
+        const meaningfulMessages = messages.filter(m => !m.isTemporary && m.sender === 'user').length;
+        if (meaningfulMessages === 0 && messages.length < 2) return;
+
+        const lastUserMsg = messages.filter(m => m.sender === 'user').pop();
+        const preview = lastUserMsg ? lastUserMsg.text.substring(0, 40) + (lastUserMsg.text.length > 40 ? '...' : '') : 'Conversation';
+
+        const newSession: ChatSession = {
+            id: Date.now().toString(),
+            timestamp: Date.now(),
+            preview,
+            messages: messages
+        };
+
+        const updatedSessions = [newSession, ...savedSessions]; // Add to top
+        setSavedSessions(updatedSessions);
+
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(SESSIONS_KEY, JSON.stringify(updatedSessions));
+        }
+    };
+
+    const handleNewChat = () => {
+        // Archive current chat if it has content
+        if (messages.length > 0) {
+            archiveCurrentSession();
+        }
+
+        setMessages([]);
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+        setShowHistory(false);
+        setCallStatus("Chat cleared");
+        setTimeout(() => setCallStatus(""), 2000);
+    };
+
+    const handleLoadSession = (session: ChatSession) => {
+        // Archive current before loading old one? 
+        // Strategy: Just overwrite current workflow. If user wanted to save current, they should hit New Chat first.
+        // Or better: Auto-save current if it has content before switching.
+        if (messages.length > 0) {
+            // Check if current messages are already saved (simple check: id match if we tracked current session id, 
+            // but here we just check if it matches the one we are loading to avoid dups or simple overwrite)
+            // For simplicity: Auto-archive current state if not empty.
+            archiveCurrentSession();
+        }
+
+        // Rehydrate Dates
+        const hydratedMessages = session.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+        }));
+
+        setMessages(hydratedMessages);
+        setShowHistory(false);
+    };
+
+    const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
+        e.stopPropagation();
+        const updatedSessions = savedSessions.filter(s => s.id !== sessionId);
+        setSavedSessions(updatedSessions);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(SESSIONS_KEY, JSON.stringify(updatedSessions));
         }
     };
 
@@ -691,6 +796,32 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
+                            {showHistory ? (
+                                <button
+                                    className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                    onClick={() => setShowHistory(false)}
+                                    title="Back to Chat"
+                                >
+                                    <FiChevronLeft className="text-white" />
+                                </button>
+                            ) : (
+                                <>
+                                    <button
+                                        className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                        onClick={handleNewChat}
+                                        title="New Chat"
+                                    >
+                                        <FiPlus className="text-white" />
+                                    </button>
+                                    <button
+                                        className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                        onClick={() => setShowHistory(true)}
+                                        title="History"
+                                    >
+                                        <FiClock className="text-white" />
+                                    </button>
+                                </>
+                            )}
                             <button
                                 className="p-1 rounded-full hover:bg-white/10 transition-colors"
                                 onClick={() => setMinimized(!minimized)}
@@ -705,7 +836,47 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                             className="bg-[#121212] h-96 overflow-y-auto p-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent"
                             style={{ scrollbarWidth: 'thin' } as any}
                         >
-                            {isCallActive ? (
+                            {showHistory ? (
+                                <div className="flex flex-col gap-2">
+                                    <h4 className="text-gray-400 text-xs uppercase font-semibold mb-2">Recent Sessions</h4>
+                                    {savedSessions.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                                            <FiMessageSquare className="w-8 h-8 mb-2 opacity-50" />
+                                            <p className="text-sm">No saved history</p>
+                                        </div>
+                                    ) : (
+                                        savedSessions.map((session) => (
+                                            <motion.div
+                                                key={session.id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="bg-[#1e1e1e] p-3 rounded-xl cursor-pointer hover:bg-[#2a2a2a] transition-colors border border-gray-800 hover:border-purple-500/30 group relative"
+                                                onClick={() => handleLoadSession(session)}
+                                            >
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="text-xs text-purple-400 font-medium">
+                                                        {new Date(session.timestamp).toLocaleDateString()}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => handleDeleteSession(e, session.id)}
+                                                        className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Delete Session"
+                                                    >
+                                                        <FiTrash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                                <p className="text-gray-300 text-sm line-clamp-2">
+                                                    {session.preview}
+                                                </p>
+                                                <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                                                    <FiMessageSquare className="w-3 h-3" />
+                                                    {session.messages.length} messages
+                                                </div>
+                                            </motion.div>
+                                        ))
+                                    )}
+                                </div>
+                            ) : isCallActive ? (
                                 // Voice Agent UI - Large animated microphone with wave effect
                                 <div className="flex items-center justify-center h-full">
                                     <motion.div className="relative flex items-center justify-center w-full h-full">
@@ -876,7 +1047,7 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                         </div>
                     )}
 
-                    {!minimized && (
+                    {!minimized && !showHistory && (
                         <div className="bg-[#1a1a1a] p-3 border-t border-[#333] flex items-center gap-2">
                             <input
                                 type="text"
