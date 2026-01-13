@@ -11,7 +11,9 @@ import { useGaslessInvestment } from "@/hooks/useGaslessInvestment"
 import { useBondStats } from "@/hooks/useAdminActions"
 import { ethers } from "ethers"
 import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
+import { toast } from "react-toastify"
 import type { IBond } from "@/lib/models/Bond"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface InvestmentCardProps {
   bond: IBond;
@@ -33,6 +35,17 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
 
   const [usdtBalance, setUsdtBalance] = useState("0")
 
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('mantle')
+
+  const NETWORKS = [
+    { id: 'mantle', name: 'Mantle Sepolia', icon: '🔷' },
+    { id: 'ethereum', name: 'Ethereum Sepolia', icon: '⟠' },
+    { id: 'arbitrum', name: 'Arbitrum Sepolia', icon: '🔵' },
+    { id: 'linea', name: 'Linea Sepolia', icon: '🟣' },
+    { id: 'polygon', name: 'Polygon Amoy', icon: '🟣' },
+    { id: 'scroll', name: 'Scroll Sepolia', icon: '📜' }
+  ]
+
   // Reset state when bond changes
   useEffect(() => {
     reset()
@@ -42,9 +55,23 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
   // Fetch balance on mount and after actions
   useEffect(() => {
     if (walletAddress && loggedIn) {
-      getBalance().then(setUsdtBalance)
+      getBalance(selectedNetwork).then(setUsdtBalance)
     }
-  }, [walletAddress, loggedIn, isSuccess])
+  }, [walletAddress, loggedIn, isSuccess, selectedNetwork])
+
+  const handleNetworkChange = (network: string) => {
+    console.log(`[Card] Network changed to: ${network}`)
+    setSelectedNetwork(network)
+    setUsdtBalance("0") // Reset to 0 while loading
+
+    // Fetch balance for new network immediately
+    if (walletAddress && loggedIn) {
+      getBalance(network).then(balance => {
+        console.log(`[Card] Balance loaded for ${network}: ${balance}`)
+        setUsdtBalance(balance)
+      })
+    }
+  }
 
   const tokenPrice = 1.00 // 1 GBOND = 1 USDT
   const minInvest = bond.minInvestment || 1
@@ -57,14 +84,31 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
   const isValidAmount = Number(amount) >= minInvest && Number(amount) <= maxInvest && Number(amount) <= Number(usdtBalance)
 
   const handleInvest = async () => {
-    // Pass the selected bond ID to the hook
-    await invest(amount, bond.bondId)
+    const result = await invest(amount, bond.bondId, selectedNetwork)
+
+    // Show appropriate message based on network
+    if (result?.isCrossChain) {
+      toast.info('Cross-chain investment initiated! Bonds will arrive in ~5-10 minutes.')
+    }
   }
 
   const handleFaucet = async () => {
-    await requestFaucet(1000)
-    const newBalance = await getBalance()
-    setUsdtBalance(newBalance)
+    try {
+      await requestFaucet(1000, selectedNetwork)
+
+      // Wait for blockchain to index the transaction
+      toast.info('Waiting for transaction to be indexed...')
+      await new Promise(resolve => setTimeout(resolve, 3000))
+
+      // Force refresh balance
+      console.log(`[Card] Refreshing balance for ${selectedNetwork}`)
+      const newBalance = await getBalance(selectedNetwork)
+      console.log(`[Card] New balance: ${newBalance}`)
+      setUsdtBalance(newBalance)
+
+    } catch (error) {
+      console.error('[Card] Faucet error:', error)
+    }
   }
 
   if (isSuccess) {
@@ -147,32 +191,57 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Balance Section */}
-            <div className="flex items-center justify-between p-4 bg-[#1C1A21] rounded-xl border border-white/5">
-              <div className="flex items-center gap-3">
-                <div className="text-sm text-muted-foreground">Your USDT Balance</div>
+            {/* Network Selector + Balance Section */}
+            <div className="space-y-3">
+              {/* Network Selector */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-muted-foreground">Select Network</label>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-primary">{Number(usdtBalance).toLocaleString()} USDT</span>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-                        onClick={handleFaucet}
-                        disabled={isPending}
-                      >
-                        <Droplet className="w-4 h-4 mr-1" />
-                        Faucet
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Get 1000 test USDT</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              <Select value={selectedNetwork} onValueChange={handleNetworkChange}>
+                <SelectTrigger className="bg-[#1C1A21] border-white/5 h-12">
+                  <SelectValue placeholder="Select network" />
+                </SelectTrigger>
+                <SelectContent>
+                  {NETWORKS.map((network) => (
+                    <SelectItem key={network.id} value={network.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{network.icon}</span>
+                        <span>{network.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Balance Display */}
+              <div className="flex items-center justify-between p-4 bg-[#1C1A21] rounded-xl border border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-muted-foreground">
+                    USDT Balance on {NETWORKS.find(n => n.id === selectedNetwork)?.name}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-bold text-primary">{Number(usdtBalance).toLocaleString()} USDT</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                          onClick={handleFaucet}
+                          disabled={isPending}
+                        >
+                          <Droplet className="w-4 h-4 mr-1" />
+                          Faucet
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Get 1000 test USDT on {selectedNetwork.toUpperCase()}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             </div>
 

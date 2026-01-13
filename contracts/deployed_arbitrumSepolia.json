@@ -1,0 +1,6 @@
+{
+  "network": "arbitrumSepolia",
+  "CrossChainGateway": "0xf76aFf559d71ECb8347fCe5Da9B88076fEE11F90",
+  "LayerZeroEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+  "USDT": "0x17830508db410b208F38641b57C723fCBa41c68b"
+}

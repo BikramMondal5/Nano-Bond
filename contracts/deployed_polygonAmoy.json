@@ -1,0 +1,6 @@
+{
+  "network": "polygonAmoy",
+  "CrossChainGateway": "0xc45aB8aDbb1e088A2BD8c6719d387AaA835Af722",
+  "LayerZeroEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+  "USDT": "0x9565c705f598Af4B477CCf9C8390BFCD8634E919"
+}
