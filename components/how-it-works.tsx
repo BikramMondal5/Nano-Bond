@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Wallet, TrendingUp, Coins, Workflow } from "lucide-react";
 import type React from "react";
+import { useContentTranslation } from "@/hooks/useContentTranslation";
 
 // The main props for the HowItWorks component
 interface HowItWorksProps extends React.HTMLAttributes<HTMLElement> { }
@@ -60,38 +61,59 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
   className,
   ...props
 }) => {
+  const content = useContentTranslation({
+    section_tag: "The Process",
+    section_title: "How It Works",
+    section_desc: "Start your investment journey in three simple steps",
+
+    step1_title: "Connect Wallet",
+    step1_desc: "Link your digital wallet securely using WalletConnect or MetaMask. No KYC required for browsing.",
+    step1_benefit1: "Secure wallet integration",
+    step1_benefit2: "Multiple wallet support",
+    step1_benefit3: "Privacy-first approach",
+
+    step2_title: "Browse & Invest",
+    step2_desc: "Explore curated government bonds with real-time yield data. Invest with stablecoins starting at $100.",
+    step2_benefit1: "Real-time bond pricing",
+    step2_benefit2: "Low minimum investment",
+    step2_benefit3: "Transparent yield data",
+
+    step3_title: "Earn & Trade",
+    step3_desc: "Receive automatic interest payments in USDT. Trade your bond tokens anytime on our DEX.",
+    step3_benefit1: "Automatic interest distribution",
+    step3_benefit2: "24/7 trading capability",
+    step3_benefit3: "Instant liquidity"
+  });
+
   const stepsData = [
     {
       icon: <Wallet className="h-6 w-6" />,
-      title: "Connect Wallet",
-      description:
-        "Link your digital wallet securely using WalletConnect or MetaMask. No KYC required for browsing.",
+      title: content.step1_title,
+      description: content.step1_desc,
       benefits: [
-        "Secure wallet integration",
-        "Multiple wallet support",
-        "Privacy-first approach",
+        content.step1_benefit1,
+        content.step1_benefit2,
+        content.step1_benefit3,
       ],
     },
     {
       icon: <TrendingUp className="h-6 w-6" />,
-      title: "Browse & Invest",
-      description:
-        "Explore curated government bonds with real-time yield data. Invest with stablecoins starting at $100.",
+      title: content.step2_title,
+      description: content.step2_desc,
       benefits: [
-        "Real-time bond pricing",
-        "Low minimum investment",
-        "Transparent yield data",
+        content.step2_benefit1,
+        content.step2_benefit2,
+        content.step2_benefit3,
       ],
     },
     {
       icon: <Coins className="h-6 w-6" />,
-      title: "Earn & Trade",
-      description:
-        "Receive automatic interest payments in USDT. Trade your bond tokens anytime on our DEX.",
+      title: content.step3_title,
+      description: content.step3_desc,
       benefits: [
-        "Automatic interest distribution",
-        "24/7 trading capability",
-        "Instant liquidity",
+        content.step3_benefit1,
+        content.step3_benefit2,
+        content.step3_benefit3,
       ],
     },
   ];
@@ -114,13 +136,13 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
         <div className="mx-auto mb-16 max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary mb-6">
             <Workflow className="w-3.5 h-3.5" />
-            The Process
+            {content.section_tag}
           </div>
           <h2 className="text-4xl md:text-6xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-secondary to-primary">
-            How It Works
+            {content.section_title}
           </h2>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Start your investment journey in three simple steps
+            {content.section_desc}
           </p>
         </div>
 
@@ -156,8 +178,8 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               <div
                 key={index}
                 className={`flex items-center ${index === 0 ? 'justify-start' :
-                    index === 2 ? 'justify-end' :
-                      'justify-center'
+                  index === 2 ? 'justify-end' :
+                    'justify-center'
                   }`}
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary font-bold text-lg text-primary-foreground ring-4 ring-background shadow-lg">

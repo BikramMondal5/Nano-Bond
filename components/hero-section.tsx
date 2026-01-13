@@ -7,9 +7,20 @@ import { Wallet, ArrowRight, Eye, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import LiquidEther from "./liquid-ether";
+import { useContentTranslation } from "@/hooks/useContentTranslation";
 
 export function HeroSection() {
   const router = useRouter();
+
+  const content = useContentTranslation({
+    badge: "Blockchain-Secured Government Bonds",
+    title_1: "Fractional Bonds,",
+    title_2: "Unlimited Access",
+    description: "Invest in government bonds with as little as $10. Tokenized, transparent, and accessible to everyone through blockchain technology.",
+    cta_invest: "Start Investing",
+    cta_view: "View All Bonds"
+  });
+
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
       {/* Liquid Ether Background - Full Screen */}
@@ -41,21 +52,20 @@ export function HeroSection() {
           >
             <Badge className="mb-6 bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 text-primary px-4 py-2 pointer-events-auto">
               <Sparkles className="w-4 h-4 mr-2" />
-              Blockchain-Secured Government Bonds
+              {content.badge}
             </Badge>
             <div className="relative">
               <div className="absolute inset-0 -inset-x-32 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
               <h1 className="relative text-6xl md:text-7xl lg:text-8xl font-bold mb-6">
                 <span className="text-white">
-                  Fractional Bonds,
+                  {content.title_1}
                 </span>
                 <br />
-                <span className="text-primary">Unlimited Access</span>
+                <span className="text-primary">{content.title_2}</span>
               </h1>
             </div>
             <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto">
-              Invest in government bonds with as little as $10. Tokenized, transparent, and accessible to everyone
-              through blockchain technology.
+              {content.description}
             </p>
           </motion.div>
 
@@ -72,7 +82,7 @@ export function HeroSection() {
               onClick={() => router.push("/invest")}
             >
               <Wallet className="w-5 h-5 mr-2" />
-              Start Investing
+              {content.cta_invest}
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <Button
@@ -82,7 +92,7 @@ export function HeroSection() {
               onClick={() => router.push("/govt-bonds")}
             >
               <Eye className="w-5 h-5 mr-2" />
-              View All Bonds
+              {content.cta_view}
             </Button>
           </motion.div>
         </div>

@@ -1,34 +1,46 @@
+"use client"
+
 import { Card, CardContent } from "@/components/ui/card"
 import { TrendingUp, Award, PieChart, Landmark } from "lucide-react"
-
-const metrics = [
-  {
-    label: "Total Sponsored Value",
-    value: "13,500 USDT",
-    icon: Landmark,
-    trend: "+12.5%",
-  },
-  {
-    label: "Total Rewards Earned",
-    value: "1,350 USDT",
-    icon: Award,
-    trend: "+8.2%",
-  },
-  {
-    label: "Current Share %",
-    value: "5.4%",
-    icon: PieChart,
-    trend: "Stable",
-  },
-  {
-    label: "Fee Split Ratio",
-    value: "10% / 90%",
-    icon: TrendingUp,
-    subtext: "Sponsor / Investors",
-  },
-]
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function SponsorOverview() {
+  const content = useContentTranslation({
+    lbl_total_sponsored: "Total Sponsored Value",
+    lbl_rewards_earned: "Total Rewards Earned",
+    lbl_share: "Current Share %",
+    lbl_fee_ratio: "Fee Split Ratio",
+    lbl_stable: "Stable",
+    lbl_subtext: "Sponsor / Investors"
+  })
+
+  const metrics = [
+    {
+      label: content.lbl_total_sponsored,
+      value: "13,500 USDT",
+      icon: Landmark,
+      trend: "+12.5%",
+    },
+    {
+      label: content.lbl_rewards_earned,
+      value: "1,350 USDT",
+      icon: Award,
+      trend: "+8.2%",
+    },
+    {
+      label: content.lbl_share,
+      value: "5.4%",
+      icon: PieChart,
+      trend: content.lbl_stable,
+    },
+    {
+      label: content.lbl_fee_ratio,
+      value: "10% / 90%",
+      icon: TrendingUp,
+      subtext: content.lbl_subtext,
+    },
+  ]
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {metrics.map((metric, i) => (
@@ -43,9 +55,8 @@ export function SponsorOverview() {
               </div>
               {metric.trend && (
                 <span
-                  className={`text-xs font-medium px-2 py-1 rounded-full ${
-                    metric.trend.startsWith("+") ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"
-                  }`}
+                  className={`text-xs font-medium px-2 py-1 rounded-full ${metric.trend.startsWith("+") ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"
+                    }`}
                 >
                   {metric.trend}
                 </span>

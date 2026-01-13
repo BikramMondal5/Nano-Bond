@@ -16,25 +16,35 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/components/auth-provider"
 import { cn } from "@/lib/utils"
-
-const mainNavItems = [
-  { label: "Dashboard", icon: Home, href: "/portfolio" },
-  { label: "Invest", icon: PlusCircle, href: "/invest" },
-  { label: "Redeem", icon: ArrowDownLeft, href: "/redeem" },
-  { label: "My Bonds", icon: Wallet, href: "/my-bonds" },
-  { label: "Govt Bonds", icon: Landmark, href: "/govt-bonds" },
-  { label: "Verification", icon: ShieldCheck, href: "/verification" },
-  { label: "Transactions", icon: History, href: "/transactions" },
-  { label: "Settings", icon: Settings, href: "/settings" },
-]
-
-
-
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function AppSidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
   const { state } = useSidebar()
+
+  const content = useContentTranslation({
+    dashboard: "Dashboard",
+    invest: "Invest",
+    redeem: "Redeem",
+    my_bonds: "My Bonds",
+    govt_bonds: "Govt Bonds",
+    verification: "Verification",
+    transactions: "Transactions",
+    settings: "Settings",
+    logout: "Logout"
+  })
+
+  const mainNavItems = [
+    { label: content.dashboard, icon: Home, href: "/portfolio" },
+    { label: content.invest, icon: PlusCircle, href: "/invest" },
+    { label: content.redeem, icon: ArrowDownLeft, href: "/redeem" },
+    { label: content.my_bonds, icon: Wallet, href: "/my-bonds" },
+    { label: content.govt_bonds, icon: Landmark, href: "/govt-bonds" },
+    { label: content.verification, icon: ShieldCheck, href: "/verification" },
+    { label: content.transactions, icon: History, href: "/transactions" },
+    { label: content.settings, icon: Settings, href: "/settings" },
+  ]
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50 bg-[#0A0A0A]">
@@ -70,11 +80,11 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={logout}
-              tooltip="Logout"
+              tooltip={content.logout}
               className="text-destructive hover:bg-destructive/10 hover:text-destructive transition-all"
             >
               <LogOut className="w-5 h-5" />
-              <span>Logout</span>
+              <span>{content.logout}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

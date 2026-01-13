@@ -1,7 +1,10 @@
 "use client"
 
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 const data = [
   { date: "Oct 01", rewards: 120 },
@@ -14,19 +17,22 @@ const data = [
 ]
 
 export function RewardsChart() {
+  const content = useContentTranslation({
+    chart_title: "Earned Rewards"
+  })
+
   return (
     <Card className="bg-[#100F14] border-white/5">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-[#E5E7EB] text-xl font-bold">Earned Rewards</CardTitle>
+        <CardTitle className="text-[#E5E7EB] text-xl font-bold">{content.chart_title}</CardTitle>
         <div className="flex gap-2">
           {["1M", "3M", "6M", "ALL"].map((time) => (
             <button
               key={time}
-              className={`text-xs px-3 py-1 rounded-md transition-all ${
-                time === "3M"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-[0_0_15px_rgba(253,140,0,0.3)]"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              }`}
+              className={`text-xs px-3 py-1 rounded-md transition-all ${time === "3M"
+                ? "bg-primary text-primary-foreground font-semibold shadow-[0_0_15px_rgba(253,140,0,0.3)]"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                }`}
             >
               {time}
             </button>

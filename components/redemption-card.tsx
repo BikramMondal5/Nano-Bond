@@ -14,12 +14,38 @@ import { usePortfolioData } from "@/hooks/usePortfolioData"
 import type { IBond } from "@/lib/models/Bond"
 import { useBondStats } from "@/hooks/useAdminActions"
 import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 interface RedemptionCardProps {
   bond: IBond;
 }
 
 export function RedemptionCard({ bond }: RedemptionCardProps) {
+  const content = useContentTranslation({
+    success_title: "Redemption Successful!",
+    success_msg_prefix: "You have successfully redeemed",
+    success_msg_suffix: "GBOND for",
+    success_msg_end: "USDT.",
+    back_dashboard: "Back to Dashboard",
+    view_tx: "View Transaction",
+    redeem_tokens: "Redeem Tokens",
+    awaiting_maturity: "Awaiting Maturity",
+    desc: "Convert your matured GBOND tokens back to USDT instantly.",
+    wallet_not_connected: "Wallet Not Connected",
+    connect_prompt: "Please connect your wallet to view your balance and redeem tokens.",
+    unclaimed_int: "Unclaimed Interest",
+    claim_now: "Claim Now",
+    processing: "Processing...",
+    connected_wallet: "Connected Wallet",
+    gbond_balance: "GBOND Balance",
+    amount_redeem: "Amount to Redeem",
+    max_amount: "Max Amount",
+    est_return: "Estimated USDT Return",
+    market_rate: "Market Rate",
+    redeem_btn: "Redeem GBOND",
+    maturity_tooltip: "Redemption is enabled only after the bond matures."
+  })
+
   const { loggedIn: isConnected } = useWeb3AuthContext()
   const { balance, claimable } = usePortfolioData(bond.contractAddress, bond.distributorAddress)
   const { maturityDate } = useBondStats(bond.contractAddress)
@@ -63,14 +89,14 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
             <CheckCircle2 className="w-10 h-10 text-green-500" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-white">Redemption Successful!</h3>
+            <h3 className="text-2xl font-bold text-white">{content.success_title}</h3>
             <p className="text-muted-foreground">
-              You have successfully redeemed {amount} GBOND for {expectedUsdt} USDT.
+              {content.success_msg_prefix} {amount} {content.success_msg_suffix} {expectedUsdt} {content.success_msg_end}
             </p>
           </div>
           <div className="flex gap-4">
             <Button variant="outline" className="border-white/10 bg-transparent" onClick={() => { setShowSuccess(false); setAmount(""); }}>
-              Back to Dashboard
+              {content.back_dashboard}
             </Button>
             {txHash && (
               <Button asChild className="bg-primary hover:bg-primary/90">
@@ -79,7 +105,7 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  View Transaction
+                  {content.view_tx}
                 </a>
               </Button>
             )}
@@ -95,16 +121,16 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
 
       <CardHeader className="space-y-1">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-2xl font-bold text-white">Redeem Tokens</CardTitle>
+          <CardTitle className="text-2xl font-bold text-white">{content.redeem_tokens}</CardTitle>
           {!isMatured && (
             <div className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 rounded-full border border-yellow-500/20">
               <Clock className="w-4 h-4 text-yellow-500" />
-              <span className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Awaiting Maturity</span>
+              <span className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">{content.awaiting_maturity}</span>
             </div>
           )}
         </div>
         <CardDescription className="text-muted-foreground text-sm">
-          Convert your matured GBOND tokens back to USDT instantly.
+          {content.desc}
         </CardDescription>
       </CardHeader>
 
@@ -115,9 +141,9 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
               <Wallet className="w-8 h-8 text-muted-foreground" />
             </div>
             <div className="text-center space-y-2">
-              <h4 className="text-lg font-medium text-white italic">Wallet Not Connected</h4>
+              <h4 className="text-lg font-medium text-white italic">{content.wallet_not_connected}</h4>
               <p className="text-sm text-muted-foreground max-w-[280px]">
-                Please connect your wallet to view your balance and redeem tokens.
+                {content.connect_prompt}
               </p>
             </div>
             <div className="transform scale-110">
@@ -130,7 +156,7 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
             {claimableYield > 0 && (
               <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4 flex items-center justify-between">
                 <div>
-                  <div className="text-sm text-green-400 font-medium mb-1">Unclaimed Interest</div>
+                  <div className="text-sm text-green-400 font-medium mb-1">{content.unclaimed_int}</div>
                   <div className="text-2xl font-bold text-white flex items-center gap-2">
                     {claimableYield.toFixed(2)} USDT
                   </div>
@@ -141,7 +167,7 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
                   disabled={isRedeemPending}
                   className="bg-green-600 hover:bg-green-700 text-white border-none"
                 >
-                  {isRedeemPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Claim Now"}
+                  {isRedeemPending ? <Loader2 className="w-4 h-4 animate-spin" /> : content.claim_now}
                 </Button>
               </div>
             )}
@@ -152,24 +178,24 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
                   <Wallet className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Connected Wallet</p>
+                  <p className="text-xs text-muted-foreground">{content.connected_wallet}</p>
                   <p className="text-sm font-mono text-white">0xAb...1234</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">GBOND Balance</p>
+                <p className="text-xs text-muted-foreground">{content.gbond_balance}</p>
                 <p className="text-sm font-bold text-primary">{gbondBalance.toLocaleString()} GBOND</p>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-muted-foreground">Amount to Redeem</label>
+                <label className="text-sm font-medium text-muted-foreground">{content.amount_redeem}</label>
                 <button
                   onClick={() => setAmount(gbondBalance.toString())}
                   className="text-xs text-primary hover:underline font-semibold"
                 >
-                  Max Amount
+                  {content.max_amount}
                 </button>
               </div>
               <div className="relative group">
@@ -186,10 +212,10 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
 
             <div className="p-4 bg-[#1C1A21] rounded-xl border border-white/5 space-y-3 relative overflow-hidden">
               <div className="flex items-center justify-between relative z-10">
-                <span className="text-sm text-muted-foreground">Estimated USDT Return</span>
+                <span className="text-sm text-muted-foreground">{content.est_return}</span>
                 <div className="flex items-center gap-1.5 text-primary text-xs font-bold uppercase">
                   <ArrowRightLeft className="w-3.5 h-3.5" />
-                  Market Rate
+                  {content.market_rate}
                 </div>
               </div>
               <div className="flex items-end gap-2 relative z-10">
@@ -210,10 +236,10 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
                       {isRedeemPending ? (
                         <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Processing...
+                          {content.processing}
                         </>
                       ) : (
-                        "Redeem GBOND"
+                        content.redeem_btn
                       )}
                     </Button>
                   </div>
@@ -222,7 +248,7 @@ export function RedemptionCard({ bond }: RedemptionCardProps) {
                   <TooltipContent className="bg-[#1C1A21] border-white/10 text-white max-w-[200px] text-center">
                     <p className="flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-yellow-500" />
-                      Redemption is enabled only after the bond matures.
+                      {content.maturity_tooltip}
                     </p>
                   </TooltipContent>
                 )}

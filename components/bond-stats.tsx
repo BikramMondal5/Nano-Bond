@@ -1,4 +1,7 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 interface BondStatsProps {
   currentPrice: number
@@ -9,12 +12,20 @@ interface BondStatsProps {
 }
 
 export function BondStats({ currentPrice, totalSupply, totalVault, yieldRate, maturityDays }: BondStatsProps) {
+  const content = useContentTranslation({
+    lbl_price: "Price per GBOND",
+    lbl_supply: "Total Supply",
+    lbl_vault: "USDT in Vault",
+    lbl_yield: "Yield Rate",
+    lbl_days: "Days to Maturity"
+  })
+
   const stats = [
-    { label: "Price per GBOND", value: `${currentPrice} USDT` },
-    { label: "Total Supply", value: `${totalSupply} GBOND` },
-    { label: "USDT in Vault", value: `${totalVault} USDT` },
-    { label: "Yield Rate", value: yieldRate, highlight: true },
-    { label: "Days to Maturity", value: maturityDays.toString() },
+    { label: content.lbl_price, value: `${currentPrice} USDT` },
+    { label: content.lbl_supply, value: `${totalSupply} GBOND` },
+    { label: content.lbl_vault, value: `${totalVault} USDT` },
+    { label: content.lbl_yield, value: yieldRate, highlight: true },
+    { label: content.lbl_days, value: maturityDays.toString() },
   ]
 
   return (

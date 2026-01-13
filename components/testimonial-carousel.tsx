@@ -3,64 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Star, Quote, MessageSquareQuote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-
-// Default testimonial data
-const defaultTestimonials = [
-  {
-    name: "Marcus Thorne",
-    country: "Cloud Infrastructure Lead",
-    type: "Enterprise",
-    avatar: "https://i.pravatar.cc/150?u=marcus",
-    feedback:
-      "The agentic orchestration in NanoBond has transformed our treasury operations. We've seen a 40% reduction in settlement times due to autonomous audits.",
-    rating: 5,
-  },
-  {
-    name: "Dr. Sarah Chen",
-    country: "USA",
-    type: "Institutional",
-    avatar: "https://i.pravatar.cc/150?u=sarah",
-    feedback:
-      "Tokenized bonds cut our research phase by 60%. The on-chain transparency finds connections across yield curves we missed manually.",
-    rating: 5,
-  },
-  {
-    name: "James Wilson",
-    country: "UK",
-    type: "Asset Manager",
-    avatar: "https://i.pravatar.cc/150?u=james",
-    feedback:
-      "The comprehensive audit reports generated are board-ready. It's like having a dedicated analyst team working 24/7 on portfolio optimization.",
-    rating: 4,
-  },
-  {
-    name: "Elena Rodriguez",
-    country: "Spain",
-    type: "FinTech",
-    avatar: "https://i.pravatar.cc/150?u=elena",
-    feedback:
-      "Direct asset access from multiple chains is seamless. I can trust the yield quality because it links directly to the sovereign source.",
-    rating: 5,
-  },
-  {
-    name: "Akira Tanaka",
-    country: "Japan",
-    type: "Enterprise",
-    avatar: "https://i.pravatar.cc/150?u=akira",
-    feedback:
-      "For evaluating fixed-income startups, this tool is indispensable. It quickly validates claims and highlights the competitive landscape.",
-    rating: 4,
-  },
-  {
-    name: "Dr. Emily Clarke",
-    country: "Canada",
-    type: "Wealth Advisor",
-    avatar: "https://i.pravatar.cc/150?u=emily",
-    feedback:
-      "The ease of use is remarkable. Just entering a bond ticker gives me a holistic view from molecular properties to current market status.",
-    rating: 5,
-  },
-]
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 const people = [
   {
@@ -111,19 +54,86 @@ function AnimatedTooltip({ items }: { items: typeof people }) {
 
 export default function TestimonialCarousel() {
   const router = useRouter()
+  const content = useContentTranslation({
+    tag: "Wall of Confidence",
+    title: "Trusted by Industry Leaders",
+    subtitle: "See how institutional teams are optimizing portfolios with NanoBond.",
+    trusted_tag: "Empowering 1,200+ Financial Institutions",
+    share_btn: "Share Your Experience",
+
+    t1_feedback: "The agentic orchestration in NanoBond has transformed our treasury operations. We've seen a 40% reduction in settlement times due to autonomous audits.",
+    t1_role: "Cloud Infrastructure Lead",
+    t2_feedback: "Tokenized bonds cut our research phase by 60%. The on-chain transparency finds connections across yield curves we missed manually.",
+    t3_feedback: "The comprehensive audit reports generated are board-ready. It's like having a dedicated analyst team working 24/7 on portfolio optimization.",
+    t4_feedback: "Direct asset access from multiple chains is seamless. I can trust the yield quality because it links directly to the sovereign source.",
+    t5_feedback: "For evaluating fixed-income startups, this tool is indispensable. It quickly validates claims and highlights the competitive landscape.",
+    t6_feedback: "The ease of use is remarkable. Just entering a bond ticker gives me a holistic view from molecular properties to current market status.",
+    t6_role: "Wealth Advisor"
+  });
+
+  const testimonials = [
+    {
+      name: "Marcus Thorne",
+      country: content.t1_role || "Cloud Infrastructure Lead",
+      type: "Enterprise",
+      avatar: "https://i.pravatar.cc/150?u=marcus",
+      feedback: content.t1_feedback,
+      rating: 5,
+    },
+    {
+      name: "Dr. Sarah Chen",
+      country: "USA",
+      type: "Institutional",
+      avatar: "https://i.pravatar.cc/150?u=sarah",
+      feedback: content.t2_feedback,
+      rating: 5,
+    },
+    {
+      name: "James Wilson",
+      country: "UK",
+      type: "Asset Manager",
+      avatar: "https://i.pravatar.cc/150?u=james",
+      feedback: content.t3_feedback,
+      rating: 4,
+    },
+    {
+      name: "Elena Rodriguez",
+      country: "Spain",
+      type: "FinTech",
+      avatar: "https://i.pravatar.cc/150?u=elena",
+      feedback: content.t4_feedback,
+      rating: 5,
+    },
+    {
+      name: "Akira Tanaka",
+      country: "Japan",
+      type: "Enterprise",
+      avatar: "https://i.pravatar.cc/150?u=akira",
+      feedback: content.t5_feedback,
+      rating: 4,
+    },
+    {
+      name: "Dr. Emily Clarke",
+      country: content.t6_role || "Canada", // Keep fallback if specific field used differently
+      type: "Wealth Advisor",
+      avatar: "https://i.pravatar.cc/150?u=emily",
+      feedback: content.t6_feedback,
+      rating: 5,
+    },
+  ]
 
   return (
     <section id="testimonials" className="relative py-24 bg-transparent overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-16 text-center space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
           <MessageSquareQuote className="w-3.5 h-3.5" />
-          Wall of Confidence
+          {content.tag}
         </div>
         <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
-          Trusted by Industry Leaders
+          {content.title}
         </h2>
         <p className="text-lg text-orange-100/60 max-w-2xl mx-auto text-pretty">
-          See how institutional teams are optimizing portfolios with NanoBond.
+          {content.subtitle}
         </p>
 
         <div className="flex flex-col items-center gap-4 mt-8">
@@ -131,7 +141,7 @@ export default function TestimonialCarousel() {
             <AnimatedTooltip items={people} />
           </div>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-orange-500">
-            Empowering 1,200+ Financial Institutions
+            {content.trusted_tag}
           </p>
         </div>
       </div>
@@ -141,7 +151,7 @@ export default function TestimonialCarousel() {
         <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none" />
 
         <div className="flex animate-marquee" style={{ width: "max-content" }}>
-          {[...defaultTestimonials, ...defaultTestimonials].map((testimonial, index) => (
+          {[...testimonials, ...testimonials].map((testimonial, index) => (
             <div key={index} className="px-4 flex-shrink-0" style={{ width: "450px" }}>
               <TestimonialCard testimonial={testimonial} />
             </div>
@@ -153,7 +163,7 @@ export default function TestimonialCarousel() {
             onClick={() => router.push("/login")}
             className="h-14 px-8 rounded-full bg-orange-500 text-white hover:bg-orange-600 font-bold text-base shadow-xl shadow-orange-500/20"
           >
-            Share Your Experience
+            {content.share_btn}
           </Button>
         </div>
       </div>

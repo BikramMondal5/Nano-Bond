@@ -7,12 +7,26 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowRightLeft, Info } from "lucide-react"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 interface ActionPanelProps {
   bondStatus: string
 }
 
 export function ActionPanel({ bondStatus }: ActionPanelProps) {
+  const content = useContentTranslation({
+    title: "Manage Investment",
+    tab_buy: "Buy",
+    tab_redeem: "Redeem",
+    lbl_amount: "Amount in USDT",
+    lbl_balance: "Balance: 5,420.00",
+    lbl_receive: "You will receive (est.)",
+    btn_buy: "Buy GBOND Instantly",
+    btn_redeem: "Redeem GBOND",
+    disclaimer: "By clicking Buy, you agree to the Bond Terms and Conditions. Yield is calculated daily and accrued to your balance.",
+    redeem_info: "Redemption is currently only available for matured bonds. This bond matures in 187 days."
+  })
+
   const searchParams = useSearchParams()
   const initialAmount = searchParams.get('investAmount') || ""
   const [amount, setAmount] = useState(initialAmount)
@@ -23,7 +37,7 @@ export function ActionPanel({ bondStatus }: ActionPanelProps) {
   return (
     <Card id="investment-panel" className="bg-[#100F14] border-primary/20 shadow-2xl shadow-primary/5">
       <CardHeader className="pb-4">
-        <CardTitle className="text-[#E5E7EB] text-xl font-bold flex items-center gap-2">Manage Investment</CardTitle>
+        <CardTitle className="text-[#E5E7EB] text-xl font-bold flex items-center gap-2">{content.title}</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="buy" className="w-full">
@@ -32,21 +46,21 @@ export function ActionPanel({ bondStatus }: ActionPanelProps) {
               value="buy"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
-              Buy
+              {content.tab_buy}
             </TabsTrigger>
             <TabsTrigger
               value="redeem"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
-              Redeem
+              {content.tab_redeem}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="buy" className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-medium text-[#6B7280] uppercase tracking-wider flex justify-between">
-                Amount in USDT
-                <span>Balance: 5,420.00</span>
+                {content.lbl_amount}
+                <span>{content.lbl_balance}</span>
               </label>
               <div className="relative">
                 <Input
@@ -70,7 +84,7 @@ export function ActionPanel({ bondStatus }: ActionPanelProps) {
 
             <div className="space-y-2">
               <label className="text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                You will receive (est.)
+                {content.lbl_receive}
               </label>
               <div className="bg-[#1C1A21] border border-white/5 rounded-md h-14 flex items-center px-4 justify-between">
                 <span className="text-lg font-bold text-[#E5E7EB]">{gbondsReceived}</span>
@@ -79,12 +93,11 @@ export function ActionPanel({ bondStatus }: ActionPanelProps) {
             </div>
 
             <Button className="w-full h-14 bg-gradient-to-r from-[#FD8C00] to-[#FFAB40] hover:from-[#E67E00] hover:to-[#FD8C00] text-black font-bold text-lg shadow-lg shadow-primary/20 transition-all duration-300">
-              Buy GBOND Instantly
+              {content.btn_buy}
             </Button>
 
             <p className="text-[10px] text-[#6B7280] text-center leading-relaxed">
-              By clicking Buy, you agree to the Bond Terms and Conditions. Yield is calculated daily and accrued to your
-              balance.
+              {content.disclaimer}
             </p>
           </TabsContent>
 
@@ -92,7 +105,7 @@ export function ActionPanel({ bondStatus }: ActionPanelProps) {
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex gap-3">
               <Info className="w-5 h-5 text-primary shrink-0" />
               <p className="text-sm text-[#9CA3AF]">
-                Redemption is currently only available for matured bonds. This bond matures in 187 days.
+                {content.redeem_info}
               </p>
             </div>
 
@@ -100,7 +113,7 @@ export function ActionPanel({ bondStatus }: ActionPanelProps) {
               disabled
               className="w-full h-14 bg-muted text-muted-foreground font-bold text-lg cursor-not-allowed"
             >
-              Redeem GBOND
+              {content.btn_redeem}
             </Button>
           </TabsContent>
         </Tabs>

@@ -10,8 +10,14 @@ import { QuickActions } from "@/components/quick-actions"
 import { BondSelector, BondOption } from "@/components/bond-selector" // Reusing the selector
 import type { IBond } from "@/lib/models/Bond"
 import { Loader2 } from "lucide-react"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export default function PortfolioPage() {
+  const content = useContentTranslation({
+    title: "Portfolio",
+    loading_msg: "Loading bonds..."
+  });
+
   const { address } = usePortfolioData()
   const [bonds, setBonds] = useState<IBond[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,12 +61,12 @@ export default function PortfolioPage() {
     <main className="container mx-auto px-4 pt-8 pb-20 space-y-8">
       {/* Header with Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-white">Portfolio</h1>
+        <h1 className="text-3xl font-bold text-white">{content.title}</h1>
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Loading bonds...</span>
+            <span className="text-sm">{content.loading_msg}</span>
           </div>
         ) : (
           <BondSelector

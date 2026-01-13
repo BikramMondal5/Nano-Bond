@@ -16,10 +16,13 @@ import { useThreeJs } from "../utils/ThreeJsContext";
 
 // Import VAPI client
 import { getVapi } from "../utils/vapi";
+// Removed direct Lingo SDK import to avoid client-side errors
+// import { LingoDotDevEngine } from "lingo.dev/sdk";
 
 import type Vapi from "@vapi-ai/web";
 import { useRouter } from "next/navigation";
 import { usePortfolioData } from "../hooks/usePortfolioData";
+import { useLanguage } from "../context/LanguageContext";
 
 // Bond Registry Data (Simplified for Context)
 const BOND_REGISTRY = [
@@ -113,6 +116,104 @@ const ChatWidget = () => {
     const [showHistory, setShowHistory] = useState(false);
     const [savedSessions, setSavedSessions] = useState<ChatSession[]>([]);
 
+
+    // Multilingual State (From Context)
+    const { language } = useLanguage();
+    const [uiText, setUiText] = useState({
+        title: "NanoBond Advisor",
+        placeholder: "Ask me anything...",
+        welcome: "Hi there! I'm <span class=\"text-purple-400 font-semibold\">NanoBond Advisor</span>. I can help you navigate our platform and guide you through your investment journey. How can I assist you today?",
+        chat_cleared: "Chat cleared",
+        online: "Online",
+        new_chat: "New Chat",
+        history: "History",
+        back_to_chat: "Back to Chat",
+        history_title: "Recent Sessions",
+        no_history: "No saved history",
+        delete_session: "Delete Session",
+        messages_count: "messages",
+        stop_voice_call: "Stop voice call",
+        start_voice_call: "Start voice call"
+    });
+    // const lingoEngine = useRef<LingoDotDevEngine | null>(null);
+
+    // Initialize Lingo - Moved to Server Side (API Route)
+    /*
+    useEffect(() => {
+        const apiKey = process.env.NEXT_PUBLIC_LINGO_API_KEY;
+        if (apiKey) {
+            try {
+                lingoEngine.current = new LingoDotDevEngine({ apiKey });
+            } catch (e) {
+                console.error("Failed to init Lingo:", e);
+            }
+        }
+    }, []);
+    */
+
+    // Update translations when language changes
+    useEffect(() => {
+        const updateTranslations = async () => {
+            // We define the source texts here to always translate from English
+            const sourceTexts = {
+                title: "NanoBond Advisor",
+                placeholder: "Ask me anything...",
+                welcome: "Hi there! I'm <span class=\"text-purple-400 font-semibold\">NanoBond Advisor</span>. I can help you navigate our platform and guide you through your investment journey. How can I assist you today?",
+                chat_cleared: "Chat cleared",
+                online: "Online",
+                new_chat: "New Chat",
+                history: "History",
+                back_to_chat: "Back to Chat",
+                history_title: "Recent Sessions",
+                no_history: "No saved history",
+                delete_session: "Delete Session",
+                messages_count: "messages",
+                stop_voice_call: "Stop voice call",
+                start_voice_call: "Start voice call"
+            };
+
+            if (language === "en") {
+                setUiText(sourceTexts);
+                return;
+            }
+
+            try {
+                // Prepare texts for translation
+                const keys = Object.keys(sourceTexts) as Array<keyof typeof sourceTexts>;
+                const textsToTranslate = keys.map(key => sourceTexts[key]);
+
+                // Call API route
+                const response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        texts: textsToTranslate,
+                        targetLocale: language
+                    })
+                });
+
+                if (!response.ok) throw new Error('Translation failed');
+
+                const data = await response.json();
+                const translations = data.translations;
+
+                if (translations && translations.length === keys.length) {
+                    const newUiText = { ...sourceTexts };
+                    keys.forEach((key, index) => {
+                        if (translations[index]) {
+                            newUiText[key] = translations[index];
+                        }
+                    });
+                    setUiText(newUiText);
+                }
+            } catch (error) {
+                console.error("Translation error:", error);
+            }
+        };
+
+        updateTranslations();
+    }, [language]);
+
     // Fetch user bonds
     useEffect(() => {
         if (address && (isOpen || userBonds.length === 0)) {
@@ -146,6 +247,7 @@ ${JSON.stringify(BOND_REGISTRY, null, 2)}
 
 INSTRUCTIONS:
 You are a voice assistant. Keep your responses concise (1-2 sentences) and conversational.
+Reply to the user in ${language === 'en' ? 'English' : language} language.
 You have access to the user's portfolio and market data.
 You can guide users to these sections:
 - Marketplace: /
@@ -164,8 +266,9 @@ You can guide users to these sections:
         ).join('\n');
 
         const historyContext = recentHistory ? `\n\nRECENT CONVERSATION HISTORY:\n${recentHistory}` : "";
+        const langInstruction = `\n\nIMPORTANT: Respond in ${language} language.`;
 
-        return `${SYSTEM_PROMPT_TEMPLATE}\n${contextData}${historyContext}`;
+        return `${SYSTEM_PROMPT_TEMPLATE}\n${contextData}${historyContext}${langInstruction}`;
     };
 
     // VAPI state
@@ -639,6 +742,8 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
         }
     };
 
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
     const archiveCurrentSession = () => {
         if (messages.length === 0) return;
 
@@ -649,15 +754,34 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
         const lastUserMsg = messages.filter(m => m.sender === 'user').pop();
         const preview = lastUserMsg ? lastUserMsg.text.substring(0, 40) + (lastUserMsg.text.length > 40 ? '...' : '') : 'Conversation';
 
+        const sessionId = currentSessionId || Date.now().toString();
+
         const newSession: ChatSession = {
-            id: Date.now().toString(),
+            id: sessionId,
             timestamp: Date.now(),
             preview,
             messages: messages
         };
 
-        const updatedSessions = [newSession, ...savedSessions]; // Add to top
+        // Check if session already exists
+        const existingSessionIndex = savedSessions.findIndex(s => s.id === sessionId);
+
+        let updatedSessions;
+        if (existingSessionIndex >= 0) {
+            // Update existing session
+            updatedSessions = [...savedSessions];
+            updatedSessions[existingSessionIndex] = newSession;
+            // Move to top if updated? Optional. Let's keep it simple for now or move to top.
+            // Moving to top:
+            updatedSessions.splice(existingSessionIndex, 1);
+            updatedSessions.unshift(newSession);
+        } else {
+            // Create new session
+            updatedSessions = [newSession, ...savedSessions];
+        }
+
         setSavedSessions(updatedSessions);
+        setCurrentSessionId(sessionId); // Ensure we keep tracking this session
 
         if (typeof window !== 'undefined') {
             localStorage.setItem(SESSIONS_KEY, JSON.stringify(updatedSessions));
@@ -671,22 +795,18 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
         }
 
         setMessages([]);
+        setCurrentSessionId(null); // Reset session ID for new chat
         if (typeof window !== 'undefined') {
             localStorage.removeItem(STORAGE_KEY);
         }
         setShowHistory(false);
-        setCallStatus("Chat cleared");
+        setCallStatus(uiText.chat_cleared || "Chat cleared");
         setTimeout(() => setCallStatus(""), 2000);
     };
 
     const handleLoadSession = (session: ChatSession) => {
-        // Archive current before loading old one? 
-        // Strategy: Just overwrite current workflow. If user wanted to save current, they should hit New Chat first.
-        // Or better: Auto-save current if it has content before switching.
+        // Archive current before loading old one?
         if (messages.length > 0) {
-            // Check if current messages are already saved (simple check: id match if we tracked current session id, 
-            // but here we just check if it matches the one we are loading to avoid dups or simple overwrite)
-            // For simplicity: Auto-archive current state if not empty.
             archiveCurrentSession();
         }
 
@@ -697,6 +817,7 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
         }));
 
         setMessages(hydratedMessages);
+        setCurrentSessionId(session.id); // Set active session ID
         setShowHistory(false);
     };
 
@@ -789,18 +910,19 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                                 />
                             </div>
                             <div>
-                                <h3 className="text-white font-medium">NanoBond Advisor</h3>
+                                <h3 className="text-white font-medium">{uiText.title}</h3>
                                 <p className="text-purple-100 text-xs opacity-80">
-                                    {callStatus || "Online"}
+                                    {callStatus || uiText.online}
                                 </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
+
                             {showHistory ? (
                                 <button
                                     className="p-1 rounded-full hover:bg-white/10 transition-colors"
                                     onClick={() => setShowHistory(false)}
-                                    title="Back to Chat"
+                                    title={uiText.back_to_chat || "Back to Chat"}
                                 >
                                     <FiChevronLeft className="text-white" />
                                 </button>
@@ -809,14 +931,14 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                                     <button
                                         className="p-1 rounded-full hover:bg-white/10 transition-colors"
                                         onClick={handleNewChat}
-                                        title="New Chat"
+                                        title={uiText.new_chat || "New Chat"}
                                     >
                                         <FiPlus className="text-white" />
                                     </button>
                                     <button
                                         className="p-1 rounded-full hover:bg-white/10 transition-colors"
                                         onClick={() => setShowHistory(true)}
-                                        title="History"
+                                        title={uiText.history || "History"}
                                     >
                                         <FiClock className="text-white" />
                                     </button>
@@ -838,11 +960,11 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                         >
                             {showHistory ? (
                                 <div className="flex flex-col gap-2">
-                                    <h4 className="text-gray-400 text-xs uppercase font-semibold mb-2">Recent Sessions</h4>
+                                    <h4 className="text-gray-400 text-xs uppercase font-semibold mb-2">{uiText.history_title || "Recent Sessions"}</h4>
                                     {savedSessions.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center h-48 text-gray-500">
                                             <FiMessageSquare className="w-8 h-8 mb-2 opacity-50" />
-                                            <p className="text-sm">No saved history</p>
+                                            <p className="text-sm">{uiText.no_history || "No saved history"}</p>
                                         </div>
                                     ) : (
                                         savedSessions.map((session) => (
@@ -860,7 +982,7 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                                                     <button
                                                         onClick={(e) => handleDeleteSession(e, session.id)}
                                                         className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        title="Delete Session"
+                                                        title={uiText.delete_session || "Delete Session"}
                                                     >
                                                         <FiTrash2 className="w-3.5 h-3.5" />
                                                     </button>
@@ -870,7 +992,7 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                                                 </p>
                                                 <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
                                                     <FiMessageSquare className="w-3 h-3" />
-                                                    {session.messages.length} messages
+                                                    {session.messages.length} {uiText.messages_count || "messages"}
                                                 </div>
                                             </motion.div>
                                         ))
@@ -967,9 +1089,7 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ duration: 0.5 }}
                                             >
-                                                <p className="text-gray-100 text-sm leading-relaxed">
-                                                    Hi there! I'm <span className="text-purple-400 font-semibold">NanoBond Advisor</span>. I can help you navigate our platform and guide you through your investment journey. How can I assist you today?
-                                                </p>
+                                                <p className="text-gray-100 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: uiText.welcome || "" }} />
                                                 <span className="text-xs text-gray-400 mt-2 block">
                                                     {formatTime(new Date())}
                                                 </span>
@@ -1054,10 +1174,10 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
                                 value={inputMessage}
                                 onChange={(e) => setInputMessage(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                                placeholder="Ask me anything..."
+                                placeholder={uiText.placeholder || "Ask me anything..."}
                                 className="flex-1 bg-[#262626] text-gray-200 rounded-full px-4 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm placeholder:text-gray-500"
                             />
-                            <button className="text-purple-400 hover:text-purple-300 p-2 rounded-full hover:bg-white/5 transition-colors" onClick={handleMicClick} title={isCallActive ? "Stop voice call" : "Start voice call"}>
+                            <button className="text-purple-400 hover:text-purple-300 p-2 rounded-full hover:bg-white/5 transition-colors" onClick={handleMicClick} title={isCallActive ? (uiText.stop_voice_call || "Stop voice call") : (uiText.start_voice_call || "Start voice call")}>
                                 <FiMic className={`w-5 h-5 ${isListening ? "animate-pulse text-red-400" : ""}`} />
                             </button>
                             <motion.button

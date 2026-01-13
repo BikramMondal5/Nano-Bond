@@ -9,8 +9,17 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function Web3AuthConnectButton() {
+    const content = useContentTranslation({
+        initializing: "Initializing...",
+        copy_address: "Copy Address",
+        disconnect: "Disconnect",
+        retry: "Retry",
+        connect_wallet: "Connect Wallet"
+    })
+
     const {
         login,
         logout,
@@ -29,7 +38,7 @@ export function Web3AuthConnectButton() {
         return (
             <Button variant="outline" disabled className="border-orange-500/30 bg-orange-950/20">
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Initializing...
+                {content.initializing}
             </Button>
         );
     }
@@ -58,14 +67,14 @@ export function Web3AuthConnectButton() {
                         onClick={() => navigator.clipboard.writeText(walletAddress)}
                     >
                         <Wallet className="w-4 h-4 mr-2" />
-                        Copy Address
+                        {content.copy_address}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         className="text-red-400 hover:bg-red-950/40 cursor-pointer"
                         onClick={logout}
                     >
                         <LogOut className="w-4 h-4 mr-2" />
-                        Disconnect
+                        {content.disconnect}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -77,7 +86,7 @@ export function Web3AuthConnectButton() {
             <div className="flex flex-col items-center gap-2">
                 <Button variant="destructive" className="bg-red-900/50 border-red-500 hover:bg-red-900/70" onClick={() => window.location.reload()}>
                     <LogOut className="w-4 h-4 mr-2" />
-                    Retry
+                    {content.retry}
                 </Button>
                 <span className="text-xs text-red-500 max-w-[200px] text-center">{error}</span>
             </div>
@@ -90,7 +99,7 @@ export function Web3AuthConnectButton() {
             className="bg-orange-600 hover:bg-orange-500 text-white font-bold"
         >
             <Wallet className="w-4 h-4 mr-2" />
-            Connect Wallet
+            {content.connect_wallet}
         </Button>
     );
 }

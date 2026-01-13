@@ -18,6 +18,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export interface BondOption {
     bondId: string;
@@ -35,6 +36,14 @@ interface BondSelectorProps {
 export function BondSelector({ bonds, selectedBondId, onSelect, loading }: BondSelectorProps) {
     const [open, setOpen] = React.useState(false)
 
+    const content = useContentTranslation({
+        loading: "Loading bonds...",
+        select: "Select Bond",
+        search_placeholder: "Search bonds...",
+        no_bonds: "No bonds found.",
+        heading: "Available Bonds"
+    })
+
     // Find the currently selected bond object
     const selectedBond = bonds.find(b => b.bondId === selectedBondId)
 
@@ -51,7 +60,7 @@ export function BondSelector({ bonds, selectedBondId, onSelect, loading }: BondS
                     <div className="flex items-center gap-2 truncate">
                         <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="truncate font-medium">
-                            {loading ? "Loading bonds..." : (selectedBond ? selectedBond.bondName : "Select Bond")}
+                            {loading ? content.loading : (selectedBond ? selectedBond.bondName : content.select)}
                         </span>
                     </div>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -59,12 +68,12 @@ export function BondSelector({ bonds, selectedBondId, onSelect, loading }: BondS
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-0 bg-[#100F14] border-primary/20 shadow-xl">
                 <Command className="bg-[#100F14]">
-                    <CommandInput placeholder="Search bonds..." className="text-white bg-transparent border-none focus:ring-0" />
+                    <CommandInput placeholder={content.search_placeholder} className="text-white bg-transparent border-none focus:ring-0" />
                     <CommandList>
                         <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                            No bonds found.
+                            {content.no_bonds}
                         </CommandEmpty>
-                        <CommandGroup heading="Available Bonds" className="text-muted-foreground">
+                        <CommandGroup heading={content.heading} className="text-muted-foreground">
                             {bonds.map((bond) => (
                                 <CommandItem
                                     key={bond.bondId}

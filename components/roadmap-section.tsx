@@ -1,45 +1,78 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function RoadmapSection() {
+  const content = useContentTranslation({
+    tag: "Future Vision",
+    title: "Timeline and Roadmap",
+    subtitle: "Our vision for democratizing government bond investments",
+
+    // Q2 2025
+    q2_item1: "Launch NanoBond platform on testnet",
+    q2_item2: "Smart contract security audits",
+    q2_item3: "Initial bond tokenization (US Treasury)",
+    q2_item4: "Community beta testing program",
+
+    // Q3 2025
+    q3_item1: "Mainnet deployment on Ethereum & Polygon",
+    q3_item2: "Integration with major DeFi protocols",
+    q3_item3: "Add bonds from 5+ countries",
+    q3_item4: "Launch mobile app (iOS & Android)",
+
+    // Q4 2025
+    q4_item1: "Cross-chain bridge implementation",
+    q4_item2: "AI-powered portfolio optimization",
+    q4_item3: "Institutional investor onboarding",
+    q4_item4: "Secondary market liquidity pools",
+
+    // Q1 2026
+    q1_26_item1: "Governance token launch",
+    q1_26_item2: "DAO formation for platform decisions",
+    q1_26_item3: "Expand to 20+ bond markets",
+    q1_26_item4: "Automated yield farming strategies",
+  });
+
   const roadmapItems = [
     {
       quarter: "Q2",
       year: "2025",
       items: [
-        "Launch NanoBond platform on testnet",
-        "Smart contract security audits",
-        "Initial bond tokenization (US Treasury)",
-        "Community beta testing program",
+        content.q2_item1,
+        content.q2_item2,
+        content.q2_item3,
+        content.q2_item4,
       ],
     },
     {
       quarter: "Q3",
       year: "2025",
       items: [
-        "Mainnet deployment on Ethereum & Polygon",
-        "Integration with major DeFi protocols",
-        "Add bonds from 5+ countries",
-        "Launch mobile app (iOS & Android)",
+        content.q3_item1,
+        content.q3_item2,
+        content.q3_item3,
+        content.q3_item4,
       ],
     },
     {
       quarter: "Q4",
       year: "2025",
       items: [
-        "Cross-chain bridge implementation",
-        "AI-powered portfolio optimization",
-        "Institutional investor onboarding",
-        "Secondary market liquidity pools",
+        content.q4_item1,
+        content.q4_item2,
+        content.q4_item3,
+        content.q4_item4,
       ],
     },
     {
       quarter: "Q1",
       year: "2026",
       items: [
-        "Governance token launch",
-        "DAO formation for platform decisions",
-        "Expand to 20+ bond markets",
-        "Automated yield farming strategies",
+        content.q1_26_item1,
+        content.q1_26_item2,
+        content.q1_26_item3,
+        content.q1_26_item4,
       ],
     },
   ]
@@ -52,13 +85,13 @@ export function RoadmapSection() {
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-20">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
-            Future Vision
+            {content.tag}
           </div>
           <h2 className="text-4xl md:text-6xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
-            Timeline and Roadmap
+            {content.title}
           </h2>
           <p className="text-xl text-orange-100/60 max-w-2xl mx-auto leading-relaxed">
-            Our vision for democratizing government bond investments
+            {content.subtitle}
           </p>
         </div>
 
