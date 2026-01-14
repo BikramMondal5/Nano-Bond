@@ -49,7 +49,8 @@ export class DeploymentService {
 
         // 1. Get Shared Core Addresses
         const USDT_ADDRESS = config.contracts.usdtAddress;
-        const REGISTRY_ADDRESS = config.contracts.registryAddress;
+        // const REGISTRY_ADDRESS = config.contracts.registryAddress;
+        const REGISTRY_ADDRESS = "0x216eB267d21096cec82Ad40B9CD8Ce576213AbEc"; // HARDCODED FIX
 
         console.log(`[DeploymentService] Config USDT:     ${USDT_ADDRESS}`);
         console.log(`[DeploymentService] Config Registry: ${REGISTRY_ADDRESS}`);
