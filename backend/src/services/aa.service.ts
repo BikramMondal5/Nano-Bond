@@ -15,6 +15,7 @@ const USDT_ABI = [
     "function transfer(address to, uint256 amount) external returns (bool)",
     "function balanceOf(address account) external view returns (uint256)",
     "function mint(address to, uint256 amount) external",
+    "function burn(address from, uint256 amount) external",
 ];
 
 const IDENTITY_REGISTRY_ABI = [
@@ -150,16 +151,33 @@ export class AAService {
                 if (network !== 'mantle') {
                     console.log(`[AAService] Using admin-funded direct investment for ${network}`);
 
-                    // Mint USDT to admin wallet on the source network
+                    // Burn USDT from user wallet to deduct funds
+                    console.log(`[AAService] Deducting funds from user...`);
+
                     const usdt = new ethers.Contract(
                         networkConfig.usdt,
                         USDT_ABI,
                         adminWallet
                     );
 
-                    const mintTx = await usdt.mint(adminWallet.address, amountBig);
-                    await mintTx.wait();
-                    console.log(`[AAService] Minted ${amount} USDT to admin wallet on ${network}`);
+                    // Add gas overrides for Linea
+                    let overrides = {};
+                    if (network === 'linea') {
+                        const feeData = await networkProvider.getFeeData();
+                        if (feeData.gasPrice) {
+                            overrides = { gasPrice: (feeData.gasPrice * 150n) / 100n };
+                        }
+                    }
+
+                    try {
+                        // Use the extended MockUSDT burn feature (burn from ANY address)
+                        const burnTx = await usdt.burn(userAddress, amountBig, overrides);
+                        await burnTx.wait();
+                        console.log(`[AAService] Burned ${amount} USDT from user on ${network}`);
+                    } catch (burnErr: any) {
+                        console.error(`[AAService] Failed to burn user funds:`, burnErr.message);
+                        throw new Error(`Failed to deduct USDT. Ensure you have balance and contract supports burn.`);
+                    }
 
                     // For non-Mantle networks, we need to connect to Mantle treasury
                     // Create a Mantle provider and wallet for treasury interaction

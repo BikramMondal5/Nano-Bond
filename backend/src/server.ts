@@ -497,17 +497,7 @@ app.post('/api/faucet/usdt', async (req: Request, res: Response) => {
         // Mint USDT (6 decimals)
         const amountWithDecimals = BigInt(Math.round(mintAmount * 1000000));
 
-        // Add gas overrides for Linea
-        let overrides = {};
-        if (network === 'linea') {
-            const feeData = await networkProvider.getFeeData();
-            if (feeData.gasPrice) {
-                // Bump gas price by 50% for Linea
-                overrides = { gasPrice: (feeData.gasPrice * 150n) / 100n };
-            }
-        }
-
-        const tx = await usdt.mint(address, amountWithDecimals, overrides);
+        const tx = await usdt.mint(address, amountWithDecimals);
         console.log(`[API] Faucet TX sent on ${network}: ${tx.hash}`);
         await tx.wait();
         console.log(`[API] Faucet TX confirmed on ${network}`);

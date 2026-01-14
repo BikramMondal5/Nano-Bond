@@ -43,7 +43,16 @@
                 {
                     "id": "522677",
                     "name": "gg4",
-                    "amount": 2138,
+                    "amount": 2808,
+                    "purchaseDate": "2026-01-14",
+                    "yield": "7%",
+                    "maturityDate": "2026-09-08",
+                    "status": "Active"
+                },
+                {
+                    "id": "5226778",
+                    "name": "gg5",
+                    "amount": 470,
                     "purchaseDate": "2026-01-14",
                     "yield": "7%",
                     "maturityDate": "2026-09-08",
