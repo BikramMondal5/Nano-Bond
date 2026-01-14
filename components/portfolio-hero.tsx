@@ -7,12 +7,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 import type { IBond } from "@/lib/models/Bond"
 import { useBondStats } from "@/hooks/useStats"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 interface PortfolioHeroProps {
   bond?: IBond;
 }
 
 export function PortfolioHero({ bond }: PortfolioHeroProps) {
+  const content = useContentTranslation({
+    total_val: "Total Portfolio Value",
+    total_bal: "Total GBOND Balance",
+    int_rate: "Interest Rate",
+    days_maturity: "Days to Maturity",
+    annual_yield: "Annualized Yield",
+    current_bond: "Current Bond",
+    select_bond: "Select Bond",
+    refresh: "Refresh"
+  })
+
   // Pass dynamic addresses if bond is selected
   const { balance, claimable, isLoading, refetch } = usePortfolioData(bond?.contractAddress, bond?.distributorAddress)
   const { maturityDate } = useBondStats(bond?.contractAddress)
@@ -34,31 +46,31 @@ export function PortfolioHero({ bond }: PortfolioHeroProps) {
 
   const stats = [
     {
-      label: "Total Portfolio Value",
+      label: content.total_val,
       value: isLoading ? "..." : `$${totalValue} USDT`,
       icon: TrendingUp,
       trend: `+${(INTEREST_RATE * 100).toFixed(2)}% APY`,
       highlight: true,
     },
     {
-      label: "Total GBOND Balance",
+      label: content.total_bal,
       value: isLoading ? "..." : `${numericBalance.toLocaleString()} GBOND`,
       icon: Wallet,
       action: refetch,
       debug: `Bond: ${bond?.bondName || 'All'}`
     },
     {
-      label: "Interest Rate",
+      label: content.int_rate,
       value: `${(INTEREST_RATE * 100).toFixed(2)}%`,
       icon: Coins,
       color: "text-primary",
-      sub: "Annualized Yield",
+      sub: content.annual_yield,
     },
     {
-      label: "Days to Maturity",
+      label: content.days_maturity,
       value: maturityDisplay,
       icon: Clock,
-      sub: bond ? "Current Bond" : "Select Bond",
+      sub: bond ? content.current_bond : content.select_bond,
     },
   ]
 
@@ -86,7 +98,7 @@ export function PortfolioHero({ bond }: PortfolioHeroProps) {
                   <button
                     onClick={stat.action}
                     className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                    title="Refresh"
+                    title={content.refresh}
                   >
                     <RefreshCw className="w-3 h-3 text-muted-foreground" />
                   </button>

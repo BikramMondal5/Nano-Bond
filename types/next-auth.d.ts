@@ -4,6 +4,8 @@ declare module "next-auth" {
     interface Session {
         user: {
             id: string;
+            role?: 'Regular' | 'Admin';
+            sessionId?: string;
             walletAddress?: string;
             portfolio?: {
                 totalInvested: number;
@@ -19,6 +21,8 @@ declare module "next-auth" {
 
     interface User {
         id: string;
+        role?: 'Regular' | 'Admin';
+        sessionId?: string;
         walletAddress?: string;
         portfolio?: {
             totalInvested: number;
@@ -35,5 +39,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
     interface JWT {
         id: string;
+        role?: 'Regular' | 'Admin';
+        sessionId?: string;
     }
 }

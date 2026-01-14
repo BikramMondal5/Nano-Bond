@@ -6,11 +6,19 @@ import { RedemptionRules } from "@/components/redemption-rules"
 import { BondSelector, BondOption } from "@/components/bond-selector"
 import { Loader2 } from "lucide-react"
 import type { IBond } from "@/lib/models/Bond"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export default function RedeemPage() {
   const [bonds, setBonds] = useState<IBond[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBondId, setSelectedBondId] = useState<string>("")
+
+  const content = useContentTranslation({
+    title: "Redeem Your GBOND",
+    desc: "Exchange your GBOND tokens for USDT once the bond reaches maturity. Safe, instant, and transparent.",
+    select_label: "Select Bond to Redeem",
+    no_bonds: "No bonds available for redemption."
+  })
 
   useEffect(() => {
     const fetchBonds = async () => {
@@ -47,15 +55,15 @@ export default function RedeemPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2">
             <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight italic font-serif">
-              Redeem Your GBOND
+              {content.title}
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Exchange your GBOND tokens for USDT once the bond reaches maturity. Safe, instant, and transparent.
+              {content.desc}
             </p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-muted-foreground">Select Bond to Redeem</span>
+            <span className="text-sm font-medium text-muted-foreground">{content.select_label}</span>
             <BondSelector
               bonds={bondOptions}
               selectedBondId={selectedBondId}
@@ -71,7 +79,7 @@ export default function RedeemPage() {
           </div>
         ) : !selectedBond ? (
           <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground border border-dashed border-white/10 rounded-xl">
-            <p>No bonds available for redemption.</p>
+            <p>{content.no_bonds}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">

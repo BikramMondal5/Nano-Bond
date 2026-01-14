@@ -1,9 +1,25 @@
+"use client";
+
+import { useContentTranslation } from "@/hooks/useContentTranslation"
+
 export function StatsSection() {
+  const content = useContentTranslation({
+    tvl_label: "Total Value Locked",
+    investors_label: "Active Investors",
+    markets_label: "Bond Markets",
+    apy_label: "Average APY",
+
+    tvl_value: "$2.5B+",
+    investors_value: "50K+",
+    markets_value: "12",
+    apy_value: "5.2%"
+  });
+
   const stats = [
-    { label: "Total Value Locked", value: "$2.5B+" },
-    { label: "Active Investors", value: "50K+" },
-    { label: "Bond Markets", value: "12" },
-    { label: "Average APY", value: "5.2%" },
+    { label: content.tvl_label, value: content.tvl_value },
+    { label: content.investors_label, value: content.investors_value },
+    { label: content.markets_label, value: content.markets_value },
+    { label: content.apy_label, value: content.apy_value },
   ]
 
   return (

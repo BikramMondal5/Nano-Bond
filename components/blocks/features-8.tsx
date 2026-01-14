@@ -1,7 +1,25 @@
+"use client";
+
 import { Card, CardContent } from '@/components/ui/card'
 import { Shield, Users, TrendingUp, Zap, Lock, DollarSign, Sparkles } from 'lucide-react'
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function Features() {
+    const content = useContentTranslation({
+        tag: "Powerful Features",
+        title: "Powerful Features for Modern Investors",
+        subtitle: "Everything you need to invest in government bonds with the power of blockchain technology.",
+        card1_title: "Blockchain Secured",
+        card2_title: "Secure by Default",
+        card2_desc: "Military-grade security with multi-sig wallets and audited smart contracts protecting your investments.",
+        card3_title: "Lightning Fast",
+        card3_desc: "Instant settlement and 24/7 trading on our decentralized exchange platform.",
+        card4_title: "Real-Time Analytics",
+        card4_desc: "AI-powered bond analytics with real-time performance tracking and yield predictions.",
+        card5_title: "Fractional Ownership",
+        card5_desc: "Start investing in government bonds with as little as $10. No minimum barriers to entry."
+    });
+
     return (
         <section className="bg-gray-50 py-16 md:py-32 dark:bg-transparent">
             <div className="mx-auto max-w-6xl px-6">
@@ -9,13 +27,13 @@ export function Features() {
                 <div className="text-center mb-16">
                     <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary mb-6">
                         <Sparkles className="w-3.5 h-3.5" />
-                        Powerful Features
+                        {content.tag}
                     </div>
                     <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
-                        Powerful Features for Modern Investors
+                        {content.title}
                     </h2>
                     <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                        Everything you need to invest in government bonds with the power of blockchain technology.
+                        {content.subtitle}
                     </p>
                 </div>
 
@@ -32,7 +50,7 @@ export function Features() {
                                     </svg>
                                     <span className="mx-auto block w-fit text-5xl font-semibold">100%</span>
                                 </div>
-                                <h2 className="mt-6 text-center text-3xl font-semibold">Blockchain Secured</h2>
+                                <h2 className="mt-6 text-center text-3xl font-semibold">{content.card1_title}</h2>
                             </CardContent>
                         </Card>
                         <Card className="relative col-span-full overflow-hidden sm:col-span-3 lg:col-span-2">
@@ -41,8 +59,8 @@ export function Features() {
                                     <Shield className="m-auto size-12 text-primary" strokeWidth={1} />
                                 </div>
                                 <div className="relative z-10 mt-6 space-y-2 text-center">
-                                    <h2 className="group-hover:text-secondary-950 text-lg font-medium transition dark:text-white">Secure by Default</h2>
-                                    <p className="text-foreground">Military-grade security with multi-sig wallets and audited smart contracts protecting your investments.</p>
+                                    <h2 className="group-hover:text-secondary-950 text-lg font-medium transition dark:text-white">{content.card2_title}</h2>
+                                    <p className="text-foreground">{content.card2_desc}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -88,8 +106,8 @@ export function Features() {
                                     </svg>
                                 </div>
                                 <div className="relative z-10 mt-14 space-y-2 text-center">
-                                    <h2 className="text-lg font-medium transition">Lightning Fast</h2>
-                                    <p className="text-foreground">Instant settlement and 24/7 trading on our decentralized exchange platform.</p>
+                                    <h2 className="text-lg font-medium transition">{content.card3_title}</h2>
+                                    <p className="text-foreground">{content.card3_desc}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -100,8 +118,8 @@ export function Features() {
                                         <TrendingUp className="m-auto size-5 text-primary" strokeWidth={1} />
                                     </div>
                                     <div className="space-y-2">
-                                        <h2 className="group-hover:text-secondary-950 text-lg font-medium text-zinc-800 transition dark:text-white">Real-Time Analytics</h2>
-                                        <p className="text-foreground">AI-powered bond analytics with real-time performance tracking and yield predictions.</p>
+                                        <h2 className="group-hover:text-secondary-950 text-lg font-medium text-zinc-800 transition dark:text-white">{content.card4_title}</h2>
+                                        <p className="text-foreground">{content.card4_desc}</p>
                                     </div>
                                 </div>
                                 <div className="rounded-tl-(--radius) relative -mb-6 -mr-6 mt-6 h-fit border-l border-t p-6 py-6 sm:ml-6">
@@ -140,8 +158,8 @@ export function Features() {
                                         <DollarSign className="m-auto size-6 text-primary" strokeWidth={1} />
                                     </div>
                                     <div className="space-y-2">
-                                        <h2 className="text-lg font-medium transition">Fractional Ownership</h2>
-                                        <p className="text-foreground">Start investing in government bonds with as little as $10. No minimum barriers to entry.</p>
+                                        <h2 className="text-lg font-medium transition">{content.card5_title}</h2>
+                                        <p className="text-foreground">{content.card5_desc}</p>
                                     </div>
                                 </div>
                                 <div className="before:bg-(--color-border) relative mt-6 before:absolute before:inset-0 before:mx-auto before:w-px sm:-my-6 sm:-mr-6">

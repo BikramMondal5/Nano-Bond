@@ -4,8 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts"
 import { usePortfolioData } from "@/hooks/usePortfolioData"
 import { useMemo } from "react"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function PortfolioChart() {
+  const content = useContentTranslation({
+    title: "Projected Value Growth",
+    subtitle: "Based on 8.5% APY Projection",
+    tooltip_label: "Projected Value"
+  })
+
   const { balance } = usePortfolioData()
 
   const data = useMemo(() => {
@@ -28,8 +35,8 @@ export function PortfolioChart() {
     <Card className="bg-[#100F14] border-white/5">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-[#E5E7EB] text-xl font-bold">Projected Value Growth</CardTitle>
-          <p className="text-sm text-[#9CA3AF]">Based on 8.5% APY Projection</p>
+          <CardTitle className="text-[#E5E7EB] text-xl font-bold">{content.title}</CardTitle>
+          <p className="text-sm text-[#9CA3AF]">{content.subtitle}</p>
         </div>
       </CardHeader>
       <CardContent className="h-[300px] pt-4">
@@ -51,7 +58,7 @@ export function PortfolioChart() {
                 borderRadius: "12px",
               }}
               itemStyle={{ color: "#FD8C00" }}
-              formatter={(value) => [`$${value}`, "Projected Value"]}
+              formatter={(value) => [`$${value}`, content.tooltip_label]}
             />
             <Area type="monotone" dataKey="value" stroke="#FD8C00" strokeWidth={3} fill="url(#chartGradient)" />
           </AreaChart>
