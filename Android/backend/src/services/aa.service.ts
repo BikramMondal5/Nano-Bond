@@ -130,6 +130,19 @@ export class AAService {
             const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
             const tx = await usdt.mint(to, amountBig);
             await tx.wait();
+
+            // Record deposit/faucet transaction
+            if (this.dbService) {
+                await this.dbService.recordTransaction({
+                    txHash: tx.hash,
+                    userAddress: to,
+                    type: 'DEPOSIT',
+                    amount: amount,
+                    currency: 'USDT',
+                    status: 'SUCCESS'
+                });
+            }
+
             return tx.hash;
         });
     }
@@ -204,8 +217,8 @@ export class AAService {
             // Note: Bond Registry has "distributorAddress" but we might need to fetch it from the bond data structure in bondService
             // The JSON structure has it.
 
-            const distributorAddress = bondData.distributorAddress || config.contracts.distributorAddress; // Fallback
-            if (!distributorAddress) throw new Error(`Distributor not configured`);
+            const distributorAddress = bondData.distributorAddress;
+            if (!distributorAddress) throw new Error(`Distributor not configured for: ${bondId}`);
 
             console.log(`[AAService] Processing gasless claim for ${userAddress}`);
 
@@ -277,8 +290,8 @@ export class AAService {
             // Resolve Bond
             const bondData = await this.bondService.getBondById(bondId);
             if (!bondData) return 0;
-            const distributorAddress = bondData.distributorAddress || config.contracts.distributorAddress;
-            if (!distributorAddress) return 0;
+            const distributorAddress = bondData.distributorAddress;
+            if (!distributorAddress) return 0; // No distributor = no yield
 
             const DISTRIBUTOR_VIEW_ABI = [
                 "function claimableYield(address user) external view returns (uint256)"

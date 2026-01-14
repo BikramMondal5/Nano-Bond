@@ -14,10 +14,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public')); // Serve static files (admin page)
 
+import { UserService } from './services/user.service';
+
 // Services
 const bondService = new BondService();
 const dbService = new DbService();
 const aaService = new AAService(dbService);
+const userService = new UserService();
 
 // Provider and Wallet for admin operations
 const provider = new ethers.JsonRpcProvider(config.rpc.url);
@@ -29,6 +32,7 @@ const adminWallet = config.admin.privateKey
 const IDENTITY_REGISTRY_ABI = [
     "function register(address wallet, bytes32 nationalIdHash) external",
     "function isVerified(address wallet) external view returns (bool)",
+    "function registerVerified(address wallet, bytes32 aadhaarHash, bytes memory walletSignature, uint8 riskScore) external", // Added here for consistency
 ];
 
 // MockUSDT ABI
@@ -150,7 +154,6 @@ app.get('/api/history/:address', async (req: Request, res: Response) => {
  */
 app.get('/api/debt/status', async (_req: Request, res: Response) => {
     try {
-        console.log('[API] GET /api/debt/status');
         const status = await bondService.getDebtStatus();
         res.json(status);
     } catch (error: any) {
@@ -170,16 +173,17 @@ app.get('/api/debt/status', async (_req: Request, res: Response) => {
  * 1. Validates input.
  * 2. Hashes 'nationalId' immediately.
  * 3. Submits Hash to Blockchain.
- * 4. Does NOT save 'nationalId' anywhere.
+ * 4. Stores { wallet, hash, verified: true } in MongoDB securely.
+ * 5. Does NOT save raw 'nationalId' anywhere.
  */
 app.post('/api/kyc/register', async (req: Request, res: Response) => {
     try {
-        const { address, nationalId } = req.body;
+        const { address, nationalId, nationalIdHash: preHashedId } = req.body;
 
         // 1. Strict Input Validation
-        if (!address || !nationalId) {
+        if (!address || (!nationalId && !preHashedId)) {
             console.log(`[KYC] Failed request - Missing Data`);
-            res.status(400).json({ error: 'Missing address or nationalId' });
+            res.status(400).json({ error: 'Missing address or nationalId/nationalIdHash' });
             return;
         }
 
@@ -189,17 +193,20 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
             return;
         }
 
-        // 2. Immediate Hashing (Zero Knowledge Storage)
-        const nationalIdHash = ethers.keccak256(ethers.toUtf8Bytes(nationalId));
+        // 2. Use pre-hashed ID from device (more secure) or hash on server (fallback)
+        // SECURITY: Raw ID should be hashed on device - we receive only the hash
+        let nationalIdHash: string;
+        if (preHashedId) {
+            nationalIdHash = preHashedId;
+            console.log(`[KYC] Using device-hashed ID (secure): ${nationalIdHash.substring(0, 20)}...`);
+        } else {
+            // Fallback: Hash on server (less secure, for backward compatibility)
+            nationalIdHash = ethers.keccak256(ethers.toUtf8Bytes(nationalId));
+            console.log(`[KYC] Server-side hash (fallback): ${nationalIdHash.substring(0, 20)}...`);
+        }
+        // NOTE: Raw nationalId is NEVER logged or stored
 
         console.log(`[KYC] Processing KYC for ${address}`);
-        console.log(`[KYC] ID Hash generated: ${nationalIdHash}`);
-        // NOTE: We do NOT log the actual nationalId.
-
-        const IDENTITY_REGISTRY_ABI = [
-            "function registerVerified(address wallet, bytes32 aadhaarHash, bytes memory walletSignature, uint8 riskScore) external",
-            "function isVerified(address wallet) external view returns (bool)",
-        ];
 
         const registry = new ethers.Contract(
             config.contracts.registryAddress,
@@ -207,10 +214,25 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
             adminWallet
         );
 
-        // 3. Check if already verified (to save gas)
-        const isVerified = await registry.isVerified(address);
-        if (isVerified) {
-            console.log(`[KYC] Address ${address} already verified on-chain`);
+        // 3. Check if already verified (Optimization: Check DB first, then Chain)
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            console.log(`[KYC] Address ${address} already verified (DB cache)`);
+            res.json({ success: true, message: 'Already verified' });
+            return;
+        }
+
+        const isVerifiedOnChain = await registry.isVerified(address);
+        if (isVerifiedOnChain) {
+            console.log(`[KYC] Address ${address} already verified on-chain. Syncing to DB...`);
+            // Sync DB if missing
+            await userService.registerUser({
+                walletAddress: address,
+                aadhaarHash: nationalIdHash, // Map nationalIdHash to aadhaarHash
+                kycStatus: 'APPROVED',
+                kycApprovedAt: new Date()
+            });
+
             res.json({ success: true, message: 'Already verified' });
             return;
         }
@@ -229,7 +251,16 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
         await tx.wait();
         console.log(`[KYC] Verification Confirmed on Blockchain.`);
 
-        // 4. Success Response
+        // 4. Save to MongoDB (Separate Section)
+        await userService.registerUser({
+            walletAddress: address,
+            aadhaarHash: nationalIdHash,
+            kycStatus: 'APPROVED',
+            kycApprovedAt: new Date(),
+            txHash: tx.hash
+        });
+
+        // 5. Success Response
         res.json({
             success: true,
             message: 'Secure Verification Successful',
@@ -245,21 +276,42 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
 /**
  * GET /api/kyc/status/:address
  * Check if an address is KYC verified
+ * Optimized: Checks MongoDB first.
  */
 app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
     try {
         const { address } = req.params;
-        console.log(`[API] GET /api/kyc/status/${address}`);
+        // console.log(`[API] GET /api/kyc/status/${address}`); // Reduce logs
 
+        // 1. Check MongoDB (Fastest)
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            res.json({ address, isVerified: true, source: 'db' });
+            return;
+        }
+
+        // 2. Fallback to Blockchain (If DB is out of sync or empty)
         const registry = new ethers.Contract(
             config.contracts.registryAddress,
             IDENTITY_REGISTRY_ABI,
             provider
         );
 
-        const isVerified = await registry.isVerified(address);
+        const isVerifiedOnChain = await registry.isVerified(address);
 
-        res.json({ address, isVerified });
+        // If verified on chain but not in DB, assume we should treat them as verified.
+        // We can't backfill the nationalIdHash here since we don't have it, but we can mark them as verified.
+        if (isVerifiedOnChain) {
+            // Optional: Update DB to avoid future chain calls (partial record)
+            await userService.registerUser({
+                walletAddress: address,
+                aadhaarHash: 'UNKNOWN_ONCHAIN_SYNC',
+                kycStatus: 'APPROVED',
+                kycApprovedAt: new Date()
+            });
+        }
+
+        res.json({ address, isVerified: isVerifiedOnChain, source: 'chain' });
     } catch (error: any) {
         console.error('[API] KYC status error:', error.message);
         res.status(500).json({ error: 'Failed to check KYC status' });

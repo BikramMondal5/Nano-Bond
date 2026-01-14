@@ -2,15 +2,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../core/services/backend_service.dart';
 import '../../../../core/utils/ui_utils.dart';
 
 import '../../providers/user_portfolio_provider.dart';
+import '../../../invest/providers/bonds_provider.dart';
 
 class WithdrawBottomSheet extends ConsumerStatefulWidget {
   final String address;
@@ -27,15 +29,19 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
   String _loadingMessage = "Processing...";
   Timer? _loadingTimer;
 
+  // Track which bond is being acted upon to show loading only on that card?
+  // Or global loading since it's a bottom sheet blocking interaction is fine.
+  // I'll stick to global loading for simplicity as per existing code.
+
   @override
   void dispose() {
     _loadingTimer?.cancel();
     super.dispose();
   }
 
-  void _startLoadingAnimation() {
+  void _startLoadingAnimation(String message) {
     int step = 0;
-    _loadingMessage = "Initiating Claim...";
+    _loadingMessage = message;
     _loadingTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
       if (!mounted) return;
       setState(() {
@@ -47,64 +53,75 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
     });
   }
 
-  Future<void> _handleClaim() async {
-    final portfolio = ref.read(userPortfolioProvider).valueOrNull;
-    if (portfolio == null || portfolio.holdings.isEmpty) {
-      UiUtils.showError(context, "No bonds to claim yield from");
-      return;
-    }
-
+  Future<void> _handleClaim(String bondId) async {
     setState(() => _isLoading = true);
-    _startLoadingAnimation();
+    _startLoadingAnimation("Initiating Claim...");
 
     try {
       await BackendService().claimYield(
         address: widget.address,
-        bondId: portfolio.holdings.first.bondId,
+        bondId: bondId,
       );
 
       if (!mounted) return;
       _loadingTimer?.cancel();
-      context.pop();
+      // Don't pop, just refresh data so user can see updated status if needed (e.g. yield goes to 0)
+      // Actually popping is better UX for "Done". Or maybe show success dialog.
+      // Existing code popped. I will show toast and refresh.
+      ref.invalidate(userPortfolioProvider);
       UiUtils.showSuccess(context, "Yield claimed successfully!");
     } catch (e) {
       if (!mounted) return;
       _loadingTimer?.cancel();
-      String errorMessage = e.toString();
-      if (errorMessage.contains("Exception:")) {
-        errorMessage = errorMessage.replaceAll("Exception:", "").trim();
-      }
-
-      // Check for specific "No yield" error from backend (matches AAService message)
-      if (errorMessage.toLowerCase().contains("no yield available") ||
-          errorMessage.toLowerCase().contains("nothing to claim")) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text("Server Response", style: AppTextStyles.heading2),
-            content: Text(errorMessage, style: AppTextStyles.bodyMedium),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  "OK",
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.r),
-            ),
-            backgroundColor: Colors.white,
-          ),
-        );
-      } else {
-        UiUtils.showError(context, errorMessage);
-      }
+      _handleError(e);
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleRedeem(
+    String bondId,
+    double amount,
+    String bondName,
+  ) async {
+    setState(() => _isLoading = true);
+    _startLoadingAnimation("Redeeming Principal...");
+
+    try {
+      await BackendService().redeem(
+        address: widget.address,
+        bondAmount:
+            amount, // Backend takes double? BackendService.redeem takes double bondAmount.
+        bondId: bondId,
+      );
+
+      if (!mounted) return;
+      _loadingTimer?.cancel();
+      ref.invalidate(userPortfolioProvider);
+      UiUtils.showSuccess(context, "Redeemed $bondName successfully!");
+      // Optionally pop if fully redeemed.
+    } catch (e) {
+      if (!mounted) return;
+      _loadingTimer?.cancel();
+      _handleError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _handleError(dynamic e) {
+    String errorMessage = e.toString();
+    if (errorMessage.contains("Exception:")) {
+      errorMessage = errorMessage.replaceAll("Exception:", "").trim();
+    }
+
+    if (errorMessage.toLowerCase().contains("no yield available") ||
+        errorMessage.toLowerCase().contains("nothing to claim")) {
+      UiUtils.showError(context, "No yield available to claim right now.");
+    } else if (errorMessage.toLowerCase().contains("bond not matured")) {
+      UiUtils.showError(context, "Bond has not matured yet.");
+    } else {
+      UiUtils.showError(context, errorMessage);
     }
   }
 
@@ -116,10 +133,10 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 520.w),
+        constraints: BoxConstraints(maxWidth: 520.w, maxHeight: 0.85.sh),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.background,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
             boxShadow: [
               BoxShadow(
@@ -146,10 +163,67 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
                   ),
                 ),
                 Gap(16.h),
+
+                // Header
+                // Header
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Center(
+                    child: Text(
+                      "Redeem",
+                      style: GoogleFonts.outfit(
+                        fontSize: 24.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                Gap(16.h),
+
                 if (_isLoading)
                   _buildLoadingState()
                 else
-                  _buildClaimContent(portfolioAsync),
+                  Expanded(
+                    child: portfolioAsync.when(
+                      data: (portfolio) {
+                        final holdings = portfolio.holdings;
+                        if (holdings.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.account_balance_wallet_outlined,
+                                  size: 64.w,
+                                  color: Colors.grey[300],
+                                ),
+                                Gap(16.h),
+                                Text(
+                                  "No bonds found",
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          padding: EdgeInsets.fromLTRB(24.w, 0, 24.w, 24.h),
+                          itemCount: holdings.length,
+                          separatorBuilder: (_, __) => Gap(16.h),
+                          itemBuilder: (context, index) =>
+                              _buildBondCard(holdings[index]),
+                        );
+                      },
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (err, _) =>
+                          Center(child: Text("Error loading portfolio")),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -187,128 +261,263 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
     );
   }
 
-  Widget _buildClaimContent(AsyncValue<PortfolioModel> portfolioAsync) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(24.w, 0, 24.w, 24.h),
+  Widget _buildBondCard(PortfolioHolding holding) {
+    // Maturity date for display purposes
+    final maturity =
+        DateTime.tryParse(holding.maturityDate) ??
+        DateTime.now().add(const Duration(days: 3650));
+
+    // Styling constants (Matching History Drawer Pastel Vibes)
+    final cardColor = const Color(0xFFEFEEFC); // Lavender like 'Invested'
+    final contentColor = AppColors.primary;
+
+    // Yield Amount Logic: Use per-holding pendingYield
+    final holdingYield = holding.pendingYield ?? 0;
+    final hasYield = holdingYield > 0.01;
+
+    // Formatting APY: If > 1, assume it's like 700 (meaning 7.00% or 700%? user said 700.0% is typo).
+    // If backend sends 7.0 for 7%, then (7 * 100) = 700.
+    // If backend sends 0.07 for 7%, then (0.07 * 100) = 7.0.
+    // User sees "700.0%", implying value was 7.0. So we should probably NOT multiply by 100 if it's already > 1.
+    // Or just check range.
+    String apyText;
+    if (holding.apy > 1.0) {
+      // Likely already percentage e.g. 7.0
+      apyText = "${holding.apy.toStringAsFixed(1)}%";
+    } else {
+      // Likely decimal e.g. 0.07
+      apyText = "${(holding.apy * 100).toStringAsFixed(1)}%";
+    }
+
+    // Lookup Bond Icon from Registry
+    final bondsAsync = ref.watch(bondsProvider);
+    IconData bondIcon = Icons.shield_outlined; // Default
+
+    if (bondsAsync.hasValue) {
+      try {
+        final bond = bondsAsync.value!.firstWhere(
+          (b) => b.bondId == holding.bondId,
+        );
+        bondIcon = bond.icon;
+      } catch (_) {}
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10.r,
+            offset: Offset(0, 4.h),
+          ),
+        ],
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.north_east_rounded,
-                size: 40.w,
-                color: Colors.green,
-              ),
-            ),
-          ),
-          Gap(16.h),
-          Center(
-            child: Text(
-              "Claim Your Yield",
-              style: AppTextStyles.heading2.copyWith(fontSize: 20.sp),
-            ),
-          ),
-          Gap(8.h),
-          Center(
-            child: Text(
-              "Your principal returns automatically at maturity",
-              style: AppTextStyles.bodyMedium.copyWith(color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          Gap(24.h),
+          // Top Colored Section
           Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(20.w),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.green.withValues(alpha: 0.1),
-                  Colors.green.withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              color: cardColor,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24.r),
+                topRight: Radius.circular(24.r),
               ),
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
             ),
-            child: Column(
+            child: Row(
               children: [
-                Icon(
-                  Icons.attach_money_rounded,
-                  size: 48.w,
-                  color: Colors.green,
+                Container(
+                  height: 48.w,
+                  width: 48.w,
+                  decoration: BoxDecoration(
+                    color:
+                        Colors.white, // White icon bg as per Bento/Card style
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  // User said "icon use same". If refering to shield in screenshot, I'll keep verified_user_outlined or check BondCard icon.
+                  // BondCard uses `bond.icon`. Here we don't have bond icon in holding.
+                  // Default to shield as it looks good and matches "Government Bond" theme.
+                  child: Icon(bondIcon, color: contentColor, size: 24.w),
                 ),
-                Gap(12.h),
-                Text(
-                  "Pending Yield",
-                  style: AppTextStyles.caption.copyWith(
-                    color: Colors.grey[600],
+                Gap(12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        holding.bondName,
+                        style: GoogleFonts.manrope(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                          color: contentColor,
+                        ),
+                      ),
+                      Text(
+                        holding.bondId, // or symbol
+                        style: GoogleFonts.manrope(
+                          fontSize: 12.sp,
+                          color: contentColor.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Gap(4.h),
-                portfolioAsync.when(
-                  loading: () => const CircularProgressIndicator(),
-                  error: (_, __) => const Text("--"),
-                  data: (portfolio) => Text(
-                    "${(portfolio.pendingYield ?? 0.0).toStringAsFixed(2)} USDT",
-                    style: AppTextStyles.heading2.copyWith(
-                      fontSize: 28.sp,
-                      color: Colors.green[700],
-                    ),
-                  ),
-                ),
-                Gap(4.h),
+                // Price/Value
                 Text(
-                  "(Available Now)",
-                  style: AppTextStyles.caption.copyWith(
-                    color: Colors.grey[500],
-                    fontSize: 11.sp,
+                  "\$${holding.value.toStringAsFixed(0)}",
+                  style: GoogleFonts.manrope(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w800,
+                    color: contentColor,
                   ),
                 ),
               ],
             ),
           ),
-          Gap(24.h),
-          // Slide to Claim - disabled until admin distributes yield
-          // Conditional Claim Button
-          portfolioAsync.when(
-            data: (portfolio) {
-              return SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _handleClaim,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[600],
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(100.r),
+
+          // Middle Info Section (Maturity & Rates)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildInfoColumn(
+                  "APY",
+                  apyText,
+                  color: Colors.black87,
+                ), // Darker color for value
+                _buildInfoColumn(
+                  "Maturity",
+                  DateFormat('MMM dd, yyyy').format(maturity),
+                  color: Colors.black87,
+                ),
+                _buildInfoColumn(
+                  "Status",
+                  holding.isUnlocked ? "Unlocked" : "Locked",
+                  color: holding.isUnlocked ? Colors.green : Colors.orange,
+                ),
+              ],
+            ),
+          ),
+
+          // Divider
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24.w),
+            child: Divider(color: Colors.grey[100], height: 1.h),
+          ),
+
+          // Bottom Actions
+          Padding(
+            padding: EdgeInsets.all(16.w),
+            child: Row(
+              children: [
+                // Claim Yield Button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: hasYield
+                        ? () => _handleClaim(holding.bondId)
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[600],
+                      disabledBackgroundColor: Colors.grey[200],
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: Colors.grey[400],
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
                     ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    "Redeem Your Yield",
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16.sp,
-                      color: Colors.white,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.north_east_rounded, size: 16.w),
+                        Gap(6.w),
+                        Text(
+                          hasYield
+                              ? "Claim \$${holdingYield.toStringAsFixed(2)}"
+                              : "Claim Yield",
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              );
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+                Gap(12.w),
+                // Withdraw Principal Button
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: holding.isUnlocked
+                        ? () => _handleRedeem(
+                            holding.bondId,
+                            holding.balance,
+                            holding.bondName,
+                          )
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      disabledForegroundColor: Colors.grey[400],
+                      side: BorderSide(
+                        color: holding.isUnlocked
+                            ? AppColors.primary
+                            : Colors.grey[300]!,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.arrow_upward_rounded, size: 16.w),
+                        Gap(6.w),
+                        Text(
+                          "Withdraw",
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInfoColumn(String label, String value, {Color? color}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.manrope(
+            fontSize: 11.sp,
+            color: Colors.grey[500],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Gap(2.h),
+        Text(
+          value,
+          style: GoogleFonts.manrope(
+            fontSize: 13.sp,
+            color: color ?? AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2,11 +2,20 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:web3dart/crypto.dart';
 
 class KycService {
   String get _baseUrl {
     final v = dotenv.env['API_BASE_URL'] ?? '';
     return v.endsWith('/') ? v.substring(0, v.length - 1) : v;
+  }
+
+  /// Hash nationalId on device using keccak256 (same as Solidity)
+  /// This ensures raw ID NEVER leaves the device
+  String _hashNationalId(String nationalId) {
+    final bytes = utf8.encode(nationalId);
+    final hash = keccak256(Uint8List.fromList(bytes));
+    return '0x${bytesToHex(hash)}';
   }
 
   Future<Map<String, dynamic>> requestRegistration({
@@ -16,6 +25,14 @@ class KycService {
   }) async {
     if (_baseUrl.isEmpty) {
       throw Exception('Missing API_BASE_URL in .env');
+    }
+
+    // SECURITY: Hash nationalId on device before sending
+    // Raw ID never leaves the phone
+    String? nationalIdHash;
+    if (nationalId != null) {
+      nationalIdHash = _hashNationalId(nationalId);
+      debugPrint('KYC: Hashed ID on device (raw ID never sent to server)');
     }
 
     // Use main backend endpoint for KYC registration
@@ -29,7 +46,8 @@ class KycService {
       headers: headers,
       body: jsonEncode({
         'address': address,
-        if (nationalId != null) 'nationalId': nationalId,
+        if (nationalIdHash != null)
+          'nationalIdHash': nationalIdHash, // Send HASH only
         if (signature != null) 'signature': signature,
       }),
     );

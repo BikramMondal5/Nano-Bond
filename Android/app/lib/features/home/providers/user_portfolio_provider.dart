@@ -68,6 +68,8 @@ class PortfolioHolding {
   final double apy;
   final String maturityDate;
   final String? proofUrl;
+  final double? pendingYield; // Per-bond claimable yield
+  final bool isUnlocked; // Admin-controlled unlock status
 
   PortfolioHolding({
     required this.bondId,
@@ -77,6 +79,8 @@ class PortfolioHolding {
     required this.apy,
     required this.maturityDate,
     this.proofUrl,
+    this.pendingYield,
+    this.isUnlocked = false,
   });
 
   factory PortfolioHolding.fromJson(Map<String, dynamic> json) {
@@ -88,6 +92,8 @@ class PortfolioHolding {
       apy: PortfolioModel._parseDouble(json['apy']),
       maturityDate: json['maturityDate'] as String? ?? '',
       proofUrl: json['proofUrl'] as String?,
+      pendingYield: PortfolioModel._parseDouble(json['pendingYield']),
+      isUnlocked: (json['status'] as String? ?? 'locked') == 'unlocked',
     );
   }
 }

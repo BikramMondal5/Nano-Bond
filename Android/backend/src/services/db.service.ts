@@ -1,4 +1,5 @@
-import { Pool } from 'pg';
+import { MongoClient, Db, Collection } from 'mongodb';
+import { config } from '../config';
 
 export interface TransactionRecord {
     txHash: string;
@@ -10,91 +11,86 @@ export interface TransactionRecord {
     status: 'SUCCESS' | 'FAILED' | 'PENDING';
 }
 
+interface TransactionDoc {
+    walletAddress: string;
+    bondId?: string;
+    type: string;
+    amount: number;
+    currency?: string;
+    txHash: string;
+    status: string;
+    timestamp: Date;
+}
+
 export class DbService {
-    private pool: Pool;
+    private mongoClient: MongoClient | null = null;
+    private db: Db | null = null;
+    private transactionsCollection: Collection<TransactionDoc> | null = null;
 
     constructor() {
-        // Fallback for missing env during dev
-        if (!process.env.DATABASE_URL) {
-            console.warn('[DbService] No DATABASE_URL found. History tracking disabled.');
-        }
-
-        this.pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false } // Required for Neon
-        });
-
-        if (process.env.DATABASE_URL) {
-            this.init();
-        }
+        this.initMongoDB();
     }
 
-    private async init() {
-        try {
-            const client = await this.pool.connect();
-            await client.query(`
-                CREATE TABLE IF NOT EXISTS transactions (
-                    tx_hash VARCHAR(66) PRIMARY KEY,
-                    user_address VARCHAR(42) NOT NULL,
-                    type VARCHAR(20) NOT NULL,
-                    amount NUMERIC NOT NULL,
-                    currency VARCHAR(10) NOT NULL,
-                    bond_id VARCHAR(50),
-                    status VARCHAR(20) DEFAULT 'SUCCESS',
-                    created_at TIMESTAMP DEFAULT NOW()
-                );
-                
-                -- Auto-migration for existing tables (ensure all columns exist)
-                ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
-                ALTER TABLE transactions ADD COLUMN IF NOT EXISTS bond_id VARCHAR(50);
-                ALTER TABLE transactions ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'SUCCESS';
-                ALTER TABLE transactions ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'USDT';
-                ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'UNKNOWN';
-                ALTER TABLE transactions ADD COLUMN IF NOT EXISTS amount NUMERIC DEFAULT 0;
-                ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_address VARCHAR(42);
+    private async initMongoDB() {
+        if (!config.mongodb.uri) {
+            console.warn('[DbService] No MONGODB_URI found. Transaction history disabled.');
+            return;
+        }
 
-                CREATE INDEX IF NOT EXISTS idx_user_address ON transactions(user_address);
-            `);
-            client.release();
-            console.log('[DbService] Database initialized successfully');
-        } catch (err) {
-            console.error('[DbService] Initialization failed:', err);
+        try {
+            this.mongoClient = new MongoClient(config.mongodb.uri);
+            await this.mongoClient.connect();
+            this.db = this.mongoClient.db('govtbond');
+            this.transactionsCollection = this.db.collection<TransactionDoc>('investments');
+            console.log('[DbService] Connected to MongoDB (investments collection)');
+        } catch (error) {
+            console.error('[DbService] Failed to connect to MongoDB:', error);
         }
     }
 
     async recordTransaction(tx: TransactionRecord) {
-        if (!process.env.DATABASE_URL) return;
+        if (!this.transactionsCollection) {
+            console.warn('[DbService] MongoDB not connected, skipping transaction record');
+            return;
+        }
 
         try {
-            const query = `
-                INSERT INTO transactions (tx_hash, user_address, type, amount, currency, bond_id, status)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                ON CONFLICT (tx_hash) DO NOTHING
-            `;
-            const values = [
-                tx.txHash,
-                tx.userAddress,
-                tx.type,
-                tx.amount,
-                tx.currency,
-                tx.bondId || null,
-                tx.status
-            ];
-            await this.pool.query(query, values);
+            await this.transactionsCollection.insertOne({
+                walletAddress: tx.userAddress,
+                bondId: tx.bondId || undefined,
+                type: tx.type,
+                amount: tx.amount,
+                currency: tx.currency || 'USDT',
+                txHash: tx.txHash,
+                status: tx.status,
+                timestamp: new Date(),
+            });
             console.log(`[DbService] Recorded ${tx.type} transaction: ${tx.txHash}`);
-        } catch (err) {
+        } catch (err: any) {
+            // Ignore duplicate key errors (transaction already recorded)
+            if (err.code === 11000) {
+                console.log(`[DbService] Transaction ${tx.txHash} already exists, skipping`);
+                return;
+            }
             console.error('[DbService] Failed to record transaction:', err);
         }
     }
 
     async getUserHistory(address: string) {
-        if (!process.env.DATABASE_URL) return [];
+        if (!this.transactionsCollection) {
+            console.warn('[DbService] MongoDB not connected, returning empty history');
+            return [];
+        }
+
         try {
-            const res = await this.pool.query(
-                `SELECT * FROM transactions WHERE user_address = $1 ORDER BY created_at DESC`,
-                [address]
-            );
-            return res.rows.map(row => {
+            // Case-insensitive query for wallet address
+            const transactions = await this.transactionsCollection
+                .find({ walletAddress: { $regex: new RegExp(`^${address}$`, 'i') } })
+                .sort({ timestamp: -1 })
+                .limit(100)
+                .toArray();
+
+            return transactions.map((row) => {
                 let frontendType = 'UNKNOWN';
                 switch (row.type) {
                     case 'INVEST': frontendType = 'INVESTMENT'; break;
@@ -106,13 +102,13 @@ export class DbService {
                 }
 
                 return {
-                    txHash: row.tx_hash,
+                    txHash: row.txHash,
                     type: frontendType,
-                    amount: parseFloat(row.amount),
-                    currency: row.currency,
-                    timestamp: row.created_at,
-                    asset: row.currency,
-                    details: row.bond_id ? `Bond: ${row.bond_id}` : 'Transaction'
+                    amount: row.amount,
+                    currency: row.currency || 'USDT',
+                    timestamp: row.timestamp,
+                    asset: row.currency || 'USDT',
+                    details: row.bondId ? `Bond: ${row.bondId}` : 'Transaction'
                 };
             });
         } catch (err) {

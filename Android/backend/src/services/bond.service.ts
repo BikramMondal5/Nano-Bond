@@ -29,6 +29,7 @@ interface RegistryBond {
     maturityDate?: string;
     description?: string;
     proofUrl?: string;
+    status?: 'locked' | 'unlocked'; // Admin-controlled lock/unlock for withdrawals
 }
 
 // API response format
@@ -121,6 +122,33 @@ export class BondService {
             return bond;
         } catch (error) {
             console.error('[BondService] Failed to add bond:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Set bond lock/unlock status for withdrawals
+     */
+    async setBondStatus(bondId: string, status: 'locked' | 'unlocked'): Promise<boolean> {
+        if (!this.bondsCollection) {
+            throw new Error('MongoDB not connected');
+        }
+
+        try {
+            const result = await this.bondsCollection.updateOne(
+                { bondId },
+                { $set: { status } }
+            );
+
+            if (result.matchedCount === 0) {
+                console.warn(`[BondService] Bond ${bondId} not found for status update`);
+                return false;
+            }
+
+            console.log(`[BondService] Bond ${bondId} status set to ${status}`);
+            return true;
+        } catch (error) {
+            console.error('[BondService] Failed to set bond status:', error);
             throw error;
         }
     }
@@ -282,11 +310,21 @@ export class BondService {
                 if (!targetAddress) continue;
 
                 const contract = new ethers.Contract(targetAddress, BOND_ABI, this.provider);
-                const balanceBig = await contract.balanceOf(userAddress);
+
+                // Fetch balance and on-chain maturity date in parallel
+                const [balanceBig, maturityTimestamp] = await Promise.all([
+                    contract.balanceOf(userAddress),
+                    contract.maturityDate().catch(() => BigInt(0))
+                ]);
 
                 if (balanceBig > BigInt(0)) {
                     const balance = parseFloat(ethers.formatUnits(balanceBig, 18));
                     const value = balance;
+
+                    // Determine unlock status from on-chain maturity (blockchain is source of truth)
+                    const nowTimestamp = Math.floor(Date.now() / 1000);
+                    const maturityTs = Number(maturityTimestamp);
+                    const isUnlocked = maturityTs > 0 && nowTimestamp >= maturityTs;
 
                     holdings.push({
                         bondId: rb.bondId,
@@ -297,7 +335,8 @@ export class BondService {
                         apy: rb.couponRate,
                         maturityDate: rb.maturityDate || '',
                         nextPaymentDate: rb.startDate,
-                        proofUrl: rb.proofUrl
+                        proofUrl: rb.proofUrl,
+                        status: isUnlocked ? 'unlocked' : 'locked', // From blockchain!
                     });
 
                     totalValue += value;
@@ -342,4 +381,5 @@ export interface PortfolioHolding {
     maturityDate: string;
     nextPaymentDate?: string;
     proofUrl?: string | null;
+    status?: 'locked' | 'unlocked';
 }
