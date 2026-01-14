@@ -15,13 +15,11 @@ async function main() {
 
     await mongoose.connect(process.env.MONGODB_URI!);
 
-    // Find the bond
-    const bond = await Bond.findOne({ bondName: 'IIT KGP2' });
+    // Check the LATEST bond
+    const bond = await Bond.findOne({}).sort({ createdAt: -1 });
 
     if (!bond) {
-        console.log("Bond 'IIT KGP2' NOT FOUND in DB.");
-        const all = await Bond.find({}, { bondName: 1, bondId: 1 }).sort({ createdAt: -1 }).limit(10);
-        console.log("Recent bonds:", all.map(b => b.bondName));
+        console.log("No bonds found in DB.");
         return;
     }
 
