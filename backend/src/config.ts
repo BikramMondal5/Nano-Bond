@@ -62,6 +62,8 @@ export const config = {
         key: process.env.BYBIT_KEY || '',
         secret: process.env.BYBIT_SECRET || '',
         testnet: process.env.BYBIT_TESTNET === 'true',
+    },
+    mongodb: {
+        uri: process.env.MONGODB_URI || ''
     }
 };
-

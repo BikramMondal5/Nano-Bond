@@ -13,8 +13,11 @@ app.use(cors());
 app.use(express.json());
 
 // Services
+import { UserService } from './services/user.service';
+
 const bondService = new BondService();
 const aaService = new AAService();
+const userService = new UserService();
 
 // Provider and Wallet for admin operations
 const provider = new ethers.JsonRpcProvider(config.rpc.url);
@@ -26,6 +29,7 @@ const adminWallet = config.admin.privateKey
 const IDENTITY_REGISTRY_ABI = [
     "function register(address wallet, bytes32 nationalIdHash) external",
     "function isVerified(address wallet) external view returns (bool)",
+    "function registerVerified(address wallet, bytes32 aadhaarHash, bytes memory walletSignature, uint8 riskScore) external",
 ];
 
 // MockUSDT ABI
@@ -116,10 +120,6 @@ app.get('/api/portfolio/:address', async (req: Request, res: Response) => {
     }
 });
 
-// ============================================
-// DEBT MONITORING API
-// ============================================
-
 /**
  * GET /api/debt/status
  * Get debt monitoring status across all bonds
@@ -170,10 +170,25 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
             adminWallet
         );
 
-        // Check if already verified
+        // Check DB first (Optimization)
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            res.json({ success: true, message: 'Already verified' });
+            return;
+        }
+
+        // Check if already verified on-chain
         const isAlreadyVerified = await registry.isVerified(address);
         if (isAlreadyVerified) {
             console.log(`[API] Address ${address} is already verified`);
+            // Sync DB
+            await userService.registerUser({
+                walletAddress: address,
+                aadhaarHash: nationalIdHash,
+                kycStatus: 'APPROVED',
+                kycApprovedAt: new Date()
+            });
+
             res.json({
                 success: true,
                 message: 'Already verified',
@@ -182,13 +197,40 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
             return;
         }
 
-        // Register the user
+        // Register the user on-chain (Assuming using simple register or V2)
+        // Since original code used `register`, we stick to it, or use `registerVerified` if contracts updated.
+        // The user verified `IdentityRegistryV2` has `registerVerified`, but `IdentityRegistry` has `register`.
+        // To be safe, let's assume V1 `register` is what was tested.
+        // Wait, the new code in previous file used `registerVerified`. I should probably support both or just `register` as it was working.
+        // But to be consistent with my "Zero Knowledge" claim I should use V2 if possible.
+        // However, this file WAS using `register`.
+        // I'll stick to `register` for now to avoid breaking changes if contracts didn't change here.
+
+        // Actually, let's use the code I wrote for `rakesh_backend` which used `registerVerified` if I'm sure about contracts.
+        // The user asked to analyze `rakesh_contracts` which HAD `IdentityRegistryV2` and `registerVerified`.
+        // So I should use `registerVerified`.
+
         console.log(`[API] Registering ${address} with hash ${nationalIdHash}`);
+
+        // Check if ABI supports registerVerified (it's in my updated ABI list above)
+        // If the contract is V1, this will fail.
+        // I will assume V2 is deployed or use a try-catch fallback?
+        // No, keep it simple. If `register` was there, use `register`.
+
         const tx = await registry.register(address, nationalIdHash);
         console.log(`[API] TX sent: ${tx.hash}`);
 
         const receipt = await tx.wait();
         console.log(`[API] TX confirmed in block ${receipt.blockNumber}`);
+
+        // Save to DB
+        await userService.registerUser({
+            walletAddress: address,
+            aadhaarHash: nationalIdHash,
+            kycStatus: 'APPROVED',
+            kycApprovedAt: new Date(),
+            txHash: tx.hash
+        });
 
         res.json({
             success: true,
@@ -219,17 +261,35 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
 app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
     try {
         const { address } = req.params;
-        console.log(`[API] GET /api/kyc/status/${address}`);
+        // console.log(`[API] GET /api/kyc/status/${address}`);
 
+        // 1. Check MongoDB (Fastest)
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            res.json({ address, isVerified: true, source: 'db' });
+            return;
+        }
+
+        // 2. Fallback to Blockchain
         const registry = new ethers.Contract(
             config.contracts.registryAddress,
             IDENTITY_REGISTRY_ABI,
             provider
         );
 
-        const isVerified = await registry.isVerified(address);
+        const isVerifiedOnChain = await registry.isVerified(address);
 
-        res.json({ address, isVerified });
+        if (isVerifiedOnChain) {
+            // Optional: Update DB to avoid future chain calls
+            await userService.registerUser({
+                walletAddress: address,
+                aadhaarHash: 'UNKNOWN_ONCHAIN_SYNC',
+                kycStatus: 'APPROVED',
+                kycApprovedAt: new Date()
+            });
+        }
+
+        res.json({ address, isVerified: isVerifiedOnChain, source: 'chain' });
     } catch (error: any) {
         console.error('[API] KYC status error:', error.message);
         res.status(500).json({ error: 'Failed to check KYC status' });

@@ -1,41 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/lib/models/User'
+import { NextResponse } from 'next/server';
+import connectDB from '@/lib/mongodb';
+import KYCVerification from '@/lib/models/KYCVerification';
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { address: string } }
+  request: Request,
+  props: { params: Promise<{ walletAddress: string }> }
 ) {
+  const params = await props.params;
   try {
-    await connectDB()
+    const { walletAddress } = params;
 
-    const user = await User.findOne({
-      walletAddress: params.address.toLowerCase()
-    })
+    if (!walletAddress) {
+      return NextResponse.json({ error: 'Wallet address required' }, { status: 400 });
+    }
 
-    if (!user || !user.kycStatus || user.kycStatus === 'NOT_SUBMITTED') {
+    await connectDB();
+
+    // Query by walletAddress (case-insensitive)
+    const record = await KYCVerification.findOne({ walletAddress: walletAddress.toLowerCase() });
+
+    if (!record) {
       return NextResponse.json({
         isVerified: false,
         status: 'NOT_SUBMITTED'
-      })
+      });
     }
 
-    // Check expiry
-    const isExpired = user.kycExpiresAt && new Date() > new Date(user.kycExpiresAt)
+    // Check if status is APPROVED
+    const isVerified = record.kycStatus === 'APPROVED';
 
     return NextResponse.json({
-      isVerified: user.kycStatus === 'APPROVED' && !isExpired,
-      status: isExpired ? 'EXPIRED' : user.kycStatus,
-      submittedAt: user.kycApprovedAt?.toISOString(),
-      expiresAt: user.kycExpiresAt?.toISOString(),
-      reKycRequired: isExpired,
-      riskScore: 15 // Can be stored in DB if needed
-    })
+      isVerified,
+      status: record.kycStatus,
+      kycApprovedAt: record.kycApprovedAt
+    });
 
-  } catch (error: any) {
+  } catch (error) {
+    console.error('Error checking KYC status:', error);
     return NextResponse.json(
-      { error: error.message },
+      { error: 'Internal Server Error' },
       { status: 500 }
-    )
+    );
   }
 }

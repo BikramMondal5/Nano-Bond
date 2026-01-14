@@ -4,13 +4,41 @@ import { RedemptionCard } from "@/components/redemption-card"
 import { RedemptionSummary } from "@/components/redemption-summary"
 import { RedemptionRules } from "@/components/redemption-rules"
 import { BondSelector, BondOption } from "@/components/bond-selector"
-import { Loader2 } from "lucide-react"
+import { Loader2, ShieldCheck } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+import { useWeb3Auth } from "@/hooks/use-web3auth"
+import { kycService } from "@/lib/services/kyc.service"
 import type { IBond } from "@/lib/models/Bond"
 
 export default function RedeemPage() {
+  const router = useRouter()
+  const { walletAddress } = useWeb3Auth()
   const [bonds, setBonds] = useState<IBond[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBondId, setSelectedBondId] = useState<string>("")
+
+  // KYC State
+  const [isKYCVerified, setIsKYCVerified] = useState<boolean | null>(null)
+  const [kycLoading, setKycLoading] = useState(true)
+
+  useEffect(() => {
+    const checkKYC = async () => {
+      if (!walletAddress) {
+        setKycLoading(false)
+        return
+      }
+      try {
+        const { isVerified } = await kycService.checkStatus(walletAddress)
+        setIsKYCVerified(isVerified)
+      } catch (error) {
+        console.error("KYC check failed", error)
+      } finally {
+        setKycLoading(false)
+      }
+    }
+    checkKYC()
+  }, [walletAddress])
 
   useEffect(() => {
     const fetchBonds = async () => {
@@ -40,6 +68,42 @@ export default function RedeemPage() {
     description: b.description
   }))
 
+  if (kycLoading || loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    )
+  }
+
+  // Not Connected or Not Verified UI
+  if (walletAddress && isKYCVerified === false) {
+    return (
+      <div className="container mx-auto px-4 py-24 max-w-4xl text-center space-y-8 animate-in fade-in duration-500">
+        <div className="flex justify-center">
+          <div className="p-6 bg-primary/10 rounded-full">
+            <ShieldCheck className="w-16 h-16 text-primary" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          <h1 className="text-4xl font-bold tracking-tight">Identity Verification Required</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            To redeem your bonds, your identity must be verified as per regulatory compliance.
+          </p>
+        </div>
+        <div className="pt-4">
+          <Button
+            size="lg"
+            onClick={() => router.push('/verification')}
+            className="text-lg px-8 py-6 h-auto"
+          >
+            Complete Verification
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -65,11 +129,7 @@ export default function RedeemPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="h-[400px] flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
-        ) : !selectedBond ? (
+        {!selectedBond ? (
           <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground border border-dashed border-white/10 rounded-xl">
             <p>No bonds available for redemption.</p>
           </div>
