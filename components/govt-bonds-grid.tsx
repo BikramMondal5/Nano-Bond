@@ -133,31 +133,10 @@ export function GovtBondsGrid({ bonds, basePath = "/govt-bonds", holdings }: Gov
                                 </div>
                             </CardContent>
 
-                            <CardFooter className="pt-4 border-t border-gray-800/50 flex gap-2">
-                                {basePath === "/my-bonds" ? (
-                                    <>
-                                        <Button
-                                            className="flex-1 bg-[#FD8C00] hover:bg-[#FD8C00]/90 text-white font-bold"
-                                            onClick={() => window.location.href = `/invest?bondId=${bond.bondId}`}
-                                        >
-                                            {content.btn_invest}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1 border-[#FD8C00]/50 text-[#FD8C00] hover:bg-[#FD8C00]/10"
-                                            onClick={() => window.location.href = `/redeem?bondId=${bond.bondId}`}
-                                        >
-                                            {content.btn_redeem}
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <Button
-                                        className="w-full bg-[#FD8C00] hover:bg-[#FD8C00]/90 text-white font-bold"
-                                        onClick={() => window.location.href = `${basePath}/${bond.bondId}`}
-                                    >
-                                        {content.btn_view_details}
-                                    </Button>
-                                )}
+                            <CardFooter className="pt-4 border-t border-gray-800/50">
+                                <Button className="w-full bg-[#FD8C00] hover:bg-[#FD8C00]/90 text-white font-bold" onClick={() => window.location.href = `${basePath}/${bond.bondId}`}>
+                                    {content.btn_view_details}
+                                </Button>
                             </CardFooter>
                         </Card>
                     </motion.div>

@@ -89,7 +89,7 @@ export function Navbar() {
           <div className="flex items-center gap-4">
             {user && !isPublicPage && <SidebarTrigger className="md:hidden" />}
 
-            <Link href="/" className="flex items-center gap-2 group">
+            <Link href="/" className="hidden md:flex items-center gap-2 group">
               <div className="relative w-8 h-8 transition-transform group-hover:scale-105">
                 <Image src="/logo.png" alt="NanoBond" fill className="object-contain" />
               </div>
@@ -192,11 +192,7 @@ export function Navbar() {
               </div>
             )}
 
-            {showNavLinks && (
-              <Button variant="ghost" size="icon" className="lg:hidden text-white">
-                <Menu className="w-6 h-6" />
-              </Button>
-            )}
+
           </div>
         </div>
       </div>

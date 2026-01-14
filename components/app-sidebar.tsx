@@ -48,7 +48,15 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50 bg-[#0A0A0A]">
-      <div className="pt-20" />
+      <SidebarHeader className="md:hidden p-4 mb-2">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="relative w-8 h-8 transition-transform group-hover:scale-105">
+            <Image src="/logo.png" alt="NanoBond" fill className="object-contain" />
+          </div>
+          <span className="text-xl font-bold text-white tracking-tight">NanoBond</span>
+        </Link>
+      </SidebarHeader>
+      <div className="hidden md:block pt-20" />
 
       <SidebarContent className="px-2">
         <SidebarMenu>

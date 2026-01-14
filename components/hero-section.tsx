@@ -42,7 +42,7 @@ export function HeroSection() {
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 pt-20">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-4 md:py-12 pt-20">
         {/* Hero Content */}
         <div className="text-center mb-16 pointer-events-none">
           <motion.div

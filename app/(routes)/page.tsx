@@ -16,7 +16,9 @@ export default function LandingPage() {
     <main className="min-h-screen bg-background overflow-hidden">
       <Navbar />
       <HeroSection />
-      <EcosystemSection />
+      <div className="hidden md:block">
+        <EcosystemSection />
+      </div>
       <ValuePropositionCards />
       <MobileAppSection />
       <HowItWorks />
@@ -25,7 +27,9 @@ export default function LandingPage() {
       {/* <PricingSection /> */}
       <FaqSection />
       <TestimonialCarousel />
-      <CtaBanner />
+      <div className="hidden md:block">
+        <CtaBanner />
+      </div>
     </main>
   )
 }

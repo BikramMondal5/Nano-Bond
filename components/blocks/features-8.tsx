@@ -21,7 +21,7 @@ export function Features() {
     });
 
     return (
-        <section className="bg-gray-50 py-16 md:py-32 dark:bg-transparent">
+        <section className="bg-gray-50 py-4 md:py-32 dark:bg-transparent">
             <div className="mx-auto max-w-6xl px-6">
                 {/* Section Header */}
                 <div className="text-center mb-16">
