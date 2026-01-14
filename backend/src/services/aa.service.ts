@@ -52,16 +52,42 @@ export class AAService {
             }
 
             // Network-specific configuration
-            const NETWORK_CONFIG: Record<string, { rpc: string; gateway: string; registry: string }> = {
+            const NETWORK_CONFIG: Record<string, { rpc: string; gateway: string; registry: string; usdt: string }> = {
                 mantle: {
                     rpc: process.env.RPC_URL || 'https://rpc.sepolia.mantle.xyz',
                     gateway: config.contracts.gatewayAddress,
-                    registry: config.contracts.registryAddress
+                    registry: config.contracts.registryAddress,
+                    usdt: process.env.USDT_ADDRESS || '0xF62f02BCE0Ae48941B4b7e67A512F473D55e23b1'
                 },
                 polygon: {
                     rpc: process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology',
                     gateway: process.env.POLYGON_INVESTMENT_GATEWAY || '0xD89fBa38c81f543C6fC47EF74D75b2405201A33D',
-                    registry: process.env.POLYGON_IDENTITY_REGISTRY || config.contracts.registryAddress
+                    registry: process.env.POLYGON_IDENTITY_REGISTRY || config.contracts.registryAddress,
+                    usdt: process.env.USDT_POLYGON || '0x9565c705f598Af4B477CCf9C8390BFCD8634E919'
+                },
+                ethereum: {
+                    rpc: process.env.ETHEREUM_RPC_URL || 'https://eth-sepolia.g.alchemy.com/v2/SGDMqyFwTPXrua62HtYyM',
+                    gateway: '',
+                    registry: '',
+                    usdt: process.env.USDT_ETHEREUM || '0x9C497178995f70d1A5cbf33225Fc0D8B15469F8a'
+                },
+                arbitrum: {
+                    rpc: process.env.ARBITRUM_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
+                    gateway: '',
+                    registry: '',
+                    usdt: process.env.USDT_ARBITRUM || '0x17830508db410b208F38641b57C723fCBa41c68b'
+                },
+                linea: {
+                    rpc: process.env.LINEA_RPC_URL || 'https://rpc.sepolia.linea.build',
+                    gateway: '',
+                    registry: '',
+                    usdt: process.env.USDT_LINEA || '0x7515E7d2d776BD492ef44C6B96E7B63f152Af765'
+                },
+                scroll: {
+                    rpc: process.env.SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
+                    gateway: '',
+                    registry: '',
+                    usdt: process.env.USDT_SCROLL || '0x71678089A61FA4bcC64182693df2709DB6B115Fd'
                 }
             };
 
@@ -70,7 +96,8 @@ export class AAService {
                 throw new Error(`Unsupported network: ${network}`);
             }
 
-            if (!networkConfig.gateway) {
+            // Gateway not required for admin-funded networks
+            if (network === 'mantle' && !networkConfig.gateway) {
                 throw new Error(`Investment Gateway not configured for ${network}`);
             }
 
@@ -105,7 +132,9 @@ export class AAService {
                 "function investWithPermit(address user, uint256 amount, address treasury, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external"
             ];
 
-            const gateway = new ethers.Contract(networkConfig.gateway, GATEWAY_ABI, adminWallet);
+            const gateway = networkConfig.gateway
+                ? new ethers.Contract(networkConfig.gateway, GATEWAY_ABI, adminWallet)
+                : null;
             const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
 
             // Generate Dummy Permit (Since MockUSDT is in Demo Mode)
@@ -117,36 +146,58 @@ export class AAService {
             console.log(`[AAService] Calling Gateway for ${userAddress} amount ${amountBig}...`);
 
             try {
-                // For Polygon: Admin-funded direct investment (bypass gateway)
-                if (network === 'polygon') {
+                // For non-Mantle networks: Admin-funded direct investment (bypass gateway)
+                if (network !== 'mantle') {
                     console.log(`[AAService] Using admin-funded direct investment for ${network}`);
 
-                    // Mint USDT to admin wallet
+                    // Mint USDT to admin wallet on the source network
                     const usdt = new ethers.Contract(
-                        process.env.USDT_POLYGON || '0x9565c705f598Af4B477CCf9C8390BFCD8634E919',
+                        networkConfig.usdt,
                         USDT_ABI,
                         adminWallet
                     );
 
                     const mintTx = await usdt.mint(adminWallet.address, amountBig);
                     await mintTx.wait();
-                    console.log(`[AAService] Minted ${amount} USDT to admin wallet`);
+                    console.log(`[AAService] Minted ${amount} USDT to admin wallet on ${network}`);
 
-                    // Approve Treasury
-                    const approveTx = await usdt.approve(treasuryAddress, amountBig);
+                    // For non-Mantle networks, we need to connect to Mantle treasury
+                    // Create a Mantle provider and wallet for treasury interaction
+                    const mantleProvider = new ethers.JsonRpcProvider(
+                        process.env.RPC_URL || 'https://rpc.sepolia.mantle.xyz'
+                    );
+                    const mantleAdminWallet = new ethers.Wallet(config.admin.privateKey, mantleProvider);
+
+                    // Get USDT on Mantle
+                    const mantleUsdt = new ethers.Contract(
+                        process.env.USDT_ADDRESS || '0xF62f02BCE0Ae48941B4b7e67A512F473D55e23b1',
+                        USDT_ABI,
+                        mantleAdminWallet
+                    );
+
+                    // Mint USDT on Mantle for the treasury call
+                    const mantleMintTx = await mantleUsdt.mint(mantleAdminWallet.address, amountBig);
+                    await mantleMintTx.wait();
+                    console.log(`[AAService] Minted ${amount} USDT to admin wallet on Mantle`);
+
+                    // Approve Treasury on Mantle
+                    const targetTreasury = config.contracts.treasuryAddress || treasuryAddress;
+                    if (!targetTreasury) throw new Error("Treasury Address not found config");
+
+                    const approveTx = await mantleUsdt.approve(targetTreasury, amountBig);
                     await approveTx.wait();
-                    console.log(`[AAService] Approved Treasury to spend USDT`);
+                    console.log(`[AAService] Approved Treasury to spend USDT on Mantle`);
 
-                    // Call Treasury.buyFor() directly
+                    // Call Treasury.buyFor() on Mantle
                     const treasury = new ethers.Contract(
-                        treasuryAddress,
+                        targetTreasury,
                         ["function buyFor(uint256 amount, address beneficiary) external"],
-                        adminWallet
+                        mantleAdminWallet
                     );
 
                     const investTx = await treasury.buyFor(amountBig, userAddress);
                     await investTx.wait();
-                    console.log(`[AAService] Investment confirmed: ${investTx.hash}`);
+                    console.log(`[AAService] Investment confirmed on Mantle: ${investTx.hash}`);
 
                     // Save to DB
                     try {
@@ -172,6 +223,8 @@ export class AAService {
                 }
 
                 // For Mantle: Use InvestmentGateway (original flow)
+                if (!gateway) throw new Error("Gateway not initialized for Mantle");
+
                 const investTx = await gateway.investWithPermit(
                     userAddress,
                     amountBig,

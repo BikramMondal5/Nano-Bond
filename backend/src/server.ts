@@ -254,8 +254,9 @@ app.post('/api/invest', async (req: Request, res: Response) => {
 
         console.log(`[API] Processing investment for ${address}: ${amount} USDT in ${bondId || 'Default'} from ${network}`);
 
-        // For Mantle and Polygon: Direct investment using AAService
-        if (network === 'mantle' || network === 'polygon') {
+        // For all supported networks: Direct investment using AAService
+        const SUPPORTED_NETWORKS = ['mantle', 'polygon', 'ethereum', 'arbitrum', 'linea', 'scroll'];
+        if (SUPPORTED_NETWORKS.includes(network)) {
             const result = await aaService.invest(address, amount, bondId, network);
             return res.json(result);
         }
@@ -496,7 +497,17 @@ app.post('/api/faucet/usdt', async (req: Request, res: Response) => {
         // Mint USDT (6 decimals)
         const amountWithDecimals = BigInt(Math.round(mintAmount * 1000000));
 
-        const tx = await usdt.mint(address, amountWithDecimals);
+        // Add gas overrides for Linea
+        let overrides = {};
+        if (network === 'linea') {
+            const feeData = await networkProvider.getFeeData();
+            if (feeData.gasPrice) {
+                // Bump gas price by 50% for Linea
+                overrides = { gasPrice: (feeData.gasPrice * 150n) / 100n };
+            }
+        }
+
+        const tx = await usdt.mint(address, amountWithDecimals, overrides);
         console.log(`[API] Faucet TX sent on ${network}: ${tx.hash}`);
         await tx.wait();
         console.log(`[API] Faucet TX confirmed on ${network}`);
