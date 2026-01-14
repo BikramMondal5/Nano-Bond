@@ -49,3 +49,4 @@ contracts/deployed_lineaSepolia.json
 contracts/deployed_polygonAmoy.json
 contracts/deployed_scrollSepolia.json
 contracts/deployed_ethereumSepolia.json
+.env*.local

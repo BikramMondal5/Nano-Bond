@@ -16,6 +16,7 @@ function LoginFormContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
+
     const [error, setError] = useState("")
 
     const content = useContentTranslation({
@@ -65,6 +66,8 @@ function LoginFormContent() {
             setIsLoading(false)
         }
     }
+
+
 
     return (
         <div className="w-full max-w-md">
