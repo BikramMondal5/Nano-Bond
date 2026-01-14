@@ -6,8 +6,8 @@
                 {
                     "id": "GOI-2030",
                     "name": "GOI Bond 2030",
-                    "amount": 200,
-                    "purchaseDate": "2026-01-13",
+                    "amount": 390,
+                    "purchaseDate": "2026-01-14",
                     "yield": "7.5%",
                     "maturityDate": "2030-01-01",
                     "status": "Active"

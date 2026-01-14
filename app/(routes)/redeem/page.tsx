@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { RedemptionCard } from "@/components/redemption-card"
 import { RedemptionSummary } from "@/components/redemption-summary"
 import { RedemptionRules } from "@/components/redemption-rules"
@@ -20,6 +21,9 @@ export default function RedeemPage() {
     no_bonds: "No bonds available for redemption."
   })
 
+  const searchParams = useSearchParams()
+  const initialBondId = searchParams.get('bondId') || ""
+
   useEffect(() => {
     const fetchBonds = async () => {
       try {
@@ -28,8 +32,9 @@ export default function RedeemPage() {
         const data = await res.json()
         setBonds(data)
         if (data.length > 0) {
-          // Default to first bond if none selected
-          setSelectedBondId(data[0].bondId)
+          // If query param exists and is valid, use it; otherwise default to first bond
+          const paramBondExists = data.find((b: IBond) => b.bondId === initialBondId)
+          setSelectedBondId(paramBondExists ? initialBondId : data[0].bondId)
         }
       } catch (error) {
         console.error("Failed to load bonds:", error)
@@ -38,7 +43,7 @@ export default function RedeemPage() {
       }
     }
     fetchBonds()
-  }, [])
+  }, [initialBondId])
 
   const selectedBond = bonds.find(b => b.bondId === selectedBondId) || bonds[0]
 

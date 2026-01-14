@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { InvestmentCard } from "@/components/investment-card"
 import { MetricsPanel } from "@/components/metrics-panel"
 import { InvestmentRules } from "@/components/investment-rules"
@@ -22,6 +23,11 @@ export default function InvestPage() {
   const [loading, setLoading] = useState(true)
   const [selectedBondId, setSelectedBondId] = useState<string>("")
 
+
+  const searchParams = useSearchParams()
+  // Check for bondId in query params
+  const initialBondId = searchParams.get('bondId') || ""
+
   useEffect(() => {
     const fetchBonds = async () => {
       try {
@@ -30,8 +36,9 @@ export default function InvestPage() {
         const data = await res.json()
         setBonds(data)
         if (data.length > 0) {
-          // Default to first bond if none selected
-          setSelectedBondId(data[0].bondId)
+          // If query param exists and is valid, use it; otherwise default to first bond
+          const paramBondExists = data.find((b: IBond) => b.bondId === initialBondId)
+          setSelectedBondId(paramBondExists ? initialBondId : data[0].bondId)
         }
       } catch (error) {
         console.error("Failed to load bonds:", error)
@@ -40,7 +47,7 @@ export default function InvestPage() {
       }
     }
     fetchBonds()
-  }, [])
+  }, [initialBondId])
 
   const selectedBond = bonds.find(b => b.bondId === selectedBondId) || bonds[0]
 
