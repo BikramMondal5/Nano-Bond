@@ -3,15 +3,28 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Sparkles } from "lucide-react"
 import { useContentTranslation } from "@/hooks/useContentTranslation"
+import { useAuth } from "@/components/auth-provider"
+import { useRouter } from "next/navigation"
 
 export function CtaBanner() {
   const content = useContentTranslation({
     tag: "Mobile Experience",
-    title: "Trade Bonds on the Go",
-    desc: "Experience the power of NanoBond on your mobile device. Download our professionally architected app to manage your portfolio, track real-time yields, and invest with bank-grade security anywhere, anytime.",
-    btn_launch: "Launch App",
-    btn_docs: "View Documentation"
+    title: "Ready to Unlock Your Financial Freedom?",
+    desc: "Start investing in tokenized government bonds — secure, fractionally accessible, and built for everyone. Join NanoTreasury today.",
+    btn_launch: "Start Investing",
+    btn_docs: "Explore Bonds"
   });
+
+  const router = useRouter();
+  const { user } = useAuth(); // Assuming useAuth provides a 'user' object when logged in
+
+  const handleStartInvesting = () => {
+    if (user) {
+      router.push("/invest");
+    } else {
+      router.push("/login");
+    }
+  };
 
   return (
     <section className="py-12 md:py-20 relative">
@@ -47,18 +60,18 @@ export function CtaBanner() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href="/NanoBond.apk" download="NanoBond.apk" className="w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-10 h-14 rounded-2xl text-lg font-bold group shadow-lg shadow-primary/25"
-                >
-                  {content.btn_launch}
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </a>
+              <Button
+                size="lg"
+                onClick={handleStartInvesting}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground px-10 h-14 rounded-2xl text-lg font-bold group shadow-lg shadow-primary/25"
+              >
+                {content.btn_launch}
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
               <Button
                 size="lg"
                 variant="outline"
+                onClick={() => router.push("/govt-bonds")}
                 className="w-full sm:w-auto border-border hover:bg-muted/50 px-10 h-14 rounded-2xl text-lg font-semibold bg-transparent backdrop-blur-sm"
               >
                 {content.btn_docs}
