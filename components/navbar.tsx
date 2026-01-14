@@ -18,6 +18,13 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
 import { useLanguage } from "@/context/LanguageContext"
 import { useContentTranslation } from "@/hooks/useContentTranslation"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 
 
 
@@ -83,10 +90,40 @@ export function Navbar() {
 
   return (
     <nav className="fixed top-0 w-full z-40 border-b border-border/50 bg-[#0A0A0A]/90 backdrop-blur-2xl backdrop-saturate-150">
-      <div className="w-full px-6">
+      <div className="w-full px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
           <div className="flex items-center gap-4">
+            {pathname === "/" && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="lg:hidden text-muted-foreground hover:text-white">
+                    <Menu className="w-6 h-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px] bg-[#0A0A0A] border-r border-border/50">
+                  <SheetHeader>
+                    <SheetTitle className="text-left text-xl font-bold flex items-center gap-2">
+                      <div className="relative w-8 h-8">
+                        <Image src="/logo.png" alt="NanoBond" fill className="object-contain" />
+                      </div>
+                      NanoBond
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col gap-1 mt-4 px-6">
+                    {navLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="text-lg font-medium text-white hover:text-[#FD8C00] transition-colors py-2 border-b border-border/10"
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
             {user && !isPublicPage && <SidebarTrigger className="md:hidden" />}
 
             <Link href="/" className="hidden md:flex items-center gap-2 group">
@@ -199,4 +236,3 @@ export function Navbar() {
     </nav>
   )
 }
-
