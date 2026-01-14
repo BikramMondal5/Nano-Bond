@@ -160,7 +160,7 @@ export const COUPON_DISTRIBUTOR = {
 }
 
 export const USDT = {
-    address: "0xfa472BdAa91C805eB6d664FEC24b0d355FDA2999" as `0x${string}`,
+    address: "0xF62f02BCE0Ae48941B4b7e67A512F473D55e23b1" as `0x${string}`,
     abi: [
         {
             "constant": true,
