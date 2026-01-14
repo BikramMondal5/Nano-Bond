@@ -1,0 +1,37 @@
+# Render Blueprint for Nano-Bond Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: nanobond-api
+    runtime: node
+    region: oregon # or singapore, frankfurt, ohio
+    plan: free # or starter, standard
+    rootDir: Android/backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: RPC_URL
+        sync: false # Set in Render dashboard
+      - key: PRIVATE_KEY
+        sync: false # Set in Render dashboard (sensitive)
+      - key: MONGODB_URI
+        sync: false # Set in Render dashboard (sensitive)
+      - key: USDT_ADDRESS
+        sync: false
+      - key: SOVEREIGN_BOND_ADDRESS
+        sync: false
+      - key: TREASURY_SWAP_ADDRESS
+        sync: false
+      - key: SWAP_GATEWAY_ADDRESS
+        sync: false
+      - key: COUPON_DISTRIBUTOR_ADDRESS
+        sync: false
+      - key: IDENTITY_REGISTRY_ADDRESS
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true # Auto-deploy on git push
