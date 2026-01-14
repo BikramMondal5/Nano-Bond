@@ -28,31 +28,46 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/components/auth-provider"
 import { cn } from "@/lib/utils"
-
-const mainNavItems = [
-    { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
-]
-
-const bondItems = [
-    { label: "New Bond", icon: PlusCircle, href: "/admin", isActive: true }, // Current page for this task
-    { label: "View All Bonds", icon: List, href: "/admin/bonds" },
-]
-
-const vaultItems = [
-    { label: "Pending Verifications", icon: UploadCloud, href: "/admin/verifications" },
-    { label: "Vault Management", icon: Lock, href: "/admin/vault" },
-    { label: "Yield Scheduling", icon: Calendar, href: "/admin/yield" },
-]
-
-const auditItems = [
-    { label: "Audit Logs", icon: ClipboardList, href: "/admin/logs" },
-    { label: "Settings", icon: Settings, href: "/admin/settings" },
-]
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function AdminSidebar() {
     const pathname = usePathname()
-    const { logout } = useAuth() // Assuming useAuth exists and works as in AppSidebar
+    const { logout } = useAuth()
     const { state } = useSidebar()
+
+    const content = useContentTranslation({
+        dashboard: "Dashboard",
+        new_bond: "New Bond",
+        view_bonds: "View All Bonds",
+        pending_verif: "Pending Verifications",
+        vault_mgmt: "Vault Management",
+        yield_sched: "Yield Scheduling",
+        audit_logs: "Audit Logs",
+        settings: "Settings",
+        logout: "Logout",
+        bonds_group: "Bonds",
+        vault_group: "Vault & Audit"
+    })
+
+    const mainNavItems = [
+        { label: content.dashboard, icon: LayoutDashboard, href: "/admin" },
+    ]
+
+    const bondItems = [
+        { label: content.new_bond, icon: PlusCircle, href: "/admin", isActive: true },
+        { label: content.view_bonds, icon: List, href: "/admin/bonds" },
+    ]
+
+    const vaultItems = [
+        { label: content.pending_verif, icon: UploadCloud, href: "/admin/verifications" },
+        { label: content.vault_mgmt, icon: Lock, href: "/admin/vault" },
+        { label: content.yield_sched, icon: Calendar, href: "/admin/yield" },
+    ]
+
+    const auditItems = [
+        { label: content.audit_logs, icon: ClipboardList, href: "/admin/logs" },
+        { label: content.settings, icon: Settings, href: "/admin/settings" },
+    ]
 
     return (
         <Sidebar collapsible="icon" className="border-r border-border/50 bg-[#0A0A0A]">
@@ -86,7 +101,7 @@ export function AdminSidebar() {
                 </SidebarMenu>
 
                 <div className="my-4 px-2">
-                    <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bonds</SidebarGroupLabel>
+                    <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{content.bonds_group}</SidebarGroupLabel>
                 </div>
 
                 <SidebarMenu>
@@ -94,11 +109,11 @@ export function AdminSidebar() {
                         <SidebarMenuItem key={item.href}>
                             <SidebarMenuButton
                                 asChild
-                                isActive={pathname === item.href || (item.label === "New Bond" && pathname === "/admin")}
+                                isActive={pathname === item.href || (item.label === content.new_bond && pathname === "/admin")}
                                 tooltip={item.label}
                                 className={cn(
                                     "hover:bg-[#FD8C00]/10 hover:text-[#FD8C00] transition-all",
-                                    (pathname === item.href || (item.label === "New Bond" && pathname === "/admin")) && "bg-[#FD8C00]/10 text-[#FD8C00] shadow-[0_0_15px_-3px_rgba(253,140,0,0.3)]",
+                                    (pathname === item.href || (item.label === content.new_bond && pathname === "/admin")) && "bg-[#FD8C00]/10 text-[#FD8C00] shadow-[0_0_15px_-3px_rgba(253,140,0,0.3)]",
                                 )}
                             >
                                 <Link href={item.href}>
@@ -111,7 +126,7 @@ export function AdminSidebar() {
                 </SidebarMenu>
 
                 <div className="my-4 px-2">
-                    <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Vault & Audit</SidebarGroupLabel>
+                    <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{content.vault_group}</SidebarGroupLabel>
                 </div>
 
                 <SidebarMenu>
@@ -145,7 +160,7 @@ export function AdminSidebar() {
                             className="hover:bg-destructive/10 hover:text-destructive transition-all"
                         >
                             <LogOut className="w-5 h-5" />
-                            <span>Logout</span>
+                            <span>{content.logout}</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>

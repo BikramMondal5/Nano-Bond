@@ -20,14 +20,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-backend/.env
 
-# env files
- 
-# env files
-.env
-.env.*
-!.env.example
 # vercel
 .vercel
  
@@ -41,11 +34,5 @@ packages/contracts/typechain-types
 packages/contracts/debug_buy.log
 packages/contracts/deploy_log.txt
 packages/contracts/deploy.log
-packages/contracts/deployed_addresses.json
-.env.local
 
-contracts/deployed_arbitrumSepolia.json
-contracts/deployed_lineaSepolia.json
-contracts/deployed_polygonAmoy.json
-contracts/deployed_scrollSepolia.json
-contracts/deployed_ethereumSepolia.json
+

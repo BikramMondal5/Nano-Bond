@@ -254,9 +254,9 @@ app.post('/api/invest', async (req: Request, res: Response) => {
 
         console.log(`[API] Processing investment for ${address}: ${amount} USDT in ${bondId || 'Default'} from ${network}`);
 
-        // For Mantle: Direct investment
-        if (network === 'mantle') {
-            const result = await aaService.invest(address, amount, bondId);
+        // For Mantle and Polygon: Direct investment using AAService
+        if (network === 'mantle' || network === 'polygon') {
+            const result = await aaService.invest(address, amount, bondId, network);
             return res.json(result);
         }
 
@@ -308,13 +308,15 @@ app.post('/api/invest', async (req: Request, res: Response) => {
 
         const CROSS_CHAIN_GATEWAY_ABI = [
             "function investCrossChain(uint256 amount, uint32 dstEid, bytes calldata extraOptions) external payable returns (bytes32)",
+            "function investCrossChainFor(address beneficiary, uint256 amount, uint32 dstEid, bytes calldata extraOptions) external payable returns (bytes32)",
             "function quoteCrossChainFee(uint32 dstEid, uint256 amount, bytes calldata extraOptions) external view returns (uint256, uint256)"
         ];
 
         const USDT_ABI = [
             "function approve(address spender, uint256 amount) external returns (bool)",
             "function allowance(address owner, address spender) external view returns (uint256)",
-            "function transferFrom(address from, address to, uint256 amount) external returns (bool)"
+            "function transferFrom(address from, address to, uint256 amount) external returns (bool)",
+            "function mint(address to, uint256 amount) external"
         ];
 
         const gateway = new ethers.Contract(networkConfig.gatewayAddress, CROSS_CHAIN_GATEWAY_ABI, networkAdminWallet);
@@ -323,23 +325,25 @@ app.post('/api/invest', async (req: Request, res: Response) => {
         const amountBig = ethers.parseUnits(amount.toString(), 6);
         const dstEid = 40356; // Mantle Sepolia LayerZero endpoint ID
 
-        // 1. Transfer USDT from user to admin wallet (since we're sponsoring)
-        console.log('[API] Transferring USDT from user to admin...');
-        const transferTx = await usdt.transferFrom(address, networkAdminWallet.address, amountBig);
-        await transferTx.wait();
+        // 1. Mint USDT to admin wallet (for gasless cross-chain investment)
+        console.log('[API] Minting USDT to admin wallet for cross-chain investment...');
+        const mintTx = await usdt.mint(networkAdminWallet.address, amountBig);
+        await mintTx.wait();
+        console.log('[API] USDT minted to admin wallet');
 
         // 2. Approve gateway to spend USDT
         console.log('[API] Approving gateway...');
         const approveTx = await usdt.approve(networkConfig.gatewayAddress, amountBig);
         await approveTx.wait();
+        console.log('[API] Gateway approval confirmed');
 
         // 3. Quote LayerZero fee
         const [nativeFee] = await gateway.quoteCrossChainFee(dstEid, amountBig, "0x");
         console.log(`[API] LayerZero fee: ${ethers.formatEther(nativeFee)} native token`);
 
-        // 4. Execute cross-chain investment
-        console.log('[API] Executing cross-chain investment...');
-        const tx = await gateway.investCrossChain(amountBig, dstEid, "0x", { value: nativeFee });
+        // 4. Execute cross-chain investment for the user (beneficiary)
+        console.log(`[API] Executing cross-chain investment for beneficiary: ${address}...`);
+        const tx = await gateway.investCrossChainFor(address, amountBig, dstEid, "0x", { value: nativeFee });
         await tx.wait();
 
         console.log(`[API] Cross-chain investment TX: ${tx.hash}`);

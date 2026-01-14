@@ -1,0 +1,55 @@
+{
+    "users": [
+        {
+            "walletAddress": "0x3725931E0D2577D76654E455a0e73A05Bc761CC1",
+            "bonds": [
+                {
+                    "id": "GOI-2030",
+                    "name": "GOI Bond 2030",
+                    "amount": 200,
+                    "purchaseDate": "2026-01-13",
+                    "yield": "7.5%",
+                    "maturityDate": "2030-01-01",
+                    "status": "Active"
+                }
+            ]
+        },
+        {
+            "walletAddress": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+            "bonds": [
+                {
+                    "id": "UK-GILT-2028",
+                    "name": "UK Gilt 2028",
+                    "amount": 250,
+                    "purchaseDate": "2024-11-20",
+                    "yield": "4.5%",
+                    "maturityDate": "2028-10-22",
+                    "status": "Active"
+                }
+            ]
+        },
+        {
+            "walletAddress": "0xF7024DdDa630F177d050e14FCEaE1eF5df2EF294",
+            "bonds": [
+                {
+                    "id": "GOI-2030",
+                    "name": "GOI Bond 2030",
+                    "amount": 1373,
+                    "purchaseDate": "2026-01-13",
+                    "yield": "7.5%",
+                    "maturityDate": "2030-01-01",
+                    "status": "Active"
+                },
+                {
+                    "id": "522677",
+                    "name": "gg4",
+                    "amount": 200,
+                    "purchaseDate": "2026-01-14",
+                    "yield": "7%",
+                    "maturityDate": "2026-09-08",
+                    "status": "Active"
+                }
+            ]
+        }
+    ]
+}

@@ -1,12 +1,27 @@
+"use client"
+
 import { Card, CardContent } from "@/components/ui/card"
 import { TrendingUp, Users, Calendar, BarChart3, Receipt } from "lucide-react"
 import type { IBond } from "@/lib/models/Bond"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 interface MetricsPanelProps {
   bond: IBond;
 }
 
 export function MetricsPanel({ bond }: MetricsPanelProps) {
+  const content = useContentTranslation({
+    lbl_coupon: "Coupon Rate",
+    sub_coupon: "Annual Yield",
+    lbl_min_invest: "Min Investment",
+    sub_min_invest: "Low Barrier to Entry",
+    lbl_days: "Days to Maturity",
+    sub_days_prefix: "Matures",
+    lbl_bond_id: "Bond ID",
+    sub_bond_id: "Government Security",
+    unit_days: "Days"
+  })
+
   // Calculate days to maturity
   const today = new Date();
   const maturity = new Date(bond.maturityDate);
@@ -15,30 +30,30 @@ export function MetricsPanel({ bond }: MetricsPanelProps) {
 
   const metrics = [
     {
-      label: "Coupon Rate",
+      label: content.lbl_coupon,
       value: `${bond.couponRate}%`,
-      subValue: "Annual Yield",
+      subValue: content.sub_coupon,
       icon: TrendingUp,
       color: "text-green-500",
     },
     {
-      label: "Min Investment",
+      label: content.lbl_min_invest,
       value: `${bond.minInvestment} USDT`,
-      subValue: "Low Barrier to Entry",
+      subValue: content.sub_min_invest,
       icon: Receipt,
       color: "text-blue-500",
     },
     {
-      label: "Days to Maturity",
-      value: `${diffDays} Days`,
-      subValue: `Matures ${maturity.toLocaleDateString()}`,
+      label: content.lbl_days,
+      value: `${diffDays} ${content.unit_days}`,
+      subValue: `${content.sub_days_prefix} ${maturity.toLocaleDateString()}`,
       icon: Calendar,
       color: "text-orange-500",
     },
     {
-      label: "Bond ID",
+      label: content.lbl_bond_id,
       value: bond.bondId,
-      subValue: "Government Security",
+      subValue: content.sub_bond_id,
       icon: BarChart3,
       color: "text-purple-500",
     },

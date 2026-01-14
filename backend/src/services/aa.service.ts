@@ -45,46 +45,67 @@ export class AAService {
      * 1. Auto-registers user for KYC if not verified
      * 2. Mints bonds directly to the user
      */
-    async invest(userAddress: string, amount: number, bondId: string = 'GOI-2030') {
+    async invest(userAddress: string, amount: number, bondId: string = 'GOI-2030', network: string = 'mantle') {
         return this.withLock(async () => {
             if (!config.admin.privateKey) {
                 throw new Error('Admin private key not configured');
             }
+
+            // Network-specific configuration
+            const NETWORK_CONFIG: Record<string, { rpc: string; gateway: string; registry: string }> = {
+                mantle: {
+                    rpc: process.env.RPC_URL || 'https://rpc.sepolia.mantle.xyz',
+                    gateway: config.contracts.gatewayAddress,
+                    registry: config.contracts.registryAddress
+                },
+                polygon: {
+                    rpc: process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology',
+                    gateway: process.env.POLYGON_INVESTMENT_GATEWAY || '0xD89fBa38c81f543C6fC47EF74D75b2405201A33D',
+                    registry: process.env.POLYGON_IDENTITY_REGISTRY || config.contracts.registryAddress
+                }
+            };
+
+            const networkConfig = NETWORK_CONFIG[network];
+            if (!networkConfig) {
+                throw new Error(`Unsupported network: ${network}`);
+            }
+
+            if (!networkConfig.gateway) {
+                throw new Error(`Investment Gateway not configured for ${network}`);
+            }
+
+            // Use network-specific provider
+            const networkProvider = new ethers.JsonRpcProvider(networkConfig.rpc);
+            const adminWallet = new ethers.Wallet(config.admin.privateKey, networkProvider);
 
             // Resolve Bond
             const bondData = await this.bondService.getBondByIdSync(bondId);
             if (!bondData) throw new Error(`Bond not found: ${bondId}`);
             if (!bondData.treasuryAddress) throw new Error(`Treasury not configured for: ${bondId}`);
 
-            // Check for Gateway Address
-            const gatewayAddress = config.contracts.gatewayAddress;
-            if (!gatewayAddress) throw new Error('Investment Gateway not configured in backend');
-
             const treasuryAddress = bondData.treasuryAddress;
-            console.log(`[AAService] Processing gasless investment for ${userAddress}: ${amount} USDT in ${bondId}`);
+            console.log(`[AAService] Processing gasless investment for ${userAddress}: ${amount} USDT in ${bondId} on ${network}`);
 
-            // Admin wallet executes the transaction
-            const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+            // 1. Check KYC (skip for now on Polygon if registry not deployed)
+            if (networkConfig.registry && network === 'mantle') {
+                const registry = new ethers.Contract(networkConfig.registry, IDENTITY_REGISTRY_ABI, adminWallet);
+                const isVerified = await registry.isVerified(userAddress);
 
-            // 1. Check KYC
-            const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
-            const isVerified = await registry.isVerified(userAddress);
-
-            if (!isVerified) {
-                console.log(`[AAService] User ${userAddress} not KYC verified. Auto-registering...`);
-                const idHash = ethers.keccak256(ethers.toUtf8Bytes(`AUTO-${userAddress}-${Date.now()}`));
-                const registerTx = await registry.register(userAddress, idHash);
-                await registerTx.wait();
-                console.log(`[AAService] KYC registered: ${registerTx.hash}`);
+                if (!isVerified) {
+                    console.log(`[AAService] User ${userAddress} not KYC verified. Auto-registering...`);
+                    const idHash = ethers.keccak256(ethers.toUtf8Bytes(`AUTO-${userAddress}-${Date.now()}`));
+                    const registerTx = await registry.register(userAddress, idHash);
+                    await registerTx.wait();
+                    console.log(`[AAService] KYC registered: ${registerTx.hash}`);
+                }
             }
 
             // 2. Prepare Investment via Gateway
-            // Gateway ABI
             const GATEWAY_ABI = [
                 "function investWithPermit(address user, uint256 amount, address treasury, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external"
             ];
 
-            const gateway = new ethers.Contract(gatewayAddress, GATEWAY_ABI, adminWallet);
+            const gateway = new ethers.Contract(networkConfig.gateway, GATEWAY_ABI, adminWallet);
             const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
 
             // Generate Dummy Permit (Since MockUSDT is in Demo Mode)
@@ -96,6 +117,61 @@ export class AAService {
             console.log(`[AAService] Calling Gateway for ${userAddress} amount ${amountBig}...`);
 
             try {
+                // For Polygon: Admin-funded direct investment (bypass gateway)
+                if (network === 'polygon') {
+                    console.log(`[AAService] Using admin-funded direct investment for ${network}`);
+
+                    // Mint USDT to admin wallet
+                    const usdt = new ethers.Contract(
+                        process.env.USDT_POLYGON || '0x9565c705f598Af4B477CCf9C8390BFCD8634E919',
+                        USDT_ABI,
+                        adminWallet
+                    );
+
+                    const mintTx = await usdt.mint(adminWallet.address, amountBig);
+                    await mintTx.wait();
+                    console.log(`[AAService] Minted ${amount} USDT to admin wallet`);
+
+                    // Approve Treasury
+                    const approveTx = await usdt.approve(treasuryAddress, amountBig);
+                    await approveTx.wait();
+                    console.log(`[AAService] Approved Treasury to spend USDT`);
+
+                    // Call Treasury.buyFor() directly
+                    const treasury = new ethers.Contract(
+                        treasuryAddress,
+                        ["function buyFor(uint256 amount, address beneficiary) external"],
+                        adminWallet
+                    );
+
+                    const investTx = await treasury.buyFor(amountBig, userAddress);
+                    await investTx.wait();
+                    console.log(`[AAService] Investment confirmed: ${investTx.hash}`);
+
+                    // Save to DB
+                    try {
+                        await Investment.create({
+                            walletAddress: userAddress,
+                            bondId: bondId,
+                            type: 'INVEST',
+                            amount: amount,
+                            txHash: investTx.hash,
+                            status: 'SUCCESS',
+                            network: network
+                        });
+                        console.log(`[AAService] Investment recorded in DB`);
+                    } catch (dbErr) {
+                        console.error(`[AAService] Failed to save investment to DB:`, dbErr);
+                    }
+
+                    return {
+                        success: true,
+                        txHash: investTx.hash,
+                        message: `Invested ${amount} USDT in ${bondId} on ${network} (gasless)`
+                    };
+                }
+
+                // For Mantle: Use InvestmentGateway (original flow)
                 const investTx = await gateway.investWithPermit(
                     userAddress,
                     amountBig,
@@ -117,7 +193,8 @@ export class AAService {
                         type: 'INVEST',
                         amount: amount,
                         txHash: investTx.hash,
-                        status: 'SUCCESS'
+                        status: 'SUCCESS',
+                        network: network
                     });
                     console.log(`[AAService] Investment recorded in DB`);
                 } catch (dbErr) {
@@ -127,7 +204,7 @@ export class AAService {
                 return {
                     success: true,
                     txHash: investTx.hash,
-                    message: `Invested ${amount} USDT in ${bondId} (gasless)`
+                    message: `Invested ${amount} USDT in ${bondId} on ${network} (gasless)`
                 };
             } catch (error: any) {
                 console.error(`[AAService] Gateway invest failed:`, error.message);

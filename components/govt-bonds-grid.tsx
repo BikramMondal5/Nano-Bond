@@ -14,6 +14,7 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { IBond } from "@/lib/models/Bond"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 interface GovtBondsGridProps {
     bonds: (IBond & { _id: string })[];
@@ -21,15 +22,26 @@ interface GovtBondsGridProps {
 }
 
 export function GovtBondsGrid({ bonds, basePath = "/govt-bonds" }: GovtBondsGridProps) {
+    const content = useContentTranslation({
+        no_bonds_title: "No Bonds Available",
+        no_bonds_desc: "There are currently no government bonds listed. Please check back later when new assets are released.",
+        bond_type_tag: "Govt Bond",
+        label_coupon: "Coupon Rate",
+        label_min_invest: "Min Best",
+        label_start_date: "Start Date",
+        label_maturity: "Maturity",
+        btn_view_details: "View Details",
+    });
+
     if (!bonds || bonds.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="bg-[#1A1A1A] p-4 rounded-full mb-4">
                     <FileText className="w-8 h-8 text-gray-500" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">No Bonds Available</h3>
+                <h3 className="text-xl font-semibold text-white mb-2">{content.no_bonds_title}</h3>
                 <p className="text-gray-400 max-w-md">
-                    There are currently no government bonds listed. Please check back later when new assets are released.
+                    {content.no_bonds_desc}
                 </p>
             </div>
         )
@@ -53,7 +65,7 @@ export function GovtBondsGrid({ bonds, basePath = "/govt-bonds" }: GovtBondsGrid
                                     {bond.bondId}
                                 </Badge>
                                 <Badge className="bg-[#FD8C00]/10 text-[#FD8C00] border-[#FD8C00]/20 hover:bg-[#FD8C00]/20">
-                                    Govt Bond
+                                    {content.bond_type_tag}
                                 </Badge>
                             </div>
                             <CardTitle className="text-xl font-bold text-white group-hover:text-[#FD8C00] transition-colors">
@@ -74,7 +86,7 @@ export function GovtBondsGrid({ bonds, basePath = "/govt-bonds" }: GovtBondsGrid
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <span className="text-xs text-gray-500 flex items-center gap-1">
-                                        <TrendingUp className="w-3 h-3" /> Coupon Rate
+                                        <TrendingUp className="w-3 h-3" /> {content.label_coupon}
                                     </span>
                                     <p className="text-lg font-semibold text-white">
                                         {bond.couponRate}%
@@ -82,7 +94,7 @@ export function GovtBondsGrid({ bonds, basePath = "/govt-bonds" }: GovtBondsGrid
                                 </div>
                                 <div className="space-y-1">
                                     <span className="text-xs text-gray-500 flex items-center gap-1">
-                                        <DollarSign className="w-3 h-3" /> Min Best
+                                        <DollarSign className="w-3 h-3" /> {content.label_min_invest}
                                     </span>
                                     <p className="text-lg font-semibold text-white">
                                         ${bond.minInvestment}
@@ -90,7 +102,7 @@ export function GovtBondsGrid({ bonds, basePath = "/govt-bonds" }: GovtBondsGrid
                                 </div>
                                 <div className="space-y-1">
                                     <span className="text-xs text-gray-500 flex items-center gap-1">
-                                        <Calendar className="w-3 h-3" /> Start Date
+                                        <Calendar className="w-3 h-3" /> {content.label_start_date}
                                     </span>
                                     <p className="text-sm font-medium text-gray-300">
                                         {format(new Date(bond.startDate), "MMM d, yyyy")}
@@ -98,7 +110,7 @@ export function GovtBondsGrid({ bonds, basePath = "/govt-bonds" }: GovtBondsGrid
                                 </div>
                                 <div className="space-y-1">
                                     <span className="text-xs text-gray-500 flex items-center gap-1">
-                                        <Calendar className="w-3 h-3" /> Maturity
+                                        <Calendar className="w-3 h-3" /> {content.label_maturity}
                                     </span>
                                     <p className="text-sm font-medium text-gray-300">
                                         {format(new Date(bond.maturityDate), "MMM d, yyyy")}
@@ -109,7 +121,7 @@ export function GovtBondsGrid({ bonds, basePath = "/govt-bonds" }: GovtBondsGrid
 
                         <CardFooter className="pt-4 border-t border-gray-800/50">
                             <Button className="w-full bg-[#FD8C00] hover:bg-[#FD8C00]/90 text-white font-bold" onClick={() => window.location.href = `${basePath}/${bond.bondId}`}>
-                                View Details
+                                {content.btn_view_details}
                             </Button>
                         </CardFooter>
                     </Card>

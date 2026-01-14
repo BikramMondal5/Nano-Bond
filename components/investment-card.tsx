@@ -14,12 +14,44 @@ import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
 import { toast } from "react-toastify"
 import type { IBond } from "@/lib/models/Bond"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 interface InvestmentCardProps {
   bond: IBond;
 }
 
 export function InvestmentCard({ bond }: InvestmentCardProps) {
+  const content = useContentTranslation({
+    success_title: "Investment Successful!",
+    success_msg: "You have received",
+    success_msg_suffix: "tokens.",
+    invest_more: "Invest More",
+    view_tx: "View Transaction on Explorer",
+    purchase: "Purchase",
+    gasless: "Gasless",
+    desc_default: "One-click investment with zero gas fees - backend pays for you!",
+    wallet_not_connected: "Wallet Not Connected",
+    connect_prompt: "Connect your wallet to start investing in Government Bonds.",
+    balance_label: "Your USDT Balance",
+    faucet_btn: "Faucet",
+    faucet_tooltip: "Get 1000 test USDT",
+    invest_label: "Amount to Invest",
+    limit_label: "Limit",
+    min_placeholder: "Min",
+    insufficient_balance: "Insufficient balance. Your balance:",
+    exceeds_limit: "Amount exceeds max limit",
+    min_invest_error: "Minimum investment is",
+    receive_label: "You will receive",
+    zero_gas: "Zero Gas Fee",
+    rate_label: "Rate",
+    maturity_label: "Maturity",
+    invest_now: "Invest Now",
+    investing_in: "Investing in",
+    gasless_note: "Gasless Investment",
+    gasless_desc: "You are investing in",
+    gasless_desc_suffix: "The backend sponsors your transaction."
+  })
+
   const [amount, setAmount] = useState("")
   const { walletAddress, loggedIn } = useWeb3AuthContext()
   const { totalSupply, backedValue } = useBondStats(bond.contractAddress)
@@ -120,8 +152,8 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
             <CheckCircle2 className="w-10 h-10 text-green-500" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-white">Investment Successful!</h3>
-            <p className="text-muted-foreground">You have received {expectedTokens} {bond.bondName} tokens.</p>
+            <h3 className="text-2xl font-bold text-white">{content.success_title}</h3>
+            <p className="text-muted-foreground">{content.success_msg} {expectedTokens} {bond.bondName} {content.success_msg_suffix}</p>
             {txHash && <p className="text-xs text-gray-500 font-mono">Tx: {txHash}</p>}
           </div>
           <Button
@@ -131,7 +163,7 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
               setAmount("")
             }}
           >
-            Invest More
+            {content.invest_more}
           </Button>
           {txHash && (
             <a
@@ -140,7 +172,7 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
               rel="noopener noreferrer"
               className="text-primary text-sm hover:underline flex items-center gap-1"
             >
-              View Transaction on Explorer
+              {content.view_tx}
               <ArrowRightLeft className="w-3 h-3" />
             </a>
           )}
@@ -157,7 +189,7 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
-              Purchase {bond.bondName}
+              {content.purchase} {bond.bondName}
             </CardTitle>
             <div className="text-xs text-muted-foreground font-mono bg-white/5 px-2 py-0.5 rounded w-fit">
               ID: {bond.bondId}
@@ -165,11 +197,11 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
             <ShieldCheck className="w-4 h-4 text-green-500" />
-            <span className="text-xs font-semibold text-green-500 uppercase tracking-wider">Gasless</span>
+            <span className="text-xs font-semibold text-green-500 uppercase tracking-wider">{content.gasless}</span>
           </div>
         </div>
         <CardDescription className="text-muted-foreground text-sm pt-2">
-          {bond.description || "One-click investment with zero gas fees - backend pays for you!"}
+          {bond.description || content.desc_default}
         </CardDescription>
       </CardHeader>
 
@@ -180,9 +212,9 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
               <Wallet className="w-8 h-8 text-muted-foreground" />
             </div>
             <div className="text-center space-y-2">
-              <h4 className="text-lg font-medium text-white">Wallet Not Connected</h4>
+              <h4 className="text-lg font-medium text-white">{content.wallet_not_connected}</h4>
               <p className="text-sm text-muted-foreground max-w-[280px]">
-                Connect your wallet to start investing in Government Bonds.
+                {content.connect_prompt}
               </p>
             </div>
             <div className="transform scale-110">
@@ -233,7 +265,7 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
                           disabled={isPending}
                         >
                           <Droplet className="w-4 h-4 mr-1" />
-                          Faucet
+                          {content.faucet_btn}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -248,15 +280,15 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
             {/* Input Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-muted-foreground">Amount to Invest</label>
+                <label className="text-sm font-medium text-muted-foreground">{content.invest_label}</label>
                 <span className="text-xs font-semibold text-[#FD8C00]">
-                  Limit: {maxInvest.toLocaleString()} USDT
+                  {content.limit_label}: {maxInvest.toLocaleString()} USDT
                 </span>
               </div>
               <div className="relative group">
                 <Input
                   type="number"
-                  placeholder={`Min ${minInvest} USDT`}
+                  placeholder={`${content.min_placeholder} ${minInvest} USDT`}
                   className="bg-[#1C1A21] border-white/5 h-16 text-xl pl-4 pr-16 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -268,10 +300,10 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
                 <p className="text-xs text-destructive flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {Number(amount) > Number(usdtBalance)
-                    ? `Insufficient balance. Your balance: ${Number(usdtBalance).toFixed(2)}`
+                    ? `${content.insufficient_balance} ${Number(usdtBalance).toFixed(2)}`
                     : Number(amount) > maxInvest
-                      ? `Amount exceeds max limit`
-                      : `Minimum investment is ${minInvest} USDT`}
+                      ? content.exceeds_limit
+                      : `${content.min_invest_error} ${minInvest} USDT`}
                 </p>
               )}
             </div>
@@ -280,10 +312,10 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
             <div className="p-4 bg-[#1C1A21] rounded-xl border border-white/5 space-y-3 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-2xl" />
               <div className="flex items-center justify-between relative z-10">
-                <span className="text-sm text-muted-foreground">You will receive</span>
+                <span className="text-sm text-muted-foreground">{content.receive_label}</span>
                 <div className="flex items-center gap-1.5 text-green-500 text-xs font-bold uppercase">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  Zero Gas Fee
+                  {content.zero_gas}
                 </div>
               </div>
               <div className="flex items-end gap-2 relative z-10">
@@ -292,11 +324,11 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
               </div>
               <div className="pt-3 border-t border-white/5 flex flex-col gap-1.5 text-xs text-muted-foreground relative z-10">
                 <div className="flex justify-between">
-                  <span>Rate</span>
+                  <span>{content.rate_label}</span>
                   <span className="text-white">1 GBOND = {tokenPrice} USDT</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Maturity</span>
+                  <span>{content.maturity_label}</span>
                   <span className="text-white">{new Date(bond.maturityDate).toLocaleDateString()}</span>
                 </div>
               </div>
@@ -311,10 +343,10 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
               {isPending ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Investing in {bond.bondId}...
+                  {content.investing_in} {bond.bondId}...
                 </>
               ) : (
-                "Invest Now"
+                content.invest_now
               )}
             </Button>
           </div>
@@ -324,8 +356,8 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
       {loggedIn && (
         <CardFooter className="bg-[#1C1A21]/50 border-t border-white/5 py-4">
           <p className="text-[11px] text-muted-foreground leading-tight">
-            ✨ <span className="text-green-400 font-semibold">Gasless Investment</span> -
-            You are investing in <strong>{bond.bondName}</strong>. The backend sponsors your transaction.
+            ✨ <span className="text-green-400 font-semibold">{content.gasless_note}</span> -
+            {content.gasless_desc} <strong>{bond.bondName}</strong>. {content.gasless_desc_suffix}
           </p>
         </CardFooter>
       )}

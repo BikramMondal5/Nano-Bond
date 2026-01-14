@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FiSend, FiMic, FiMinimize2, FiMaximize2 } from "react-icons/fi";
+import { FiSend, FiMic, FiMinimize2, FiMaximize2, FiPlus, FiClock, FiTrash2, FiMessageSquare, FiChevronLeft } from "react-icons/fi";
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
@@ -16,10 +16,13 @@ import { useThreeJs } from "../utils/ThreeJsContext";
 
 // Import VAPI client
 import { getVapi } from "../utils/vapi";
+// Removed direct Lingo SDK import to avoid client-side errors
+// import { LingoDotDevEngine } from "lingo.dev/sdk";
 
 import type Vapi from "@vapi-ai/web";
 import { useRouter } from "next/navigation";
 import { usePortfolioData } from "../hooks/usePortfolioData";
+import { useLanguage } from "../context/LanguageContext";
 
 // Bond Registry Data (Simplified for Context)
 const BOND_REGISTRY = [
@@ -52,12 +55,12 @@ const BOND_REGISTRY = [
 // API configuration - Get from environment variables
 const getApiKey = () => {
     if (typeof window !== 'undefined') {
-        return process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+        return process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
     }
     return '';
 };
 
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // Fallback responses for when the API fails
 const FALLBACK_RESPONSES = [
@@ -85,11 +88,19 @@ interface Message {
     isTemporary?: boolean;
 }
 
+interface ChatSession {
+    id: string;
+    timestamp: number;
+    preview: string;
+    messages: Message[];
+}
+
 const ChatWidget = () => {
     // Use the ThreeJs context to manage Three.js rendering
     const { pauseThreeJs, resumeThreeJs } = useThreeJs();
     const router = useRouter();
-    const { balance, claimable } = usePortfolioData();
+    const { balance, claimable, address } = usePortfolioData();
+    const [userBonds, setUserBonds] = useState<any[]>([]);
 
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -101,6 +112,165 @@ const ChatWidget = () => {
     const maxRetries = 2;
     const [isListening, setIsListening] = useState(false);
 
+    // History State
+    const [showHistory, setShowHistory] = useState(false);
+    const [savedSessions, setSavedSessions] = useState<ChatSession[]>([]);
+
+
+    // Multilingual State (From Context)
+    const { language } = useLanguage();
+    const [uiText, setUiText] = useState({
+        title: "NanoBond Advisor",
+        placeholder: "Ask me anything...",
+        welcome: "Hi there! I'm <span class=\"text-purple-400 font-semibold\">NanoBond Advisor</span>. I can help you navigate our platform and guide you through your investment journey. How can I assist you today?",
+        chat_cleared: "Chat cleared",
+        online: "Online",
+        new_chat: "New Chat",
+        history: "History",
+        back_to_chat: "Back to Chat",
+        history_title: "Recent Sessions",
+        no_history: "No saved history",
+        delete_session: "Delete Session",
+        messages_count: "messages",
+        stop_voice_call: "Stop voice call",
+        start_voice_call: "Start voice call"
+    });
+    // const lingoEngine = useRef<LingoDotDevEngine | null>(null);
+
+    // Initialize Lingo - Moved to Server Side (API Route)
+    /*
+    useEffect(() => {
+        const apiKey = process.env.NEXT_PUBLIC_LINGO_API_KEY;
+        if (apiKey) {
+            try {
+                lingoEngine.current = new LingoDotDevEngine({ apiKey });
+            } catch (e) {
+                console.error("Failed to init Lingo:", e);
+            }
+        }
+    }, []);
+    */
+
+    // Update translations when language changes
+    useEffect(() => {
+        const updateTranslations = async () => {
+            // We define the source texts here to always translate from English
+            const sourceTexts = {
+                title: "NanoBond Advisor",
+                placeholder: "Ask me anything...",
+                welcome: "Hi there! I'm <span class=\"text-purple-400 font-semibold\">NanoBond Advisor</span>. I can help you navigate our platform and guide you through your investment journey. How can I assist you today?",
+                chat_cleared: "Chat cleared",
+                online: "Online",
+                new_chat: "New Chat",
+                history: "History",
+                back_to_chat: "Back to Chat",
+                history_title: "Recent Sessions",
+                no_history: "No saved history",
+                delete_session: "Delete Session",
+                messages_count: "messages",
+                stop_voice_call: "Stop voice call",
+                start_voice_call: "Start voice call"
+            };
+
+            if (language === "en") {
+                setUiText(sourceTexts);
+                return;
+            }
+
+            try {
+                // Prepare texts for translation
+                const keys = Object.keys(sourceTexts) as Array<keyof typeof sourceTexts>;
+                const textsToTranslate = keys.map(key => sourceTexts[key]);
+
+                // Call API route
+                const response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        texts: textsToTranslate,
+                        targetLocale: language
+                    })
+                });
+
+                if (!response.ok) throw new Error('Translation failed');
+
+                const data = await response.json();
+                const translations = data.translations;
+
+                if (translations && translations.length === keys.length) {
+                    const newUiText = { ...sourceTexts };
+                    keys.forEach((key, index) => {
+                        if (translations[index]) {
+                            newUiText[key] = translations[index];
+                        }
+                    });
+                    setUiText(newUiText);
+                }
+            } catch (error) {
+                console.error("Translation error:", error);
+            }
+        };
+
+        updateTranslations();
+    }, [language]);
+
+    // Fetch user bonds
+    useEffect(() => {
+        if (address && (isOpen || userBonds.length === 0)) {
+            fetch(`/api/bond-holdings?address=${address}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.bonds) {
+                        setUserBonds(data.bonds);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch user bonds:", err));
+        }
+    }, [address, isOpen]);
+
+    // Helper to generate dynamic system prompt with user context
+    const getDynamicSystemPrompt = (history: Message[] = []) => {
+        const bondContext = userBonds.length > 0
+            ? `\n\nUSER PORTFOLIO (The user owns these bonds):\n${JSON.stringify(userBonds, null, 2)}`
+            : "\n\nUSER PORTFOLIO: The user currently has no active bonds.";
+
+        const contextData = `
+CURRENT USER CONTEXT:
+- Wallet Balance: ${balance || '0'} USDT
+- Claimable Yield: ${claimable || '0'} USDT
+- Current Page: ${typeof window !== 'undefined' ? window.location.pathname : 'unknown'}
+
+${bondContext}
+
+BOND MARKET DATA:
+${JSON.stringify(BOND_REGISTRY, null, 2)}
+
+INSTRUCTIONS:
+You are a voice assistant. Keep your responses concise (1-2 sentences) and conversational.
+Reply to the user in ${language === 'en' ? 'English' : language} language.
+You have access to the user's portfolio and market data.
+You can guide users to these sections:
+- Marketplace: /
+- Settings: /settings
+- Verification: /verification
+- Portfolio: /portfolio
+- Redeem: /redeem
+- Invest: /invest
+- Government Bonds: /govt-bonds
+- My Bonds: /my-bonds
+`;
+
+        // Add conversation history for context
+        const recentHistory = history.slice(-5).map(msg =>
+            `${msg.sender === 'user' ? 'User' : 'Assistant'}: ${msg.text}`
+        ).join('\n');
+
+        const historyContext = recentHistory ? `\n\nRECENT CONVERSATION HISTORY:\n${recentHistory}` : "";
+        const langInstruction = `\n\nIMPORTANT: Respond in ${language} language.`;
+
+        return `${SYSTEM_PROMPT_TEMPLATE}\n${contextData}${historyContext}${langInstruction}`;
+    };
+
     // VAPI state
     const [vapi, setVapi] = useState<Vapi | null>(null);
     const [isCallActive, setIsCallActive] = useState(false);
@@ -108,6 +278,7 @@ const ChatWidget = () => {
 
     // Local Storage Configuration
     const STORAGE_KEY = 'nano-bond-chat-history';
+    const SESSIONS_KEY = 'nano-bond-chat-sessions';
 
     // Load messages from local storage on mount
     useEffect(() => {
@@ -116,7 +287,6 @@ const ChatWidget = () => {
             if (savedMessages) {
                 try {
                     const parsedMessages = JSON.parse(savedMessages);
-                    // Convert string timestamps back to Date objects and ensure valid format
                     const hydratedMessages = parsedMessages.map((msg: any) => ({
                         ...msg,
                         timestamp: new Date(msg.timestamp)
@@ -126,26 +296,42 @@ const ChatWidget = () => {
                     console.error("Failed to parse chat history:", error);
                 }
             }
+
+            // Load saved sessions
+            const sessionsData = localStorage.getItem(SESSIONS_KEY);
+            if (sessionsData) {
+                try {
+                    const parsedSessions = JSON.parse(sessionsData);
+                    // Rehydrate dates in messages within sessions if needed, 
+                    // or just store raw and rehydrate on load.
+                    // For simplicity, we just safely parse.
+                    setSavedSessions(parsedSessions);
+                } catch (error) {
+                    console.error("Failed to parse sessions:", error);
+                }
+            }
         }
     }, []);
 
     // Save messages to local storage whenever they change
     useEffect(() => {
         if (typeof window !== 'undefined' && messages.length > 0) {
-            // Keep only the last 5 messages for storage
-            const messagesToSave = messages.slice(-5).filter(msg => !msg.isTemporary);
+            // Save all messages (not just the last 5)
+            const messagesToSave = messages.filter(msg => !msg.isTemporary);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(messagesToSave));
         }
     }, [messages]);
 
     // Auto scroll to bottom of chat
     useEffect(() => {
-        try {
-            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        } catch (error) {
-            console.warn('Scroll error:', error);
+        if (!showHistory) {
+            try {
+                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            } catch (error) {
+                console.warn('Scroll error:', error);
+            }
         }
-    }, [messages]);
+    }, [messages, showHistory]);
 
     // Handle pausing/resuming Three.js when chat opens/closes
     useEffect(() => {
@@ -244,23 +430,17 @@ const ChatWidget = () => {
         return FALLBACK_RESPONSES[randomIndex];
     };
 
-    const fetchGeminiResponse = async (userMessage: string, history: Message[]) => {
+    const fetchGroqResponse = async (userMessage: string, history: Message[]) => {
         const API_KEY = getApiKey();
 
         // Check if API key is available
         if (!API_KEY) {
-            console.error('Gemini API key not found in environment variables');
-            console.log('Expected: NEXT_PUBLIC_GEMINI_API_KEY');
+            console.error('Groq API key not found in environment variables');
+            console.log('Expected: NEXT_PUBLIC_GROQ_API_KEY');
             throw new Error('API key not configured');
         }
 
-        console.log('Using API key:', API_KEY.substring(0, 10) + '...');
-
         try {
-            // Start of API call block
-
-            const historyText = history.slice(-5).map(msg => `${msg.sender === 'user' ? 'User' : 'Advisor'}: ${msg.text}`).join('\n');
-
             // Construct dynamic context
             const contextData = `
 CURRENT USER CONTEXT:
@@ -268,11 +448,14 @@ CURRENT USER CONTEXT:
 - Claimable Yield: ${claimable || '0'} USDT
 - Current Page: ${typeof window !== 'undefined' ? window.location.pathname : 'unknown'}
 
+USER PORTFOLIO (BONDS OWNED):
+${JSON.stringify(userBonds, null, 2)}
+
 BOND MARKET DATA:
 ${JSON.stringify(BOND_REGISTRY, null, 2)}
 `;
 
-            const fullPrompt = `${SYSTEM_PROMPT_TEMPLATE}
+            const systemInstruction = `${SYSTEM_PROMPT_TEMPLATE}
 
 ${contextData}
 
@@ -285,6 +468,10 @@ You can perform actions by returning a JSON object.
    Settings -> "/settings"
    Verification/KYC -> "/verification"
    Portfolio -> "/portfolio"
+   Redeem -> "/redeem"
+   Invest -> "/invest"
+   Government Bonds -> "/govt-bonds"
+   My Bonds -> "/my-bonds"
 
 2. Investment: If user wants to invest in a specific bond.
    Action: { "type": "INVEST", "payload": { "bondId": "GOI-2030", "amount": 100 } }
@@ -302,35 +489,35 @@ You MUST return a JSON object with this structure (no markdown code blocks, just
   "text": "Your helpful response to the user here.",
   "action": { "type": "NAVIGATE" | "INVEST" | null, "payload": ... }
 }
+`;
 
-Previous conversation (last 5 messages):
-${historyText}
+            // Map history to OpenAI format
+            const messages = history.slice(-5).map(msg => ({
+                role: msg.sender === 'user' ? 'user' : 'assistant',
+                content: msg.text
+            }));
 
-User message: ${userMessage}`;
+            // Add system prompt at the beginning
+            messages.unshift({ role: 'system', content: systemInstruction });
+
+            // Add current user message
+            messages.push({ role: 'user', content: userMessage });
 
             const requestBody = {
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: fullPrompt
-                            }
-                        ]
-                    }
-                ],
-                generationConfig: {
-                    response_mime_type: "application/json"
-                }
+                model: "llama-3.3-70b-versatile",
+                messages: messages,
+                response_format: { type: "json_object" }
             };
 
-            console.log('Sending request to Gemini API...');
+            console.log('Sending request to Groq API...');
 
             const response = await fetchWithTimeout(
-                `${API_URL}?key=${API_KEY}`,
+                API_URL,
                 {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
                     },
                     body: JSON.stringify(requestBody)
                 },
@@ -339,16 +526,15 @@ User message: ${userMessage}`;
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('API Response Error:', response.status, errorText);
-                throw new Error(`API request failed with status ${response.status}`);
+                throw new Error(`API request failed with status ${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
-            console.log('Gemini API Response:', data);
+            console.log('Groq API Response:', data);
 
-            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            if (data.choices && data.choices[0] && data.choices[0].message) {
                 setRetryCount(0);
-                return data.candidates[0].content.parts[0].text;
+                return data.choices[0].message.content;
             } else if (data.error) {
                 console.error("API Error:", data.error);
                 throw new Error(`API Error: ${data.error.message || "Unknown error"}`);
@@ -395,13 +581,29 @@ User message: ${userMessage}`;
             try {
                 let response;
                 try {
-                    response = await fetchGeminiResponse(currentMessage, messages);
-                } catch (error) {
+                    response = await fetchGroqResponse(currentMessage, messages);
+                } catch (error: any) {
                     if (retryCount < maxRetries) {
                         setRetryCount(prev => prev + 1);
                         console.log(`Retry attempt ${retryCount + 1}/${maxRetries}`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        response = await fetchGeminiResponse(currentMessage, messages);
+
+                        // Check for rate limit error (429)
+                        const isRateLimit = error.message && error.message.includes('429');
+
+                        let retryDelay = 2000;
+                        if (isRateLimit) {
+                            // Try to extract wait time from error message "retry in X s"
+                            const match = error.message.match(/retry in (\d+(\.\d+)?)s/);
+                            if (match && match[1]) {
+                                retryDelay = (parseFloat(match[1]) + 1) * 1000; // Add 1s buffer
+                            } else {
+                                retryDelay = 60000; // Default to 60s for 429 if no time found
+                            }
+                            console.log(`Rate limit hit. Waiting ${retryDelay}ms before retry...`);
+                        }
+
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                        response = await fetchGroqResponse(currentMessage, messages);
                     } else {
                         throw new Error("Max retries reached");
                     }
@@ -511,7 +713,7 @@ User message: ${userMessage}`;
                     model: {
                         provider: "google",
                         model: "gemini-2.5-flash",
-                        systemPrompt: SYSTEM_PROMPT_TEMPLATE
+                        systemPrompt: getDynamicSystemPrompt(messages)
                     } as any,
                     transcriber: {
                         provider: "deepgram",
@@ -537,6 +739,94 @@ User message: ${userMessage}`;
                 timestamp: new Date(),
             };
             setMessages((prev) => [...prev, errorMsg]);
+        }
+    };
+
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+    const archiveCurrentSession = () => {
+        if (messages.length === 0) return;
+
+        // Don't save empty or very short failed sessions
+        const meaningfulMessages = messages.filter(m => !m.isTemporary && m.sender === 'user').length;
+        if (meaningfulMessages === 0 && messages.length < 2) return;
+
+        const lastUserMsg = messages.filter(m => m.sender === 'user').pop();
+        const preview = lastUserMsg ? lastUserMsg.text.substring(0, 40) + (lastUserMsg.text.length > 40 ? '...' : '') : 'Conversation';
+
+        const sessionId = currentSessionId || Date.now().toString();
+
+        const newSession: ChatSession = {
+            id: sessionId,
+            timestamp: Date.now(),
+            preview,
+            messages: messages
+        };
+
+        // Check if session already exists
+        const existingSessionIndex = savedSessions.findIndex(s => s.id === sessionId);
+
+        let updatedSessions;
+        if (existingSessionIndex >= 0) {
+            // Update existing session
+            updatedSessions = [...savedSessions];
+            updatedSessions[existingSessionIndex] = newSession;
+            // Move to top if updated? Optional. Let's keep it simple for now or move to top.
+            // Moving to top:
+            updatedSessions.splice(existingSessionIndex, 1);
+            updatedSessions.unshift(newSession);
+        } else {
+            // Create new session
+            updatedSessions = [newSession, ...savedSessions];
+        }
+
+        setSavedSessions(updatedSessions);
+        setCurrentSessionId(sessionId); // Ensure we keep tracking this session
+
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(SESSIONS_KEY, JSON.stringify(updatedSessions));
+        }
+    };
+
+    const handleNewChat = () => {
+        // Archive current chat if it has content
+        if (messages.length > 0) {
+            archiveCurrentSession();
+        }
+
+        setMessages([]);
+        setCurrentSessionId(null); // Reset session ID for new chat
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+        setShowHistory(false);
+        setCallStatus(uiText.chat_cleared || "Chat cleared");
+        setTimeout(() => setCallStatus(""), 2000);
+    };
+
+    const handleLoadSession = (session: ChatSession) => {
+        // Archive current before loading old one?
+        if (messages.length > 0) {
+            archiveCurrentSession();
+        }
+
+        // Rehydrate Dates
+        const hydratedMessages = session.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+        }));
+
+        setMessages(hydratedMessages);
+        setCurrentSessionId(session.id); // Set active session ID
+        setShowHistory(false);
+    };
+
+    const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
+        e.stopPropagation();
+        const updatedSessions = savedSessions.filter(s => s.id !== sessionId);
+        setSavedSessions(updatedSessions);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(SESSIONS_KEY, JSON.stringify(updatedSessions));
         }
     };
 
@@ -620,13 +910,40 @@ User message: ${userMessage}`;
                                 />
                             </div>
                             <div>
-                                <h3 className="text-white font-medium">NanoBond Advisor</h3>
+                                <h3 className="text-white font-medium">{uiText.title}</h3>
                                 <p className="text-purple-100 text-xs opacity-80">
-                                    {callStatus || "Online"}
+                                    {callStatus || uiText.online}
                                 </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
+
+                            {showHistory ? (
+                                <button
+                                    className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                    onClick={() => setShowHistory(false)}
+                                    title={uiText.back_to_chat || "Back to Chat"}
+                                >
+                                    <FiChevronLeft className="text-white" />
+                                </button>
+                            ) : (
+                                <>
+                                    <button
+                                        className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                        onClick={handleNewChat}
+                                        title={uiText.new_chat || "New Chat"}
+                                    >
+                                        <FiPlus className="text-white" />
+                                    </button>
+                                    <button
+                                        className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                                        onClick={() => setShowHistory(true)}
+                                        title={uiText.history || "History"}
+                                    >
+                                        <FiClock className="text-white" />
+                                    </button>
+                                </>
+                            )}
                             <button
                                 className="p-1 rounded-full hover:bg-white/10 transition-colors"
                                 onClick={() => setMinimized(!minimized)}
@@ -641,7 +958,47 @@ User message: ${userMessage}`;
                             className="bg-[#121212] h-96 overflow-y-auto p-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent"
                             style={{ scrollbarWidth: 'thin' } as any}
                         >
-                            {isCallActive ? (
+                            {showHistory ? (
+                                <div className="flex flex-col gap-2">
+                                    <h4 className="text-gray-400 text-xs uppercase font-semibold mb-2">{uiText.history_title || "Recent Sessions"}</h4>
+                                    {savedSessions.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                                            <FiMessageSquare className="w-8 h-8 mb-2 opacity-50" />
+                                            <p className="text-sm">{uiText.no_history || "No saved history"}</p>
+                                        </div>
+                                    ) : (
+                                        savedSessions.map((session) => (
+                                            <motion.div
+                                                key={session.id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="bg-[#1e1e1e] p-3 rounded-xl cursor-pointer hover:bg-[#2a2a2a] transition-colors border border-gray-800 hover:border-purple-500/30 group relative"
+                                                onClick={() => handleLoadSession(session)}
+                                            >
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="text-xs text-purple-400 font-medium">
+                                                        {new Date(session.timestamp).toLocaleDateString()}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => handleDeleteSession(e, session.id)}
+                                                        className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title={uiText.delete_session || "Delete Session"}
+                                                    >
+                                                        <FiTrash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                                <p className="text-gray-300 text-sm line-clamp-2">
+                                                    {session.preview}
+                                                </p>
+                                                <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                                                    <FiMessageSquare className="w-3 h-3" />
+                                                    {session.messages.length} {uiText.messages_count || "messages"}
+                                                </div>
+                                            </motion.div>
+                                        ))
+                                    )}
+                                </div>
+                            ) : isCallActive ? (
                                 // Voice Agent UI - Large animated microphone with wave effect
                                 <div className="flex items-center justify-center h-full">
                                     <motion.div className="relative flex items-center justify-center w-full h-full">
@@ -732,9 +1089,7 @@ User message: ${userMessage}`;
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ duration: 0.5 }}
                                             >
-                                                <p className="text-gray-100 text-sm leading-relaxed">
-                                                    Hi there! I'm <span className="text-purple-400 font-semibold">NanoBond Advisor</span>. I can help you navigate our platform and guide you through your investment journey. How can I assist you today?
-                                                </p>
+                                                <p className="text-gray-100 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: uiText.welcome || "" }} />
                                                 <span className="text-xs text-gray-400 mt-2 block">
                                                     {formatTime(new Date())}
                                                 </span>
@@ -812,17 +1167,17 @@ User message: ${userMessage}`;
                         </div>
                     )}
 
-                    {!minimized && (
+                    {!minimized && !showHistory && (
                         <div className="bg-[#1a1a1a] p-3 border-t border-[#333] flex items-center gap-2">
                             <input
                                 type="text"
                                 value={inputMessage}
                                 onChange={(e) => setInputMessage(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                                placeholder="Ask me anything..."
+                                placeholder={uiText.placeholder || "Ask me anything..."}
                                 className="flex-1 bg-[#262626] text-gray-200 rounded-full px-4 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm placeholder:text-gray-500"
                             />
-                            <button className="text-purple-400 hover:text-purple-300 p-2 rounded-full hover:bg-white/5 transition-colors" onClick={handleMicClick} title={isCallActive ? "Stop voice call" : "Start voice call"}>
+                            <button className="text-purple-400 hover:text-purple-300 p-2 rounded-full hover:bg-white/5 transition-colors" onClick={handleMicClick} title={isCallActive ? (uiText.stop_voice_call || "Stop voice call") : (uiText.start_voice_call || "Start voice call")}>
                                 <FiMic className={`w-5 h-5 ${isListening ? "animate-pulse text-red-400" : ""}`} />
                             </button>
                             <motion.button

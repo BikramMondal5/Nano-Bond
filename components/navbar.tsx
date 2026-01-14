@@ -1,7 +1,8 @@
 "use client"
 import Link from "next/link"
+import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
-import { ChevronDown, User, Settings, LogOut, Menu } from "lucide-react"
+import { ChevronDown, User, Settings, LogOut, Menu, Globe } from "lucide-react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -15,19 +16,60 @@ import {
 import { useAuth } from "@/components/auth-provider"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
+import { useLanguage } from "@/context/LanguageContext"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
-const publicLinks = [
-  { label: "Features", href: "/#features" },
-  { label: "How It Works", href: "/#how-it-works" },
-  { label: "Roadmap", href: "/#roadmap" },
-  { label: "Docs", href: "/docs" },
-  { label: "FAQ", href: "/#faq" },
-]
+
 
 export function Navbar() {
   const { user, login, logout } = useAuth()
+  const { language, setLanguage, translateText } = useLanguage()
   const pathname = usePathname()
   const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/sign-up"
+
+  const content = useContentTranslation({
+    profile: "Profile",
+    settings: "Settings",
+    logout: "Logout",
+    register: "Register"
+  })
+
+  const [navLinks, setNavLinks] = useState([
+    { label: "Features", href: "/#features" },
+    { label: "How It Works", href: "/#how-it-works" },
+    { label: "Roadmap", href: "/#roadmap" },
+    { label: "Docs", href: "/docs" },
+    { label: "FAQ", href: "/#faq" },
+  ]);
+
+  useEffect(() => {
+    const translateLinks = async () => {
+      if (language === 'en') {
+        setNavLinks([
+          { label: "Features", href: "/#features" },
+          { label: "How It Works", href: "/#how-it-works" },
+          { label: "Roadmap", href: "/#roadmap" },
+          { label: "Docs", href: "/docs" },
+          { label: "FAQ", href: "/#faq" },
+        ]);
+        return;
+      }
+
+      const labels = ["Features", "How It Works", "Roadmap", "Docs", "FAQ"];
+      const translated = await translateText(labels);
+
+      if (Array.isArray(translated)) {
+        setNavLinks([
+          { label: translated[0], href: "/#features" },
+          { label: translated[1], href: "/#how-it-works" },
+          { label: translated[2], href: "/#roadmap" },
+          { label: translated[3], href: "/docs" },
+          { label: translated[4], href: "/#faq" },
+        ]);
+      }
+    };
+    translateLinks();
+  }, [language, translateText]);
 
   const showNavLinks =
     isPublicPage ||
@@ -36,6 +78,8 @@ export function Navbar() {
     pathname === "/invest" ||
     pathname === "/redeem" ||
     pathname === "/verification"
+
+
 
   return (
     <nav className="fixed top-0 w-full z-40 border-b border-border/50 bg-[#0A0A0A]/90 backdrop-blur-2xl backdrop-saturate-150">
@@ -56,7 +100,7 @@ export function Navbar() {
           {/* Center: Navigation Links (only on public pages or portfolio) */}
           {showNavLinks && (
             <div className="hidden lg:flex items-center gap-6">
-              {publicLinks.map((link) => (
+              {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -71,6 +115,38 @@ export function Navbar() {
 
           {/* Right: Auth/User section */}
           <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-white relative group"
+                  title={`Language: ${language.toUpperCase()}`}
+                >
+                  <Globe className="w-5 h-5" />
+                  <span className="absolute -bottom-1 right-0 text-[10px] font-bold text-[#FD8C00]">
+                    {language.toUpperCase()}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-[#1A1A1A] border-border/50 text-white">
+                <DropdownMenuItem onClick={() => setLanguage('en')} className="cursor-pointer hover:bg-white/10">
+                  English (EN)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('es')} className="cursor-pointer hover:bg-white/10">
+                  Español (ES)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('fr')} className="cursor-pointer hover:bg-white/10">
+                  Français (FR)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('hi')} className="cursor-pointer hover:bg-white/10">
+                  हिन्दी (HI)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('de')} className="cursor-pointer hover:bg-white/10">
+                  Deutsch (DE)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -86,12 +162,12 @@ export function Navbar() {
                 <DropdownMenuContent align="end" className="w-48 bg-[#1A1A1A] border-border/50 text-white">
                   <DropdownMenuItem asChild className="hover:bg-[#FD8C00]/10 hover:text-[#FD8C00] cursor-pointer">
                     <Link href="/portfolio" className="flex items-center gap-2">
-                      <User className="w-4 h-4" /> Profile
+                      <User className="w-4 h-4" /> {content.profile}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="hover:bg-[#FD8C00]/10 hover:text-[#FD8C00] cursor-pointer">
                     <Link href="/settings" className="flex items-center gap-2">
-                      <Settings className="w-4 h-4" /> Settings
+                      <Settings className="w-4 h-4" /> {content.settings}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border/50" />
@@ -99,7 +175,7 @@ export function Navbar() {
                     onClick={logout}
                     className="text-destructive hover:bg-destructive/10 cursor-pointer flex items-center gap-2"
                   >
-                    <LogOut className="w-4 h-4" /> Logout
+                    <LogOut className="w-4 h-4" /> {content.logout}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -110,7 +186,7 @@ export function Navbar() {
                   variant="outline"
                   className="border-border/50 bg-[#1A1A1A] hover:bg-[#252525] text-white"
                 >
-                  <Link href="/sign-up">Register</Link>
+                  <Link href="/sign-up">{content.register}</Link>
                 </Button>
                 <Web3AuthConnectButton />
               </div>
