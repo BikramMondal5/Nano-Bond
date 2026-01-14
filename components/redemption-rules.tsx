@@ -1,16 +1,27 @@
+"use client"
+
 import { CheckCircle2 } from "lucide-react"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function RedemptionRules() {
+  const content = useContentTranslation({
+    title: "Rules & Notes",
+    rule1: "Bonds must be matured before redemption",
+    rule2: "Transactions require blockchain confirmation",
+    rule3: "Small gas fees apply for network execution",
+    rule4: "Final amount based on live GBOND/USDT rate"
+  })
+
   const rules = [
-    "Bonds must be matured before redemption",
-    "Transactions require blockchain confirmation",
-    "Small gas fees apply for network execution",
-    "Final amount based on live GBOND/USDT rate",
+    content.rule1,
+    content.rule2,
+    content.rule3,
+    content.rule4,
   ]
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-bold text-white uppercase tracking-widest italic">Rules & Notes</h3>
+      <h3 className="text-sm font-bold text-white uppercase tracking-widest italic">{content.title}</h3>
       <div className="grid gap-3">
         {rules.map((rule, idx) => (
           <div key={idx} className="flex gap-3 group">

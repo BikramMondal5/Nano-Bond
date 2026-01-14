@@ -4,33 +4,55 @@ import { CpuArchitecture } from "@/components/ui/cpu-architecture"
 import { Shield, TrendingUp, Zap, Lock, Coins, BarChart3 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function EcosystemSection() {
+    const content = useContentTranslation({
+        tag: "Platform Ecosystem",
+        title: "Why Choose NanoBond",
+        subtitle: "Built on a robust blockchain infrastructure connecting the best in DeFi",
+
+        f1_title: "Military-Grade Security",
+        f1_desc: "Multi-signature wallets and audited smart contracts protecting your investments",
+
+        f2_title: "Real-Time Analytics",
+        f2_desc: "AI-powered bond analytics with performance tracking and yield predictions",
+
+        f3_title: "Decentralized Infrastructure",
+        f3_desc: "Built on cutting-edge blockchain for maximum transparency and reliability",
+
+        f4_title: "Fractional Ownership",
+        f4_desc: "Invest in government bonds with as little as $10, no barriers to entry",
+
+        f5_title: "Automated Yield Distribution",
+        f5_desc: "Receive interest payments automatically in USDT based on bond schedules",
+    });
+
     const features = [
         {
             icon: <Shield className="w-6 h-6" />,
-            title: "Military-Grade Security",
-            description: "Multi-signature wallets and audited smart contracts protecting your investments",
+            title: content.f1_title,
+            description: content.f1_desc,
         },
         {
             icon: <TrendingUp className="w-6 h-6" />,
-            title: "Real-Time Analytics",
-            description: "AI-powered bond analytics with performance tracking and yield predictions",
+            title: content.f2_title,
+            description: content.f2_desc,
         },
         {
             icon: <Lock className="w-6 h-6" />,
-            title: "Decentralized Infrastructure",
-            description: "Built on cutting-edge blockchain for maximum transparency and reliability",
+            title: content.f3_title,
+            description: content.f3_desc,
         },
         {
             icon: <Coins className="w-6 h-6" />,
-            title: "Fractional Ownership",
-            description: "Invest in government bonds with as little as $10, no barriers to entry",
+            title: content.f4_title,
+            description: content.f4_desc,
         },
         {
             icon: <BarChart3 className="w-6 h-6" />,
-            title: "Automated Yield Distribution",
-            description: "Receive interest payments automatically in USDT based on bond schedules",
+            title: content.f5_title,
+            description: content.f5_desc,
         },
     ]
 
@@ -47,13 +69,13 @@ export function EcosystemSection() {
                 <div className="text-center mb-16">
                     <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
                         <Zap className="w-3.5 h-3.5" />
-                        Platform Ecosystem
+                        {content.tag}
                     </div>
                     <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
-                        Why Choose NanoBond
+                        {content.title}
                     </h2>
                     <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                        Built on a robust blockchain infrastructure connecting the best in DeFi
+                        {content.subtitle}
                     </p>
                 </div>
 

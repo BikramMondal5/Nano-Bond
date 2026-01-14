@@ -1,7 +1,29 @@
+"use client";
+
 import { Github, Twitter, Linkedin, Mail, Send } from "lucide-react"
 import Image from "next/image"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function Footer() {
+  const content = useContentTranslation({
+    description: "Democratizing access to government bonds through blockchain technology. Secure, transparent, and accessible to everyone.",
+    product_title: "Product",
+    features: "Features",
+    how_it_works: "How it Works",
+    roadmap: "Roadmap",
+    api_docs: "API Docs",
+    legal_title: "Legal",
+    terms: "Terms of Service",
+    privacy: "Privacy Policy",
+    compliance: "Compliance",
+    risk: "Risk Disclosure",
+    support_title: "Support",
+    faq: "FAQ",
+    support: "Support",
+    help_center: "Help Center",
+    media_kit: "Media Kit"
+  });
+
   return (
     <footer className="relative pt-10 md:pt-20 pb-2 px-4 border-t border-border/50 bg-card/20 backdrop-blur-sm">
       {/* Background glow effect */}
@@ -18,8 +40,7 @@ export function Footer() {
               <span className="text-2xl font-bold text-foreground">NanoBond</span>
             </div>
             <p className="text-muted-foreground max-w-sm mb-8 leading-relaxed">
-              Democratizing access to government bonds through blockchain technology. Secure, transparent, and
-              accessible to everyone.
+              {content.description}
             </p>
             <div className="flex gap-3">
               <a
@@ -51,26 +72,26 @@ export function Footer() {
 
           {/* Product links */}
           <div>
-            <h4 className="text-foreground font-semibold mb-6 text-sm uppercase tracking-wider">Product</h4>
+            <h4 className="text-foreground font-semibold mb-6 text-sm uppercase tracking-wider">{content.product_title}</h4>
             <ul className="space-y-4 text-muted-foreground text-sm">
               <li>
                 <a href="#features" className="hover:text-primary transition-colors">
-                  Features
+                  {content.features}
                 </a>
               </li>
               <li>
                 <a href="#how-it-works" className="hover:text-primary transition-colors">
-                  How it Works
+                  {content.how_it_works}
                 </a>
               </li>
               <li>
                 <a href="#roadmap" className="hover:text-primary transition-colors">
-                  Roadmap
+                  {content.roadmap}
                 </a>
               </li>
               <li>
                 <a href="#" className="hover:text-primary transition-colors">
-                  API Docs
+                  {content.api_docs}
                 </a>
               </li>
             </ul>
@@ -78,26 +99,26 @@ export function Footer() {
 
           {/* Legal links */}
           <div>
-            <h4 className="text-foreground font-semibold mb-6 text-sm uppercase tracking-wider">Legal</h4>
+            <h4 className="text-foreground font-semibold mb-6 text-sm uppercase tracking-wider">{content.legal_title}</h4>
             <ul className="space-y-4 text-muted-foreground text-sm">
               <li>
                 <a href="#" className="hover:text-primary transition-colors">
-                  Terms of Service
+                  {content.terms}
                 </a>
               </li>
               <li>
                 <a href="#" className="hover:text-primary transition-colors">
-                  Privacy Policy
+                  {content.privacy}
                 </a>
               </li>
               <li>
                 <a href="#" className="hover:text-primary transition-colors">
-                  Compliance
+                  {content.compliance}
                 </a>
               </li>
               <li>
                 <a href="#" className="hover:text-primary transition-colors">
-                  Risk Disclosure
+                  {content.risk}
                 </a>
               </li>
             </ul>
@@ -105,11 +126,11 @@ export function Footer() {
 
           {/* Contact links */}
           <div>
-            <h4 className="text-foreground font-semibold mb-6 text-sm uppercase tracking-wider">Support</h4>
+            <h4 className="text-foreground font-semibold mb-6 text-sm uppercase tracking-wider">{content.support_title}</h4>
             <ul className="space-y-4 text-muted-foreground text-sm">
               <li>
                 <a href="#faq" className="hover:text-primary transition-colors">
-                  FAQ
+                  {content.faq}
                 </a>
               </li>
               <li>
@@ -118,17 +139,17 @@ export function Footer() {
                   className="hover:text-primary transition-colors flex items-center gap-2"
                 >
                   <Mail className="w-4 h-4" />
-                  Support
+                  {content.support}
                 </a>
               </li>
               <li>
                 <a href="#" className="hover:text-primary transition-colors">
-                  Help Center
+                  {content.help_center}
                 </a>
               </li>
               <li>
                 <a href="#" className="hover:text-primary transition-colors">
-                  Media Kit
+                  {content.media_kit}
                 </a>
               </li>
             </ul>

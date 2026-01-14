@@ -5,6 +5,7 @@ import "./globals.css"
 import { AuthProvider } from "@/components/auth-provider"
 import { Providers } from "@/components/providers"
 import '@rainbow-me/rainbowkit/styles.css';
+import { LanguageProvider } from "@/context/LanguageContext";
 import ChatWidget from "@/components/ChatWidget";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -26,10 +27,12 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased bg-[#0A0A0A] text-white`}>
         <AuthProvider>
-          <Providers>
-            {children}
-            <ChatWidget />
-          </Providers>
+          <LanguageProvider>
+            <Providers>
+              {children}
+              <ChatWidget />
+            </Providers>
+          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>

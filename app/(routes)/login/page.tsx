@@ -10,12 +10,24 @@ import { Navbar } from "@/components/navbar"
 import { MatrixRain } from "@/components/cyber-hero"
 import { Shield, Wallet, Loader2, ArrowRight } from "lucide-react"
 import { useWeb3Auth } from "@/hooks/use-web3auth"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 function LoginFormContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
+
     const [error, setError] = useState("")
+
+    const content = useContentTranslation({
+        title: "Welcome Back",
+        subtitle: "Access your tokenized bond portfolio",
+        web3_desc: "Securely access your account using Web3Auth. No password needed.",
+        btn_web3: "Continue with Web3Auth",
+        btn_signing: "Signing in...",
+        new_investor: "New investor?",
+        create_account: "Create Account"
+    });
 
     useEffect(() => {
         const errorParam = searchParams.get("error")
@@ -55,6 +67,8 @@ function LoginFormContent() {
         }
     }
 
+
+
     return (
         <div className="w-full max-w-md">
             <div className="relative backdrop-blur-xl bg-orange-950/10 border border-orange-500/20 rounded-3xl p-8 shadow-2xl">
@@ -64,8 +78,8 @@ function LoginFormContent() {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 mb-4">
                         <Shield className="w-8 h-8 text-orange-400" />
                     </div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Welcome Back</h2>
-                    <p className="mt-2 text-orange-200/50">Access your tokenized bond portfolio</p>
+                    <h2 className="text-3xl font-bold text-white tracking-tight">{content.title}</h2>
+                    <p className="mt-2 text-orange-200/50">{content.subtitle}</p>
                 </div>
 
                 {error && (
@@ -76,7 +90,7 @@ function LoginFormContent() {
 
                 <div className="space-y-5">
                     <p className="text-center text-sm text-orange-200/60 leading-relaxed px-4">
-                        Securely access your account using Web3Auth. No password needed.
+                        {content.web3_desc}
                     </p>
 
                     <Button
@@ -90,15 +104,15 @@ function LoginFormContent() {
                         ) : (
                             <Wallet className="w-5 h-5" />
                         )}
-                        {isLoading ? "Signing in..." : "Continue with Web3Auth"}
+                        {isLoading ? content.btn_signing : content.btn_web3}
                         {!isLoading && !isInitializing && <ArrowRight className="w-5 h-5" />}
                     </Button>
                 </div>
 
                 <div className="mt-10 text-center text-sm">
-                    <span className="text-orange-200/40">New investor?</span>{" "}
+                    <span className="text-orange-200/40">{content.new_investor}</span>{" "}
                     <Link href="/sign-up" className="text-orange-400 hover:text-orange-300 font-bold transition-colors">
-                        Create Account
+                        {content.create_account}
                     </Link>
                 </div>
             </div>
@@ -107,6 +121,14 @@ function LoginFormContent() {
 }
 
 export default function LoginPage() {
+    const content = useContentTranslation({
+        hero_title: "Government Bonds, Tokenized",
+        hero_desc: "Invest in secure, government-backed bonds with blockchain transparency. Start building your portfolio with as little as $10.",
+        feat_1: "Fractional ownership of government bonds",
+        feat_2: "Real-time portfolio tracking & analytics",
+        feat_3: "Transparent blockchain-secured transactions"
+    });
+
     return (
         <div className="min-h-screen bg-black flex flex-col relative">
             <Navbar />
@@ -128,24 +150,24 @@ export default function LoginPage() {
                                 <Shield className="w-12 h-12 text-orange-400" />
                             </div>
                             <h1 className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-orange-300 to-amber-400">
-                                Government Bonds, Tokenized
+                                {content.hero_title}
                             </h1>
                             <p className="text-lg text-orange-200/60 leading-relaxed">
-                                Invest in secure, government-backed bonds with blockchain transparency. Start building your portfolio with as little as $10.
+                                {content.hero_desc}
                             </p>
                         </div>
                         <div className="space-y-4 text-sm text-orange-200/50">
                             <div className="flex items-center gap-3">
                                 <div className="w-2 h-2 rounded-full bg-orange-500" />
-                                <span>Fractional ownership of government bonds</span>
+                                <span>{content.feat_1}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="w-2 h-2 rounded-full bg-orange-500" />
-                                <span>Real-time portfolio tracking & analytics</span>
+                                <span>{content.feat_2}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="w-2 h-2 rounded-full bg-orange-500" />
-                                <span>Transparent blockchain-secured transactions</span>
+                                <span>{content.feat_3}</span>
                             </div>
                         </div>
                     </div>

@@ -11,10 +11,18 @@ import { useRouter } from "next/navigation"
 import { useWeb3Auth } from "@/hooks/use-web3auth"
 import { kycService } from "@/lib/services/kyc.service"
 import type { IBond } from "@/lib/models/Bond"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export default function InvestPage() {
   const router = useRouter()
   const { walletAddress } = useWeb3Auth()
+  const content = useContentTranslation({
+    title: "Invest in Government Bonds",
+    subtitle: "Purchase fractional bonds with instant settlement and zero gas fees.",
+    select_label: "Select Bond Product",
+    no_bonds: "No bonds available at the moment."
+  });
+
   const [bonds, setBonds] = useState<IBond[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBondId, setSelectedBondId] = useState<string>("")
@@ -111,14 +119,14 @@ export default function InvestPage() {
         {/* Header & Selector */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">Invest in Government Bonds</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">{content.title}</h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Purchase fractional bonds with instant settlement and zero gas fees.
+              {content.subtitle}
             </p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-muted-foreground">Select Bond Product</span>
+            <span className="text-sm font-medium text-muted-foreground">{content.select_label}</span>
             <BondSelector
               bonds={bondOptions}
               selectedBondId={selectedBondId}
@@ -130,7 +138,7 @@ export default function InvestPage() {
 
         {!selectedBond ? (
           <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground border border-dashed border-white/10 rounded-xl">
-            <p>No bonds available at the moment.</p>
+            <p>{content.no_bonds}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">

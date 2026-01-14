@@ -1,5 +1,13 @@
+"use client";
+
+import { useContentTranslation } from "@/hooks/useContentTranslation"
+
 // <CHANGE> Converted to infinite marquee animation inspired by Laika's partner strip
 export function TrustStrip() {
+  const content = useContentTranslation({
+    tag: "Powered by Industry Leaders"
+  });
+
   const partners = [
     "AWS",
     "Google Cloud",
@@ -15,7 +23,7 @@ export function TrustStrip() {
     <div className="py-8 border-y border-border/30 bg-card/30 backdrop-blur-sm overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-4">
         <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-          Powered by Industry Leaders
+          {content.tag}
         </p>
       </div>
 

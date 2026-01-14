@@ -4,8 +4,19 @@
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Download, ShieldCheck, Zap, Globe } from "lucide-react"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function MobileAppSection() {
+    const content = useContentTranslation({
+        tag: "Mobile Experience",
+        title: "Take NanoBond With You",
+        subtitle: "Experience the full power of NanoBond on your mobile device. Trade, track, and earn from anywhere in the world.",
+        desc1: "The financial world moves fast. Opportunities don't wait for your desktop. What if there was an app, always connected, always secure, putting the power of fractional government bonds in your pocket?",
+        desc2: "Our mission is to make bond investing as accessible and transparent as a text message, without compromising security. NanoBond Mobile is designed to be your always-on portfolio manager—monitoring yields, executing trades, and alerting you to opportunities 24/7.",
+        cta: "Download Now",
+        availability: "Available for Android. iOS coming soon."
+    });
+
     return (
         <section className="pt-0 pb-24 bg-background relative overflow-hidden">
             {/* Background Gradients */}
@@ -19,13 +30,13 @@ export function MobileAppSection() {
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
                         <Globe className="w-3.5 h-3.5" />
-                        Mobile Experience
+                        {content.tag}
                     </div>
                     <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
-                        Take NanoBond With You
+                        {content.title}
                     </h2>
                     <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                        Experience the full power of NanoBond on your mobile device. Trade, track, and earn from anywhere in the world.
+                        {content.subtitle}
                     </p>
                 </div>
 
@@ -51,13 +62,11 @@ export function MobileAppSection() {
                     <div className="flex-1 space-y-8 text-center lg:text-left">
                         <div className="space-y-4">
                             <p className="text-lg text-gray-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                                The financial world moves fast. Opportunities don't wait for your desktop.
-                                What if there was an app, always connected, always secure, putting the power of fractional government bonds in your pocket?
+                                {content.desc1}
                             </p>
 
                             <p className="text-lg text-gray-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                                Our mission is to make bond investing as accessible and transparent as a text message, without compromising security.
-                                NanoBond Mobile is designed to be your always-on portfolio manager—monitoring yields, executing trades, and alerting you to opportunities 24/7.
+                                {content.desc2}
                             </p>
                         </div>
 
@@ -65,10 +74,10 @@ export function MobileAppSection() {
                             <a href="https://drive.google.com/file/d/1yfi3mZafteGUC_O_d2UKyQVWJtJ_Xo-S/view?usp=drivesdk" target="_blank" rel="noopener noreferrer">
                                 <Button className="h-14 px-8 text-lg font-bold bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-700 shadow-lg shadow-primary/25 rounded-xl w-full sm:w-auto">
                                     <Download className="mr-2 h-5 w-5" />
-                                    Download Now
+                                    {content.cta}
                                 </Button>
                             </a>
-                            <p className="mt-4 text-xs text-gray-500">Available for Android. iOS coming soon.</p>
+                            <p className="mt-4 text-xs text-gray-500">{content.availability}</p>
                         </div>
                     </div>
 

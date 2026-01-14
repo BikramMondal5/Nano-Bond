@@ -1,15 +1,29 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { ArrowUpRight, ShieldCheck } from "lucide-react"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 export function BondBreakdown() {
+  const content = useContentTranslation({
+    title: "Bond Breakdown",
+    active_holdings: "Active Holdings",
+    lbl_gbond_bal: "GBOND Balance",
+    lbl_value_usdt: "Value (USDT)",
+    lbl_yield_earned: "Yield Earned",
+    lbl_maturity: "Maturity",
+    lbl_progress: "Progress",
+    unit_days: "Days"
+  })
+
   const bonds = [
     {
       name: "US Treasury Bill – 365D",
       gbond: "9,500",
       usdt: "10,350",
       yield: "650",
-      maturity: "145 Days",
+      maturity: `145 ${content.unit_days}`,
       progress: 65,
     },
     {
@@ -17,7 +31,7 @@ export function BondBreakdown() {
       gbond: "1,200",
       usdt: "1,245",
       yield: "45",
-      maturity: "12 Days",
+      maturity: `12 ${content.unit_days}`,
       progress: 95,
     },
   ]
@@ -25,9 +39,9 @@ export function BondBreakdown() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-[#E5E7EB]">Bond Breakdown</h3>
+        <h3 className="text-xl font-bold text-[#E5E7EB]">{content.title}</h3>
         <span className="text-xs text-[#6B7280] font-medium uppercase tracking-widest">
-          Active Holdings ({bonds.length})
+          {content.active_holdings} ({bonds.length})
         </span>
       </div>
 
@@ -43,19 +57,19 @@ export function BondBreakdown() {
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-[10px] text-[#6B7280] uppercase font-bold mb-1">GBOND Balance</p>
+                    <p className="text-[10px] text-[#6B7280] uppercase font-bold mb-1">{content.lbl_gbond_bal}</p>
                     <p className="font-bold text-white">{bond.gbond}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#6B7280] uppercase font-bold mb-1">Value (USDT)</p>
+                    <p className="text-[10px] text-[#6B7280] uppercase font-bold mb-1">{content.lbl_value_usdt}</p>
                     <p className="font-bold text-white">{bond.usdt}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#6B7280] uppercase font-bold mb-1">Yield Earned</p>
+                    <p className="text-[10px] text-[#6B7280] uppercase font-bold mb-1">{content.lbl_yield_earned}</p>
                     <p className="font-bold text-primary">+{bond.yield} USDT</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#6B7280] uppercase font-bold mb-1">Maturity</p>
+                    <p className="text-[10px] text-[#6B7280] uppercase font-bold mb-1">{content.lbl_maturity}</p>
                     <p className="font-bold text-[#9CA3AF]">{bond.maturity}</p>
                   </div>
                 </div>
@@ -63,7 +77,7 @@ export function BondBreakdown() {
 
               <div className="w-full md:w-48 space-y-2">
                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                  <span className="text-[#6B7280]">Progress</span>
+                  <span className="text-[#6B7280]">{content.lbl_progress}</span>
                   <span className="text-primary">{bond.progress}%</span>
                 </div>
                 <Progress value={bond.progress} className="h-1.5 bg-white/5" indicatorClassName="bg-primary" />

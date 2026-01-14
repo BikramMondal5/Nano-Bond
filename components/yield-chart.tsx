@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts"
+import { useContentTranslation } from "@/hooks/useContentTranslation"
 
 const data = [
   { day: 0, price: 1.0 },
@@ -14,10 +15,14 @@ const data = [
 ]
 
 export function YieldChart() {
+  const content = useContentTranslation({
+    title: "Yield Growth"
+  })
+
   return (
     <Card className="bg-[#100F14] border-white/5">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-[#E5E7EB] text-xl font-bold">Yield Growth</CardTitle>
+        <CardTitle className="text-[#E5E7EB] text-xl font-bold">{content.title}</CardTitle>
         <div className="flex gap-2">
           {["1M", "3M", "6M", "YTD", "ALL"].map((time) => (
             <button

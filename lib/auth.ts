@@ -36,6 +36,8 @@ export const authConfig: NextAuthConfig = {
                         email: user.email,
                         name: user.name || `${user.firstName} ${user.lastName}`.trim(),
                         image: user.image,
+                        role: user.role,
+                        sessionId: user.sessionId,
                     };
                 }
 
@@ -73,6 +75,8 @@ export const authConfig: NextAuthConfig = {
                     email: user.email,
                     name: user.name || `${user.firstName} ${user.lastName}`.trim(),
                     image: user.image,
+                    role: user.role,
+                    sessionId: user.sessionId,
                 };
             },
         }),
@@ -86,6 +90,8 @@ export const authConfig: NextAuthConfig = {
         async jwt({ token, user, account }) {
             if (user) {
                 token.id = user.id;
+                token.role = user.role;
+                token.sessionId = user.sessionId;
             }
             return token;
         },
@@ -103,6 +109,8 @@ export const authConfig: NextAuthConfig = {
                         session.user.id = dbUser._id.toString();
                         session.user.walletAddress = dbUser.walletAddress;
                         session.user.portfolio = dbUser.portfolio;
+                        session.user.role = dbUser.role;
+                        session.user.sessionId = dbUser.sessionId;
                     }
                 } catch (error) {
                     console.error("Error fetching user data:", error);
