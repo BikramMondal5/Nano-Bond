@@ -23,7 +23,7 @@ async function main() {
             console.log("MATCH_CONFIRMED");
         }
     } catch (e) {
-        console.log("ERROR=" + e.message);
+        console.log("ERROR=" + (e as any).message);
     }
 }
 
