@@ -255,7 +255,7 @@ app.post('/api/invest', async (req: Request, res: Response) => {
         console.log(`[API] Processing investment for ${address}: ${amount} USDT in ${bondId || 'Default'} from ${network}`);
 
         // For all supported networks: Direct investment using AAService
-        const SUPPORTED_NETWORKS = ['mantle', 'polygon', 'ethereum', 'arbitrum', 'linea', 'scroll'];
+        const SUPPORTED_NETWORKS = ['mantle', 'polygon', 'ethereum', 'arbitrum', 'scroll'];
         if (SUPPORTED_NETWORKS.includes(network)) {
             const result = await aaService.invest(address, amount, bondId, network);
             return res.json(result);
@@ -276,11 +276,6 @@ app.post('/api/invest', async (req: Request, res: Response) => {
                 rpc: process.env.ARBITRUM_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
                 usdtAddress: process.env.USDT_ARBITRUM || '',
                 gatewayAddress: process.env.CROSS_CHAIN_GATEWAY_ARBITRUM || ''
-            },
-            linea: {
-                rpc: process.env.LINEA_RPC_URL || 'https://rpc.sepolia.linea.build',
-                usdtAddress: process.env.USDT_LINEA || '',
-                gatewayAddress: process.env.CROSS_CHAIN_GATEWAY_LINEA || ''
             },
             polygon: {
                 rpc: process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology',
@@ -459,10 +454,6 @@ app.post('/api/faucet/usdt', async (req: Request, res: Response) => {
             arbitrum: {
                 rpc: process.env.ARBITRUM_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
                 usdtAddress: process.env.USDT_ARBITRUM || ''
-            },
-            linea: {
-                rpc: process.env.LINEA_RPC_URL || 'https://rpc.sepolia.linea.build',
-                usdtAddress: process.env.USDT_LINEA || ''
             },
             polygon: {
                 rpc: process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology',

@@ -30,12 +30,6 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 421614
     },
-    lineaSepolia: {
-      url: process.env.LINEA_RPC_URL || "https://rpc.sepolia.linea.build",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 59141,
-      timeout: 120000
-    },
     polygonAmoy: {
       url: process.env.POLYGON_RPC_URL || "https://rpc-amoy.polygon.technology",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],

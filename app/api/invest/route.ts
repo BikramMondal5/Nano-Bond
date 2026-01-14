@@ -19,11 +19,6 @@ const NETWORK_CONFIGS = {
         usdtAddress: process.env.NEXT_PUBLIC_USDT_ARBITRUM!,
         gatewayAddress: process.env.NEXT_PUBLIC_CROSS_CHAIN_GATEWAY_ARBITRUM!
     },
-    linea: {
-        rpc: process.env.NEXT_PUBLIC_LINEA_RPC_URL!,
-        usdtAddress: process.env.NEXT_PUBLIC_USDT_LINEA!,
-        gatewayAddress: process.env.NEXT_PUBLIC_CROSS_CHAIN_GATEWAY_LINEA!
-    },
     polygon: {
         rpc: process.env.NEXT_PUBLIC_POLYGON_RPC!,
         usdtAddress: process.env.NEXT_PUBLIC_USDT_POLYGON!,

@@ -73,7 +73,6 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
     { id: 'mantle', name: 'Mantle Sepolia', icon: '🔷' },
     { id: 'ethereum', name: 'Ethereum Sepolia', icon: '⟠' },
     { id: 'arbitrum', name: 'Arbitrum Sepolia', icon: '🔵' },
-    { id: 'linea', name: 'Linea Sepolia', icon: '🟣' },
     { id: 'polygon', name: 'Polygon Amoy', icon: '🟣' },
     { id: 'scroll', name: 'Scroll Sepolia', icon: '📜' }
   ]
