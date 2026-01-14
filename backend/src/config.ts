@@ -4,11 +4,15 @@ import fs from 'fs';
 
 // specific debug for this issue
 const backendEnvPath = path.resolve(process.cwd(), 'backend', '.env');
-console.log(`[Config] Loading config. CWD: ${process.cwd()}, backendEnvPath: ${backendEnvPath}`);
+const cwdEnvPath = path.resolve(process.cwd(), '.env');
+console.log(`[Config] Loading config. CWD: ${process.cwd()}`);
 
 if (fs.existsSync(backendEnvPath)) {
     console.log('[Config] Found backend .env at CWD/backend/.env');
     dotenv.config({ path: backendEnvPath });
+} else if (fs.existsSync(cwdEnvPath)) {
+    console.log('[Config] Found .env at CWD/.env');
+    dotenv.config({ path: cwdEnvPath });
 } else {
     // Fallback for when running inside backend dir
     const localEnv = path.resolve(__dirname, '../.env');

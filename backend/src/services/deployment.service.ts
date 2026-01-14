@@ -51,6 +51,9 @@ export class DeploymentService {
         const USDT_ADDRESS = config.contracts.usdtAddress;
         const REGISTRY_ADDRESS = config.contracts.registryAddress;
 
+        console.log(`[DeploymentService] Config USDT:     ${USDT_ADDRESS}`);
+        console.log(`[DeploymentService] Config Registry: ${REGISTRY_ADDRESS}`);
+
         if (!USDT_ADDRESS || !REGISTRY_ADDRESS) {
             throw new Error('Missing Shared Core Addresses (USDT or Registry) in config');
         }

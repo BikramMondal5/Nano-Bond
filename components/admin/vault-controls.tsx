@@ -24,6 +24,7 @@ import {
     useAdminBondStats,
     useAdminDistributorStats
 } from "@/hooks/useAdminActions"
+import { useGaslessInvestment } from "@/hooks/useGaslessInvestment"
 
 interface VaultControlsProps {
     enabled: boolean
@@ -36,6 +37,7 @@ export function VaultControls({ enabled, bondAddress, distributorAddress }: Vaul
 
     // Pass dynamic addresses to hooks
     const { distributeYield, fundReserve, distributeRate, approveUSDT, setMaturityDate, isPending } = useAdminActions(bondAddress, distributorAddress)
+    const { requestFaucet } = useGaslessInvestment()
     const { totalSupply, backedValue, maturityDate } = useAdminBondStats(bondAddress)
     const { distributorBalance, cumulativeYield } = useAdminDistributorStats(distributorAddress)
 
@@ -136,6 +138,7 @@ export function VaultControls({ enabled, bondAddress, distributorAddress }: Vaul
                         onApprove={approveUSDT}
                         onFund={fundReserve}
                         onDistributeRate={distributeRate}
+                        onFaucet={() => requestFaucet(1000)}
                         isLoading={isPending}
                     />
                 </CardContent>
@@ -236,10 +239,11 @@ function ActionDialog({ trigger, title, desc, onConfirm }: { trigger: React.Reac
     )
 }
 
-const InterestFunder = ({ onApprove, onFund, onDistributeRate, isLoading }: {
+const InterestFunder = ({ onApprove, onFund, onDistributeRate, onFaucet, isLoading }: {
     onApprove: (a: string) => void,
     onFund: (a: string) => void,
     onDistributeRate: (r: string) => void,
+    onFaucet: () => void,
     isLoading: boolean
 }) => {
     const [fundAmount, setFundAmount] = useState("")
@@ -278,6 +282,14 @@ const InterestFunder = ({ onApprove, onFund, onDistributeRate, isLoading }: {
                     disabled={!fundAmount || isLoading}
                 >
                     Deposit to Reserve
+                </Button>
+
+                <Button
+                    variant="ghost"
+                    className="h-12 text-green-500 hover:text-green-400 hover:bg-green-500/10"
+                    onClick={() => onFaucet()}
+                >
+                    <Coins className="w-4 h-4 mr-2" /> Get 1000 Test USDT
                 </Button>
             </div>
 
