@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovereign Bond Admin</title>
+    <style>
+        :root {
+            --primary: #001F3F;
+            /* Navy Blue */
+            --secondary: #F5F5F7;
+            /* Light Grey */
+            --accent: #007AFF;
+            /* Blue */
+            --text: #333;
+            --border: #e0e0e0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--secondary);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .section-title {
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        #message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .bond-list {
+            margin-top: 40px;
+        }
+
+        .bond-item {
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background-color: #fafafa;
+        }
+
+        .bond-item h3 {
+            margin: 0 0 5px 0;
+            color: var(--primary);
+        }
+
+        .bond-item p {
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>🏛️ Bond Registry Admin</h1>
+
+        <div id="message"></div>
+
+        <form id="addBondForm">
+            <label for="bondId">Bond ID (e.g., HWY-2029)</label>
+            <input type="text" id="bondId" name="bondId" required placeholder="Unique Identifier">
+
+            <label for="bondName">Bond Name</label>
+            <input type="text" id="bondName" name="bondName" required placeholder="e.g. Highway Infra 2029">
+
+            <label for="issuer">Issuer</label>
+            <input type="text" id="issuer" name="issuer" required placeholder="e.g. NHAI">
+
+            <label for="category">Category</label>
+            <select id="category" name="category">
+                <option value="Sovereign">Sovereign</option>
+                <option value="Infrastructure">Infrastructure</option>
+                <option value="Green Bond">Green Bond</option>
+                <option value="Social">Social</option>
+                <option value="Municipal">Municipal</option>
+            </select>
+
+            <label for="contractAddress">Contract Address</label>
+            <input type="text" id="contractAddress" name="contractAddress" required placeholder="0x..."
+                value="0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02">
+
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <label for="couponRate">Coupon Rate (%)</label>
+                    <input type="number" id="couponRate" name="couponRate" step="0.1" required placeholder="7.5">
+                </div>
+                <div style="flex: 1;">
+                    <label for="minInvestment">Min Investment</label>
+                    <input type="number" id="minInvestment" name="minInvestment" required placeholder="100">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate" name="startDate">
+                </div>
+                <div style="flex: 1;">
+                    <label for="maturityDate">Maturity Date</label>
+                    <input type="date" id="maturityDate" name="maturityDate">
+                </div>
+            </div>
+
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="3"
+                placeholder="Brief details about the bond..."></textarea>
+
+            <label for="proofUrl">Proof URL (Optional)</label>
+            <input type="url" id="proofUrl" name="proofUrl" placeholder="https://...">
+
+            <button type="submit">Add Bond to Registry</button>
+        </form>
+
+        <div class="bond-list">
+            <h2>Existing Bonds</h2>
+            <div id="bondsContainer">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+
+        // Fetch and display bonds
+        async function loadBonds() {
+            try {
+                const res = await fetch(`${API_URL}/bonds`);
+                const data = await res.json();
+                const container = document.getElementById('bondsContainer');
+
+                if (data.bonds && data.bonds.length > 0) {
+                    container.innerHTML = data.bonds.map(bond => `
+                    <div class="bond-item">
+                        <h3>${bond.bondName} <span style="font-size: 0.8em; color: #888;">(${bond.bondId})</span></h3>
+                        <p><strong>Issuer:</strong> ${bond.issuer} | <strong>Rate:</strong> ${bond.couponRate}%</p>
+                        <p><strong>Contract:</strong> ${bond.contractAddress}</p>
+                    </div>
+                `).join('');
+                } else {
+                    container.innerHTML = '<p>No bonds found.</p>';
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('bondsContainer').innerText = 'Failed to load bonds.';
+            }
+        }
+
+        // Handle Form Submit
+        document.getElementById('addBondForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const messageDiv = document.getElementById('message');
+            messageDiv.style.display = 'none';
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const res = await fetch(`${API_URL}/admin/bonds`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (res.ok) {
+                    messageDiv.className = 'success';
+                    messageDiv.innerText = '✅ Bond added successfully!';
+                    messageDiv.style.display = 'block';
+                    e.target.reset();
+                    loadBonds(); // Refresh list
+                } else {
+                    throw new Error(result.error || 'Failed to add bond');
+                }
+            } catch (err) {
+                messageDiv.className = 'error';
+                messageDiv.innerText = '❌ ' + err.message;
+                messageDiv.style.display = 'block';
+            }
+        });
+
+        // Initial Load
+        loadBonds();
+    </script>
+
+</body>
+
+</html>
