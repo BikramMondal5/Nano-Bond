@@ -21,6 +21,7 @@ export interface BondDto {
     issuer: string;
     contractAddress: string;
     treasuryAddress?: string;
+    distributorAddress?: string;
     couponRate: number;
     minInvestment: number;
     maxSubscription: number;
@@ -34,6 +35,18 @@ export interface BondDto {
     symbol: string;
 }
 
+export interface BondCreationDto {
+    bondId: string;
+    bondName: string;
+    issuer: string; // "Government of India"
+    couponRate: number;
+    minInvestment: number;
+    maxSubscription: number; // e.g. 500000 USD
+    startDate: Date;
+    maturityDate: Date;
+    description: string;
+}
+
 export class BondService {
     private provider: ethers.JsonRpcProvider;
     private deploymentService: DeploymentService;
@@ -44,10 +57,117 @@ export class BondService {
     }
 
     /**
-     * Deploy new contracts for a bond
+     * Deploy new contracts for a bond (Low Level)
      */
     async deployBondContracts(bondId: string, bondName: string) {
         return await this.deploymentService.deployBondProduct(bondName, bondId);
+    }
+
+    /**
+     * Create a fully managed bond: Deploy -> Link -> Grant Admin -> Save DB
+     */
+    async createManagedBond(details: BondCreationDto, ownerAddress: string): Promise<BondDto> {
+        console.log(`[BondService] Creating managed bond: ${details.bondId} for owner ${ownerAddress}`);
+
+        // 1. Deploy Contracts
+        const deployment = await this.deploymentService.deployBondProduct(details.bondName, details.bondId);
+        console.log(`[BondService] Deployed at: ${deployment.contractAddress}`);
+
+        // ===============================================
+        // SYSTEMIC SAFEGUARD: Post-Deployment Verification
+        // ===============================================
+        try {
+            console.log(`[BondService] VERIFYING Treasury Config for ${details.bondId}...`);
+            const treasuryContract = new ethers.Contract(
+                deployment.treasuryAddress,
+                ["function paymentToken() view returns (address)"],
+                this.provider
+            );
+            const onChainUSDT = await treasuryContract.paymentToken();
+            const expectedUSDT = config.contracts.usdtAddress;
+
+            if (onChainUSDT.toLowerCase() !== expectedUSDT.toLowerCase()) {
+                const errorMsg = `CRITICAL DEPLOYMENT FAILURE: Treasury USDT Mismatch! Expected ${expectedUSDT}, Got ${onChainUSDT}`;
+                console.error(`[BondService] ${errorMsg}`);
+                throw new Error(errorMsg);
+            }
+            console.log(`[BondService] ✅ Treasury Verified (USDT: ${onChainUSDT})`);
+        } catch (verifyError: any) {
+            console.error(`[BondService] Verification Failed: ${verifyError.message}`);
+            // We should arguably NOT save this bond to DB, or save as 'failed'
+            throw new Error(`Deployment Verification Failed: ${verifyError.message}`);
+        }
+
+        try {
+            console.log(`[BondService] VERIFYING Distributor Config for ${details.bondId}...`);
+            const distContract = new ethers.Contract(
+                deployment.distributorAddress,
+                ["function paymentToken() view returns (address)"],
+                this.provider
+            );
+            const distUSDT = await distContract.paymentToken();
+            const expectedUSDT = config.contracts.usdtAddress;
+
+            if (distUSDT.toLowerCase() !== expectedUSDT.toLowerCase()) {
+                const errorMsg = `CRITICAL DEPLOYMENT FAILURE: Distributor USDT Mismatch! Expected ${expectedUSDT}, Got ${distUSDT}`;
+                console.error(`[BondService] ${errorMsg}`);
+                throw new Error(errorMsg);
+            }
+            console.log(`[BondService] ✅ Distributor Verified (USDT: ${distUSDT})`);
+        } catch (verifyError: any) {
+            console.error(`[BondService] Distributor Verification Failed: ${verifyError.message}`);
+            throw new Error(`Deployment Verification Failed (Distributor): ${verifyError.message}`);
+        }
+        // ===============================================
+
+        // 2. Grant DEFAULT_ADMIN_ROLE to Owner
+        // DEFAULT_ADMIN_ROLE is 0x00...00
+        const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
+        const bondContract = new ethers.Contract(
+            deployment.contractAddress,
+            ["function grantRole(bytes32, address) external"],
+            new ethers.Wallet(config.admin.privateKey, this.provider)
+        );
+
+        console.log(`[BondService] Granting ADMIN role to ${ownerAddress}...`);
+        const tx = await bondContract.grantRole(DEFAULT_ADMIN_ROLE, ownerAddress);
+        await tx.wait();
+        console.log(`[BondService] Role Granted.`);
+
+        // 3. Save to DB
+        // Check if exists
+        let bondDoc = await Bond.findOne({ bondId: details.bondId });
+        if (!bondDoc) {
+            bondDoc = new Bond({
+                bondId: details.bondId,
+                bondName: details.bondName,
+                issuer: details.issuer,
+                couponRate: details.couponRate,
+                minInvestment: details.minInvestment,
+                maxSubscription: details.maxSubscription,
+                startDate: details.startDate,
+                maturityDate: details.maturityDate,
+                description: details.description,
+                contractAddress: deployment.contractAddress,
+                treasuryAddress: deployment.treasuryAddress,
+                distributorAddress: deployment.distributorAddress,
+                status: 'active' // or 'pending_backing'
+            });
+        } else {
+            // Update existing
+            bondDoc.contractAddress = deployment.contractAddress;
+            bondDoc.treasuryAddress = deployment.treasuryAddress;
+            bondDoc.distributorAddress = deployment.distributorAddress;
+            // Update other fields as well to match request
+            bondDoc.bondName = details.bondName;
+            bondDoc.couponRate = details.couponRate;
+            bondDoc.maxSubscription = details.maxSubscription;
+        }
+
+        await bondDoc.save();
+        console.log(`[BondService] Bond saved to DB.`);
+
+        return this.mapDocToPartial(bondDoc);
     }
 
     /**
@@ -60,6 +180,7 @@ export class BondService {
             issuer: doc.issuer,
             contractAddress: doc.contractAddress || config.contracts.bondAddress,
             treasuryAddress: doc.treasuryAddress,
+            distributorAddress: doc.distributorAddress,
             couponRate: doc.couponRate,
             minInvestment: doc.minInvestment,
             maxSubscription: doc.maxSubscription,

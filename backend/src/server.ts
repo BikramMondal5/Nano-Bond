@@ -582,6 +582,57 @@ app.post('/api/admin/distribute-yield', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * POST /api/admin/create-bond
+ * Create a new managed bond (Deploy + Link + Grant Role)
+ */
+app.post('/api/admin/create-bond', async (req: Request, res: Response) => {
+    try {
+        const { bondId, bondName, couponRate, maxSubscription, adminWallet, minInvestment, maturityDateStr, description, issuer } = req.body;
+
+        console.log(`[API] POST /api/admin/create-bond - ${bondId} for ${adminWallet}`);
+
+        if (!adminWallet) {
+            res.status(400).json({ error: 'Missing adminWallet address' });
+            return;
+        }
+
+        if (!bondId || !bondName) {
+            res.status(400).json({ error: 'Missing bondId or bondName' });
+            return;
+        }
+
+        // Parse dates
+        // Maturity Date is required. Start Date is roughly now.
+        const startDate = new Date();
+        const maturityDate = maturityDateStr ? new Date(maturityDateStr) : new Date(startDate.getFullYear() + 5, startDate.getMonth(), startDate.getDate());
+
+        const details = {
+            bondId,
+            bondName,
+            issuer: issuer || 'Government of India',
+            couponRate: parseFloat(couponRate) || 0.08,
+            minInvestment: parseFloat(minInvestment) || 100,
+            maxSubscription: parseFloat(maxSubscription) || 500000,
+            startDate,
+            maturityDate,
+            description: description || `Sovereign Bond ${bondId}`
+        };
+
+        const result = await bondService.createManagedBond(details, adminWallet);
+
+        res.json({
+            success: true,
+            message: `Bond ${bondId} created successfully.`,
+            data: result
+        });
+
+    } catch (error: any) {
+        console.error('[API] Create Bond error:', error.message);
+        res.status(500).json({ error: 'Failed to create bond: ' + error.message });
+    }
+});
+
 // ============================================
 // START SERVER
 // ============================================
@@ -635,6 +686,11 @@ connectDB().then(() => {
     RPC: ${config.rpc.url}
     Admin Wallet: ${adminWallet ? adminWallet.address : 'NOT CONFIGURED'}
     MongoDB: Connected
+
+    [DEBUG] Loaded Config:
+    Gateway: ${config.contracts.gatewayAddress}
+    USDT: ${config.contracts.usdtAddress}
+    Registry: ${config.contracts.registryAddress}
     =============================================
     `);
     });
