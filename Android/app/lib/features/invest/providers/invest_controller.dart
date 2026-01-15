@@ -5,6 +5,8 @@ import '../../auth/presentation/providers.dart';
 import '../../home/providers/portfolio_provider.dart';
 import '../../home/providers/user_portfolio_provider.dart';
 import 'investment_provider.dart';
+import 'dart:math';
+import '../../auth/data/auth_repository.dart';
 
 enum InvestStatus { initial, loading, success }
 
@@ -61,12 +63,43 @@ class InvestController extends Notifier<InvestState> {
         message: "Transferring Funds...",
       );
 
-      // BackendService.invest returns String (txHash)
-      final txHash = await BackendService().invest(
+      // 1. Prepare Request Data
+      final requestId =
+          '${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(100000)}';
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+      // 2. Sign Message (Security)
+      final privateKey = user.privateKey;
+      if (privateKey == null || privateKey.isEmpty) {
+        throw Exception(
+          "Session invalid (Missing Signing Key). Please re-login.",
+        );
+      }
+
+      // Payload: INVEST:${address}:${amount}:${bondId}:${requestId}:${timestamp}
+      final payload =
+          "INVEST:${user.address}:$amount:$bondId:$requestId:$timestamp";
+      final signature = AuthRepository().signMessage(privateKey, payload);
+
+      // 3. Call Backend with Signature
+      final result = await BackendService().invest(
         address: user.address,
         amount: amount,
         bondId: bondId,
+        requestId: requestId,
+        timestamp: timestamp,
+        signature: signature,
       );
+
+      final txHash = result['txHash'] as String;
+      final newBalance = result['newBalance'];
+
+      if (newBalance != null && newBalance is num) {
+        // Optimistic Update
+        ref
+            .read(userPortfolioProvider.notifier)
+            .updateOptimisticBalance(newBalance.toDouble());
+      }
 
       state = const InvestState(
         status: InvestStatus.loading,

@@ -246,7 +246,7 @@ app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
  */
 app.post('/api/invest', async (req: Request, res: Response) => {
     try {
-        const { address, amount, bondId } = req.body;
+        const { address, amount, bondId, requestId, timestamp, signature } = req.body;
 
         if (!address || !amount) {
             return res.status(400).json({ error: 'Missing address or amount' });
@@ -254,7 +254,7 @@ app.post('/api/invest', async (req: Request, res: Response) => {
 
         console.log(`[API] Processing investment for ${address}: ${amount} USDT in ${bondId || 'Default'}`);
 
-        const result = await aaService.invest(address, amount, bondId);
+        const result = await aaService.invest(address, amount, bondId, requestId, timestamp, signature);
         res.json(result);
     } catch (error: any) {
         console.error('[API] Invest error:', error.message);

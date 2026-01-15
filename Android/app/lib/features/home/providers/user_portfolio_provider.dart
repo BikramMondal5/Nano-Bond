@@ -58,6 +58,26 @@ class PortfolioModel {
       holdings: [],
     );
   }
+
+  PortfolioModel copyWith({
+    double? totalValue,
+    double? walletBalance,
+    double? pendingYield,
+    String? currency,
+    double? averageApy,
+    DateTime? nextMaturityDate,
+    List<PortfolioHolding>? holdings,
+  }) {
+    return PortfolioModel(
+      totalValue: totalValue ?? this.totalValue,
+      walletBalance: walletBalance ?? this.walletBalance,
+      pendingYield: pendingYield ?? this.pendingYield,
+      currency: currency ?? this.currency,
+      averageApy: averageApy ?? this.averageApy,
+      nextMaturityDate: nextMaturityDate ?? this.nextMaturityDate,
+      holdings: holdings ?? this.holdings,
+    );
+  }
 }
 
 class PortfolioHolding {
@@ -133,5 +153,11 @@ class UserPortfolioNotifier extends AsyncNotifier<PortfolioModel> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => build());
+  }
+
+  void updateOptimisticBalance(double newBalance) {
+    state.whenData((current) {
+      state = AsyncData(current.copyWith(walletBalance: newBalance));
+    });
   }
 }

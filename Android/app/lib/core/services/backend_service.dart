@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+
 import '../../features/home/providers/user_portfolio_provider.dart';
 
 /// Service to communicate with the backend API
@@ -132,9 +133,12 @@ class BackendService {
   }
 
   /// Invest in bond (gasless via backend)
-  Future<String> invest({
+  Future<Map<String, dynamic>> invest({
     required String address,
     required double amount,
+    required String requestId,
+    required int timestamp,
+    required String signature,
     String bondId = 'GOI-2030',
   }) async {
     if (_baseUrl.isEmpty) {
@@ -155,13 +159,19 @@ class BackendService {
           'address': address,
           'amount': amount,
           'bondId': bondId,
+          'requestId': requestId,
+          'timestamp': timestamp,
+          'signature': signature,
         }),
       );
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final decoded = jsonDecode(res.body);
         if (decoded['success'] == true) {
-          return decoded['txHash'] ?? '';
+          return {
+            'txHash': decoded['txHash'] ?? '',
+            'newBalance': decoded['newBalance'], // Nullable
+          };
         } else {
           throw Exception(decoded['error'] ?? 'Investment failed');
         }

@@ -43,6 +43,11 @@ const InvestmentSchema = new Schema<IInvestment>(
             enum: ['PENDING', 'SUCCESS', 'FAILED'],
             default: 'SUCCESS',
         },
+        requestId: {
+            type: String,
+            unique: true,
+            sparse: true, // Allow nulls for legacy data
+        },
         timestamp: {
             type: Date,
             default: Date.now,
