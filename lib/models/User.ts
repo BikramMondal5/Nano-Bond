@@ -28,6 +28,7 @@ export interface IUser {
     aadhaarHash?: string;
     role?: 'Regular' | 'Admin';
     sessionId?: string;
+    secretKey?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -123,6 +124,11 @@ const UserSchema = new Schema<IUser>(
         },
         sessionId: {
             type: String,
+        },
+        secretKey: {
+            type: String,
+            unique: true,
+            sparse: true,
         },
     },
     {

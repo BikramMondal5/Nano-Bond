@@ -27,6 +27,18 @@
                     "status": "Active"
                 }
             ]
+        },
+        {
+            "walletAddress": "0xBf586C97c13431EB5B05aDaa6F786b5167261DF7",
+            "bonds": []
+        },
+        {
+            "walletAddress": "0xcE4ECfbF5fFfE2759cc39C46DF8aA9eB6eB8D75e",
+            "bonds": []
+        },
+        {
+            "walletAddress": "0x21B4b9748F373F47Bd936fDF7e287c1b46eF6C90",
+            "bonds": []
         }
     ]
 }
