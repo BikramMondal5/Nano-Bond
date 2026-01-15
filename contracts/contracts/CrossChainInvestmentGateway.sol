@@ -108,6 +108,58 @@ contract CrossChainInvestmentGateway is OApp {
     }
 
     /**
+     * @notice Send USDT cross-chain for bond investment on behalf of a beneficiary
+     * @dev Used for gasless investments where admin sponsors the transaction
+     * @param beneficiary Address that will receive the bonds
+     * @param amount Amount of USDT to invest (6 decimals)
+     * @param dstEid Destination endpoint ID (Mantle Sepolia)
+     * @param extraOptions LayerZero options for gas
+     */
+    function investCrossChainFor(
+        address beneficiary,
+        uint256 amount,
+        uint32 dstEid,
+        bytes calldata extraOptions
+    ) external payable returns (bytes32 guid) {
+        require(amount > 0, "Amount must be > 0");
+        require(beneficiary != address(0), "Invalid beneficiary");
+
+        // Pull USDT from caller (admin wallet)
+        usdt.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Encode the message: beneficiary address + amount
+        bytes memory payload = abi.encode(beneficiary, amount);
+
+        // Build message options
+        bytes memory options = extraOptions.length > 0
+            ? extraOptions
+            : _buildDefaultOptions(dstEid);
+
+        // Send via LayerZero
+        MessagingReceipt memory receipt = _lzSend(
+            dstEid,
+            payload,
+            options,
+            MessagingFee(msg.value, 0),
+            payable(msg.sender)
+        );
+
+        guid = receipt.guid;
+
+        // Store pending investment with beneficiary as investor
+        pendingInvestments[guid] = PendingInvestment({
+            investor: beneficiary,
+            amount: amount,
+            srcEid: dstEid,
+            processed: false
+        });
+
+        emit CrossChainInvestmentSent(beneficiary, amount, dstEid, guid);
+
+        return guid;
+    }
+
+    /**
      * @notice Receive cross-chain message and execute investment
      * @dev Called by LayerZero endpoint on destination chain
      */

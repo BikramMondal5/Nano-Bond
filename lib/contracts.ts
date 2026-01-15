@@ -265,7 +265,6 @@ export const CROSS_CHAIN_GATEWAY = {
     // Source chains
     ethereumSepolia: "0x..." as `0x${string}`,
     arbitrumSepolia: "0x..." as `0x${string}`,
-    lineaSepolia: "0x..." as `0x${string}`,
     polygonAmoy: "0x..." as `0x${string}`,
     scrollSepolia: "0x..." as `0x${string}`,
     abi: [

@@ -56,15 +56,15 @@ export const authConfig: NextAuthConfig = {
                         }
 
                         // Hash password/secretKey
-                        const hashedPassword = await bcrypt.hash(secretKey, 12);
+                        const hashedSecretKey = await bcrypt.hash(secretKey, 12);
 
                         user = await User.create({
                             email,
                             name: credentials.web3auth_name || email.split("@")[0],
                             provider: "web3auth",
                             emailVerified: new Date(),
-                            secretKey: secretKey,
-                            password: hashedPassword, // Storing hash of secretKey as password
+                            secretKey: hashedSecretKey, // Store HASHED key
+                            password: hashedSecretKey, // Storing hash of secretKey as password
                         });
 
                         // Send Email

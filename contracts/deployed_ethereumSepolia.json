@@ -1,0 +1,6 @@
+{
+  "network": "ethereumSepolia",
+  "CrossChainGateway": "0xb0974B8004FB2Eb1CC4A799F03DaA14647B1e0FE",
+  "LayerZeroEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+  "USDT": "0x9C497178995f70d1A5cbf33225Fc0D8B15469F8a"
+}

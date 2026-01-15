@@ -1,0 +1,6 @@
+{
+  "network": "scrollSepolia",
+  "CrossChainGateway": "0x9C497178995f70d1A5cbf33225Fc0D8B15469F8a",
+  "LayerZeroEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+  "USDT": "0x71678089A61FA4bcC64182693df2709DB6B115Fd"
+}

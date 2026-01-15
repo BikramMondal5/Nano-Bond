@@ -1,0 +1,6 @@
+{
+  "network": "lineaSepolia",
+  "CrossChainGateway": "0xBB52424185f10868A484229C8c82ACb44853dB80",
+  "LayerZeroEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+  "USDT": "0x7515E7d2d776BD492ef44C6B96E7B63f152Af765"
+}

@@ -1,0 +1,7 @@
+{
+  "network": "mantleSepolia",
+  "CrossChainGateway": "0x1C1CFCfCB7f26ac36c1602EEefeDa1Ece5275d5d",
+  "LayerZeroEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+  "USDT": "0xF62f02BCE0Ae48941B4b7e67A512F473D55e23b1",
+  "Treasury": "0x1ce9C1Bd6dAd58F7f1EfFABd2ad038A36b7619FB"
+}

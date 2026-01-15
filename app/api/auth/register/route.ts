@@ -59,13 +59,13 @@ export async function POST(req: Request) {
         }
 
         // Hash password (using the generated number)
-        const hashedPassword = await bcrypt.hash(secretKey, 12);
+        const hashedSecretKey = await bcrypt.hash(secretKey, 12);
 
         // Create new user
         const user = await User.create({
             email: email.toLowerCase(),
-            password: hashedPassword,
-            secretKey: secretKey,
+            password: hashedSecretKey,
+            secretKey: hashedSecretKey, // Store HASHED key
             firstName,
             lastName,
             name: `${firstName} ${lastName}`,

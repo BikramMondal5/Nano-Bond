@@ -7,6 +7,8 @@ import { Providers } from "@/components/providers"
 import '@rainbow-me/rainbowkit/styles.css';
 import { LanguageProvider } from "@/context/LanguageContext";
 import ChatWidget from "@/components/ChatWidget";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -31,6 +33,7 @@ export default function RootLayout({
             <Providers>
               {children}
               <ChatWidget />
+              <ToastContainer position="bottom-right" theme="dark" />
             </Providers>
           </LanguageProvider>
         </AuthProvider>

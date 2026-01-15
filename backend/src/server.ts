@@ -246,22 +246,131 @@ app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
  */
 app.post('/api/invest', async (req: Request, res: Response) => {
     try {
-        const { address, amount, bondId } = req.body;
+        const { address, amount, bondId, network = 'mantle' } = req.body;
 
         if (!address || !amount) {
             return res.status(400).json({ error: 'Missing address or amount' });
         }
 
-        console.log(`[API] Processing investment for ${address}: ${amount} USDT in ${bondId || 'Default'}`);
+        console.log(`[API] Processing investment for ${address}: ${amount} USDT in ${bondId || 'Default'} from ${network}`);
 
-        const result = await aaService.invest(address, amount, bondId);
-        res.json(result);
+        // For all supported networks: Direct investment using AAService
+        const SUPPORTED_NETWORKS = ['mantle', 'polygon', 'ethereum', 'arbitrum', 'scroll'];
+        if (SUPPORTED_NETWORKS.includes(network)) {
+            const result = await aaService.invest(address, amount, bondId, network);
+            return res.json(result);
+        }
+
+        // For other networks: Cross-chain investment via LayerZero
+        if (!config.admin.privateKey) {
+            return res.status(500).json({ error: 'Admin wallet not configured' });
+        }
+
+        const NETWORK_CONFIGS: Record<string, { rpc: string; usdtAddress: string; gatewayAddress: string }> = {
+            ethereum: {
+                rpc: process.env.ETHEREUM_RPC_URL || 'https://rpc.sepolia.org',
+                usdtAddress: process.env.USDT_ETHEREUM || '',
+                gatewayAddress: process.env.CROSS_CHAIN_GATEWAY_ETHEREUM || ''
+            },
+            arbitrum: {
+                rpc: process.env.ARBITRUM_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
+                usdtAddress: process.env.USDT_ARBITRUM || '',
+                gatewayAddress: process.env.CROSS_CHAIN_GATEWAY_ARBITRUM || ''
+            },
+            polygon: {
+                rpc: process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology',
+                usdtAddress: process.env.USDT_POLYGON || '',
+                gatewayAddress: process.env.CROSS_CHAIN_GATEWAY_POLYGON || ''
+            },
+            scroll: {
+                rpc: process.env.SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
+                usdtAddress: process.env.USDT_SCROLL || '',
+                gatewayAddress: process.env.CROSS_CHAIN_GATEWAY_SCROLL || ''
+            }
+        };
+
+        const networkConfig = NETWORK_CONFIGS[network];
+        if (!networkConfig) {
+            return res.status(400).json({ error: `Unsupported network: ${network}` });
+        }
+
+        if (!networkConfig.gatewayAddress) {
+            return res.status(400).json({ error: `Gateway not configured for network: ${network}` });
+        }
+
+        // Create provider and wallet for the source network
+        const networkProvider = new ethers.JsonRpcProvider(networkConfig.rpc);
+        const networkAdminWallet = new ethers.Wallet(config.admin.privateKey, networkProvider);
+
+        const CROSS_CHAIN_GATEWAY_ABI = [
+            "function investCrossChain(uint256 amount, uint32 dstEid, bytes calldata extraOptions) external payable returns (bytes32)",
+            "function investCrossChainFor(address beneficiary, uint256 amount, uint32 dstEid, bytes calldata extraOptions) external payable returns (bytes32)",
+            "function quoteCrossChainFee(uint32 dstEid, uint256 amount, bytes calldata extraOptions) external view returns (uint256, uint256)"
+        ];
+
+        const USDT_ABI = [
+            "function approve(address spender, uint256 amount) external returns (bool)",
+            "function allowance(address owner, address spender) external view returns (uint256)",
+            "function transferFrom(address from, address to, uint256 amount) external returns (bool)",
+            "function mint(address to, uint256 amount) external"
+        ];
+
+        const gateway = new ethers.Contract(networkConfig.gatewayAddress, CROSS_CHAIN_GATEWAY_ABI, networkAdminWallet);
+        const usdt = new ethers.Contract(networkConfig.usdtAddress, USDT_ABI, networkAdminWallet);
+
+        const amountBig = ethers.parseUnits(amount.toString(), 6);
+        const dstEid = 40356; // Mantle Sepolia LayerZero endpoint ID
+
+        // 1. Mint USDT to admin wallet (for gasless cross-chain investment)
+        console.log('[API] Minting USDT to admin wallet for cross-chain investment...');
+        const mintTx = await usdt.mint(networkAdminWallet.address, amountBig);
+        await mintTx.wait();
+        console.log('[API] USDT minted to admin wallet');
+
+        // 2. Approve gateway to spend USDT
+        console.log('[API] Approving gateway...');
+        const approveTx = await usdt.approve(networkConfig.gatewayAddress, amountBig);
+        await approveTx.wait();
+        console.log('[API] Gateway approval confirmed');
+
+        // 3. Quote LayerZero fee
+        const [nativeFee] = await gateway.quoteCrossChainFee(dstEid, amountBig, "0x");
+        console.log(`[API] LayerZero fee: ${ethers.formatEther(nativeFee)} native token`);
+
+        // 4. Execute cross-chain investment for the user (beneficiary)
+        console.log(`[API] Executing cross-chain investment for beneficiary: ${address}...`);
+        const tx = await gateway.investCrossChainFor(address, amountBig, dstEid, "0x", { value: nativeFee });
+        await tx.wait();
+
+        console.log(`[API] Cross-chain investment TX: ${tx.hash}`);
+
+        // Save to MongoDB
+        const { Investment } = require('./models/Investment');
+        await Investment.create({
+            walletAddress: address,
+            bondId: bondId || 'GOI-2030',
+            type: 'INVEST_CROSS_CHAIN',
+            amount: parseFloat(amount),
+            txHash: tx.hash,
+            status: 'PENDING',
+            network,
+            sourceNetwork: network,
+            destinationNetwork: 'mantle'
+        });
+
+        res.json({
+            success: true,
+            txHash: tx.hash,
+            message: `Cross-chain investment initiated from ${network}. Bonds will arrive on Mantle in ~5-10 minutes.`,
+            network,
+            isCrossChain: true
+        });
+
     } catch (error: any) {
         console.error('[API] Invest error:', error.message);
         res.status(500).json({ error: 'Investment failed: ' + error.message });
     }
 });
-
 /**
  * POST /api/redeem
  * Redeem bonds without gas
@@ -312,45 +421,83 @@ app.post('/api/claim', async (req: Request, res: Response) => {
 
 /**
  * POST /api/faucet/usdt
- * Mint MockUSDT to a user's wallet (for testing)
+ * Mint MockUSDT to a user's wallet (for testing) on a specific network
  */
 app.post('/api/faucet/usdt', async (req: Request, res: Response) => {
     try {
-        const { address, amount } = req.body;
+        const { address, amount, network = 'mantle' } = req.body;
         const mintAmount = parseFloat(amount) || 1000;
 
-        console.log(`[API] POST /api/faucet/usdt - address: ${address}, amount: ${mintAmount}`);
+        console.log(`[API] POST /api/faucet/usdt - address: ${address}, amount: ${mintAmount}, network: ${network}`);
 
         if (!address) {
             res.status(400).json({ error: 'Missing address' });
             return;
         }
 
-        if (!adminWallet) {
+        if (!config.admin.privateKey) {
             console.error('[API] Admin wallet not configured');
             res.status(500).json({ error: 'Faucet not configured' });
             return;
         }
 
-        // Connect to MockUSDT
+        // Network configurations
+        const NETWORK_CONFIGS: Record<string, { rpc: string; usdtAddress: string }> = {
+            mantle: {
+                rpc: process.env.RPC_URL || 'https://rpc.sepolia.mantle.xyz',
+                usdtAddress: config.contracts.usdtAddress
+            },
+            ethereum: {
+                rpc: process.env.ETHEREUM_RPC_URL || 'https://rpc.sepolia.org',
+                usdtAddress: process.env.USDT_ETHEREUM || ''
+            },
+            arbitrum: {
+                rpc: process.env.ARBITRUM_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
+                usdtAddress: process.env.USDT_ARBITRUM || ''
+            },
+            polygon: {
+                rpc: process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology',
+                usdtAddress: process.env.USDT_POLYGON || ''
+            },
+            scroll: {
+                rpc: process.env.SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
+                usdtAddress: process.env.USDT_SCROLL || ''
+            }
+        };
+
+        const networkConfig = NETWORK_CONFIGS[network];
+        if (!networkConfig) {
+            return res.status(400).json({ error: `Unsupported network: ${network}` });
+        }
+
+        if (!networkConfig.usdtAddress) {
+            return res.status(400).json({ error: `USDT address not configured for network: ${network}` });
+        }
+
+        // Create provider and wallet for the specific network
+        const networkProvider = new ethers.JsonRpcProvider(networkConfig.rpc);
+        const networkAdminWallet = new ethers.Wallet(config.admin.privateKey, networkProvider);
+
+        // Connect to MockUSDT on the selected network
         const usdt = new ethers.Contract(
-            config.contracts.usdtAddress,
+            networkConfig.usdtAddress,
             MOCK_USDT_ABI,
-            adminWallet
+            networkAdminWallet
         );
 
         // Mint USDT (6 decimals)
         const amountWithDecimals = BigInt(Math.round(mintAmount * 1000000));
 
         const tx = await usdt.mint(address, amountWithDecimals);
-        console.log(`[API] Faucet TX sent: ${tx.hash}`);
+        console.log(`[API] Faucet TX sent on ${network}: ${tx.hash}`);
         await tx.wait();
-        console.log(`[API] Faucet TX confirmed`);
+        console.log(`[API] Faucet TX confirmed on ${network}`);
 
         res.json({
             success: true,
-            message: `Minted ${mintAmount} USDT to ${address}`,
-            txHash: tx.hash
+            message: `Minted ${mintAmount} USDT to ${address} on ${network}`,
+            txHash: tx.hash,
+            network
         });
 
     } catch (error: any) {
