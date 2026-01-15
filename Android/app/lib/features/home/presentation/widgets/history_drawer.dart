@@ -64,7 +64,7 @@ class _HistoryDrawerState extends ConsumerState<HistoryDrawer>
     final showContent = _animationCompleted && isDataLoaded;
 
     return Container(
-      height: 0.75.sh,
+      height: 0.60.sh,
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.only(
@@ -87,7 +87,7 @@ class _HistoryDrawerState extends ConsumerState<HistoryDrawer>
 
           // Header
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
+            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment
                   .center, // Center title if desired, or keep left?

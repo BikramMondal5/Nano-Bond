@@ -1,0 +1,88 @@
+name: Build Android APKs
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "Android/app/**"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "Android/app/**"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Android/app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.0"
+          channel: "stable"
+          cache: true
+
+      - name: Create .env file
+        run: |
+          echo "WEB3AUTH_CLIENT_ID=${{ secrets.WEB3AUTH_CLIENT_ID }}" >> .env
+          echo "WEB3AUTH_REDIRECT_URL=${{ secrets.WEB3AUTH_REDIRECT_URL }}" >> .env
+          echo "BACKEND_URL=${{ secrets.BACKEND_URL }}" >> .env
+          echo "RPC_URL=${{ secrets.RPC_URL }}" >> .env
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Auto-generate version
+        run: |
+          # Generate date-based version name (e.g., 2026.01.15)
+          VERSION_NAME=$(date +%Y.%m.%d)
+          # Use GitHub run number as build number
+          BUILD_NUMBER=${{ github.run_number }}
+          # Update pubspec.yaml with new version
+          sed -i "s/version: .*/version: ${VERSION_NAME}+${BUILD_NUMBER}/" pubspec.yaml
+          echo "Building version: ${VERSION_NAME}+${BUILD_NUMBER}"
+
+      - name: Run build_runner
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build Split APKs
+        run: flutter build apk --split-per-abi --release
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: Android/app/build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release (on main push only)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          files: Android/app/build/app/outputs/flutter-apk/*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

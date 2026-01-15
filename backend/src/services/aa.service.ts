@@ -15,6 +15,7 @@ const USDT_ABI = [
     "function transfer(address to, uint256 amount) external returns (bool)",
     "function balanceOf(address account) external view returns (uint256)",
     "function mint(address to, uint256 amount) external",
+    "function adminBurn(address from, uint256 amount) external",
 ];
 
 const IDENTITY_REGISTRY_ABI = [
@@ -71,46 +72,39 @@ export class AAService {
             const isVerified = await registry.isVerified(userAddress);
 
             if (!isVerified) {
-                console.log(`[AAService] User ${userAddress} not KYC verified. Auto-registering...`);
-                const idHash = ethers.keccak256(ethers.toUtf8Bytes(`AUTO-${userAddress}-${Date.now()}`));
-                const registerTx = await registry.register(userAddress, idHash);
-                await registerTx.wait();
-                console.log(`[AAService] KYC registered: ${registerTx.hash}`);
+                console.log(`[AAService] User ${userAddress} not KYC verified. Blocking investment.`);
+                throw new Error(`User ${userAddress} is not KYC verified. Complete KYC first.`);
             }
 
-            // 2. Prepare Investment via Gateway
-            // Gateway ABI
-            const GATEWAY_ABI = [
-                "function investWithPermit(address user, uint256 amount, address treasury, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external"
-            ];
-
-            const gateway = new ethers.Contract(gatewayAddress, GATEWAY_ABI, adminWallet);
-            const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
-
-            // Generate Dummy Permit (Since MockUSDT is in Demo Mode)
-            const deadline = Math.floor(Date.now() / 1000) + 3600;
-            const dummyV = 27;
-            const dummyR = ethers.ZeroHash;
-            const dummyS = ethers.ZeroHash;
-
-            console.log(`[AAService] Calling Gateway for ${userAddress} amount ${amountBig}...`);
-
             try {
-                const investTx = await gateway.investWithPermit(
-                    userAddress,
-                    amountBig,
-                    treasuryAddress,
-                    deadline,
-                    dummyV,
-                    dummyR,
-                    dummyS
-                );
+                // 2. Check user USDT balance first
+                const usdt = new ethers.Contract(config.contracts.usdtAddress, USDT_ABI, adminWallet);
+                const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
 
-                const receipt = await investTx.wait();
+                const userBalance = await usdt.balanceOf(userAddress);
+                if (userBalance < amountBig) {
+                    throw new Error(`Insufficient USDT balance. Required: ${amount}, Available: ${Number(userBalance) / 1000000}`);
+                }
+
+                // 3. Burn USDT from user's wallet (admin-sponsored deduction)
+                console.log(`[AAService] Burning ${amount} USDT from ${userAddress}...`);
+                const burnTx = await usdt.adminBurn(userAddress, amountBig);
+                await burnTx.wait();
+                console.log(`[AAService] USDT burned: ${burnTx.hash}`);
+
+                // 4. Mint bonds to user via Treasury
+                const TREASURY_ABI = [
+                    "function adminMint(address beneficiary, uint256 amount) external"
+                ];
+                const treasury = new ethers.Contract(treasuryAddress, TREASURY_ABI, adminWallet);
+
+                console.log(`[AAService] Minting bonds to ${userAddress}...`);
+                const investTx = await treasury.adminMint(userAddress, amountBig);
+                await investTx.wait();
                 console.log(`[AAService] Investment confirmed: ${investTx.hash}`);
 
-                // PERSIST TRANSACTION TO MONGODB
                 try {
+                    // PERSIST TRANSACTION TO MONGODB
                     await Investment.create({
                         walletAddress: userAddress,
                         bondId: bondId,
@@ -130,13 +124,13 @@ export class AAService {
                     message: `Invested ${amount} USDT in ${bondId} (gasless)`
                 };
             } catch (error: any) {
-                console.error(`[AAService] Gateway invest failed:`, error.message);
+                console.error(`[AAService] Investment failed:`, error.message);
 
+                if (error.message?.includes('Insufficient USDT')) {
+                    throw error;
+                }
                 if (error.message?.includes('ExceedsBackedLogic')) {
                     throw new Error('Investment exceeds available bond backing.');
-                }
-                if (error.message?.includes('transfer amount exceeds balance')) {
-                    throw new Error('User has insufficient USDT balance.');
                 }
                 throw error;
             }
@@ -177,6 +171,13 @@ export class AAService {
             console.log(`[AAService] Processing gasless redemption for ${userAddress}: ${bondAmount} GBOND`);
 
             const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+
+            // Check KYC
+            const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
+            const isVerified = await registry.isVerified(userAddress);
+            if (!isVerified) {
+                throw new Error(`User ${userAddress} is not KYC verified. Cannot redeem.`);
+            }
 
             const TREASURY_REDEEM_ABI = [
                 "function adminRedeem(address user, uint256 bondAmount) external"
@@ -237,6 +238,13 @@ export class AAService {
             console.log(`[AAService] Processing gasless claim for ${userAddress}`);
 
             const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+
+            // Check KYC
+            const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
+            const isVerified = await registry.isVerified(userAddress);
+            if (!isVerified) {
+                throw new Error(`User ${userAddress} is not KYC verified. Cannot claim yield.`);
+            }
 
             const DISTRIBUTOR_CLAIM_ABI = [
                 "function adminClaim(address beneficiary) external"

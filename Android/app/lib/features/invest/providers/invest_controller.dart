@@ -73,8 +73,11 @@ class InvestController extends Notifier<InvestState> {
         message: "Confirming on Blockchain...",
       );
 
-      // Refresh Portfolio
-      ref.read(portfolioProvider.notifier).refreshBalance();
+      // Refresh Portfolio after a short delay to ensure backend has processed it
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Force complete refresh by invalidating the provider
+      ref.invalidate(portfolioProvider);
       ref.invalidate(userPortfolioProvider);
 
       // Refresh History

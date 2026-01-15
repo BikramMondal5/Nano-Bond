@@ -133,7 +133,7 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 520.w, maxHeight: 0.85.sh),
+        constraints: BoxConstraints(maxWidth: 520.w, maxHeight: 0.72.sh),
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.background,
