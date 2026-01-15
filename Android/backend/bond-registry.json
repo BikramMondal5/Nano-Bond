@@ -1,0 +1,63 @@
+{
+  "bonds": [
+    {
+      "bondId": "GOI-2030",
+      "bondName": "GOI Bond 2030",
+      "issuer": "Govt of India",
+      "category": "Sovereign",
+      "contractAddress": "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
+      "distributorAddress": "0x956D938378484AbADf0873ca7bC94c0203e76584",
+      "treasuryAddress": "0xF013e47AD7d8e0EdbB8e9D2A7d7c73a23AF88A11",
+      "createdAt": "2024-03-20T10:00:00Z",
+      "couponRate": 7.5,
+      "minInvestment": 100,
+      "maxSubscription": 1000000,
+      "startDate": "2024-01-01",
+      "maturityDate": "2030-01-01",
+      "description": "Government of India Sovereign Bond maturing in 2030 with 7.5% annual yield.",
+      "proofUrl": "https://rbi.org.in/sovereign-bonds"
+    },
+    {
+      "bondId": "INFRA-28",
+      "bondName": "Solar Infra Bond 2028",
+      "issuer": "Min. of New & Renewable Energy",
+      "category": "Green Bond",
+      "contractAddress": "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
+      "couponRate": 8.2,
+      "startDate": "2024-06-01",
+      "maturityDate": "2028-06-01",
+      "minInvestment": 500,
+      "maxSubscription": 200000,
+      "description": "Green Energy financing bond for solar parks across Gujarat and Rajasthan.",
+      "proofUrl": "https://mnre.gov.in/green-bonds"
+    },
+    {
+      "bondId": "HOU-2027",
+      "bondName": "Housing Dev Bond 2027",
+      "issuer": "NHB (National Housing Bank)",
+      "category": "Social",
+      "contractAddress": "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
+      "couponRate": 6.8,
+      "startDate": "2024-02-15",
+      "maturityDate": "2027-02-15",
+      "minInvestment": 1000,
+      "maxSubscription": 50000,
+      "description": "Supporting affordable housing projects for EWS and LIG categories.",
+      "proofUrl": "https://nhb.org.in/bonds"
+    },
+    {
+      "bondId": "HWY-2029",
+      "bondName": "Highway Infra 2029",
+      "issuer": "NHAI (National Highways)",
+      "category": "Infrastructure",
+      "contractAddress": "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
+      "couponRate": 7.9,
+      "startDate": "2024-04-01",
+      "maturityDate": "2029-04-01",
+      "minInvestment": 200,
+      "maxSubscription": 500000,
+      "description": "Tax-free bonds for financing national highway expansion projects.",
+      "proofUrl": "https://nhai.gov.in/bonds"
+    }
+  ]
+}
