@@ -4,57 +4,46 @@ import '../data/user_model.dart';
 
 final authRepositoryProvider = Provider((ref) => AuthRepository());
 
-final authStateProvider =
-    StateNotifierProvider<AuthNotifier, AsyncValue<UserModel?>>((ref) {
-      return AuthNotifier(ref.read(authRepositoryProvider));
-    });
+final authStateProvider = AsyncNotifierProvider<AuthNotifier, UserModel?>(
+  AuthNotifier.new,
+);
 
-class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
-  final AuthRepository _repository;
+class AuthNotifier extends AsyncNotifier<UserModel?> {
+  late final AuthRepository _repository;
 
-  AuthNotifier(this._repository) : super(const AsyncValue.data(null)) {
-    _restoreSession();
+  @override
+  Future<UserModel?> build() async {
+    _repository = ref.read(authRepositoryProvider);
+    return _restoreSession();
   }
 
-  Future<void> _restoreSession() async {
-    state = const AsyncValue.loading();
+  Future<UserModel?> _restoreSession() async {
     try {
       final user = await _repository.getUser();
-      if (mounted) {
-        state = AsyncValue.data(user);
-      }
-    } catch (e, st) {
-      if (mounted) {
-        state = AsyncValue.error(e, st);
-      }
+      return user;
+    } catch (e) {
+      // AsyncNotifier automatically handles error state, but we return null or throw?
+      // restoreSession usually just checks if logged in.
+      // If error, maybe return null?
+      // But standard way is to throw.
+      // Retaining original logic: catches and sets state.
+      // In AsyncNotifier, throwing sets error state.
+      rethrow;
     }
   }
 
   Future<void> login() async {
     state = const AsyncValue.loading();
-    try {
-      final user = await _repository.login();
-      if (mounted) {
-        state = AsyncValue.data(user);
-      }
-    } catch (e, st) {
-      if (mounted) {
-        state = AsyncValue.error(e, st);
-      }
-    }
+    state = await AsyncValue.guard(() async {
+      return _repository.login();
+    });
   }
 
   Future<void> logout() async {
     state = const AsyncValue.loading();
-    try {
+    state = await AsyncValue.guard(() async {
       await _repository.logout();
-      if (mounted) {
-        state = const AsyncValue.data(null);
-      }
-    } catch (e, st) {
-      if (mounted) {
-        state = AsyncValue.error(e, st);
-      }
-    }
+      return null;
+    });
   }
 }

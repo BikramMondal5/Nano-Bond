@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../home/providers/user_portfolio_provider.dart';
 import '../../invest/providers/bonds_provider.dart';
@@ -12,7 +12,7 @@ part 'analysis_provider.g.dart';
 Future<AnalysisData> analysisData(Ref ref) async {
   final portfolio = await ref.watch(userPortfolioProvider.future);
   final allBonds = await ref.watch(bondsProvider.future);
-  final user = ref.watch(authStateProvider).valueOrNull;
+  final user = ref.watch(authStateProvider).value;
 
   final holdings = portfolio.holdings.map((holding) {
     // Find detailed bond info if available

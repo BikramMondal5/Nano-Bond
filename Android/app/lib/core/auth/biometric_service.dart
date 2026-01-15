@@ -18,10 +18,10 @@ class BiometricService {
 
       final didAuthenticate = await _auth.authenticate(
         localizedReason: 'Confirm with biometrics to continue',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
+        // options: const AuthenticationOptions(
+        //   biometricOnly: true,
+        //   stickyAuth: true,
+        // ),
       );
 
       if (!didAuthenticate) {

@@ -50,8 +50,8 @@ class _PortfolioCarouselState extends ConsumerState<PortfolioCarousel> {
   @override
   Widget build(BuildContext context) {
     final portfolioAsync = ref.watch(userPortfolioProvider);
-    final portfolio = portfolioAsync.valueOrNull ?? PortfolioModel.empty();
-    final allBonds = ref.watch(bondsProvider).valueOrNull ?? [];
+    final portfolio = portfolioAsync.value ?? PortfolioModel.empty();
+    final allBonds = ref.watch(bondsProvider).value ?? [];
 
     // If no holdings, show a placeholder card
     if (portfolio.holdings.isEmpty) {

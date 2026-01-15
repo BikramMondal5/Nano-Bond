@@ -101,7 +101,7 @@ final investmentProvider =
 class InvestmentNotifier extends AsyncNotifier<List<TransactionModel>> {
   @override
   Future<List<TransactionModel>> build() async {
-    final user = ref.watch(authStateProvider).valueOrNull;
+    final user = ref.watch(authStateProvider).value;
     if (user == null) return [];
 
     return _fetchHistory(user.address);
@@ -113,7 +113,7 @@ class InvestmentNotifier extends AsyncNotifier<List<TransactionModel>> {
   }
 
   Future<void> refresh() async {
-    final user = ref.read(authStateProvider).valueOrNull;
+    final user = ref.read(authStateProvider).value;
     if (user == null) return;
 
     state = const AsyncValue.loading();

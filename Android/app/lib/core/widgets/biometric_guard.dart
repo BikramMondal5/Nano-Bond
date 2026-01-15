@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:local_auth/error_codes.dart' as auth_error;
+// import 'package:local_auth/error_codes.dart' as auth_error; // Removed in v3
 import 'package:gap/gap.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/theme.dart';
@@ -148,10 +148,10 @@ class _BiometricGuardState extends ConsumerState<BiometricGuard>
 
       final authenticated = await _auth.authenticate(
         localizedReason: 'Authenticate to access nanobonds',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false,
-        ),
+        // options: const AuthenticationOptions(
+        //   stickyAuth: true,
+        //   biometricOnly: false,
+        // ),
       );
 
       if (mounted) {
@@ -168,14 +168,13 @@ class _BiometricGuardState extends ConsumerState<BiometricGuard>
       if (mounted) {
         debugPrint("Auth Error: ${e.code} - ${e.message}");
         String msg = "Authentication failed.";
-        if (e.code == auth_error.notEnrolled) {
+        if (e.code == 'NotEnrolled') {
           msg = "No biometrics enrolled. Please set up security.";
-        } else if (e.code == auth_error.lockedOut ||
-            e.code == auth_error.permanentlyLockedOut) {
+        } else if (e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut') {
           msg = "Too many attempts. Try again later.";
-        } else if (e.code == auth_error.passcodeNotSet) {
+        } else if (e.code == 'PasscodeNotSet') {
           msg = "Please set a PIN/Password in device settings.";
-        } else if (e.code == auth_error.notAvailable) {
+        } else if (e.code == 'NotAvailable') {
           msg = "Security not available on this device.";
         }
 

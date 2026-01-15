@@ -213,7 +213,7 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
                         return ListView.separated(
                           padding: EdgeInsets.fromLTRB(24.w, 0, 24.w, 24.h),
                           itemCount: holdings.length,
-                          separatorBuilder: (_, __) => Gap(16.h),
+                          separatorBuilder: (_, _) => Gap(16.h),
                           itemBuilder: (context, index) =>
                               _buildBondCard(holdings[index]),
                         );

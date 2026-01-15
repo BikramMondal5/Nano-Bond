@@ -106,7 +106,7 @@ final userPortfolioProvider =
 class UserPortfolioNotifier extends AsyncNotifier<PortfolioModel> {
   @override
   Future<PortfolioModel> build() async {
-    final user = ref.watch(authStateProvider).valueOrNull;
+    final user = ref.watch(authStateProvider).value;
     if (user == null) return PortfolioModel.empty();
 
     final backend = BackendService();

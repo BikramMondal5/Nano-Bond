@@ -45,3 +45,20 @@ android {
 flutter {
     source = "../.."
 }
+
+// Custom APK naming: nanobonds-v1.0.0+1-arm64-v8a-release.apk
+android.applicationVariants.all {
+    val variant = this
+    variant.outputs.all {
+        val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+        val appName = "nanobonds"
+        val versionName = variant.versionName
+        val versionCode = variant.versionCode
+        val buildType = variant.buildType.name
+        
+        // Get ABI from output filters
+        val abi = output.filters.find { it.filterType == "ABI" }?.identifier ?: "universal"
+        
+        output.outputFileName = "${appName}-v${versionName}+${versionCode}-${abi}-${buildType}.apk"
+    }
+}

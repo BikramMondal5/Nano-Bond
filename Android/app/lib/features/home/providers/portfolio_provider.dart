@@ -9,7 +9,7 @@ final portfolioProvider = AsyncNotifierProvider<PortfolioNotifier, double>(
 class PortfolioNotifier extends AsyncNotifier<double> {
   @override
   Future<double> build() async {
-    final user = ref.watch(authStateProvider).valueOrNull;
+    final user = ref.watch(authStateProvider).value;
     if (user == null) return 0.0;
 
     // Fetch real USDT balance via Backend API (Faucet Service)

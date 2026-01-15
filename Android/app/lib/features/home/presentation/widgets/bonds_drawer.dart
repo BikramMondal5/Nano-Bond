@@ -59,7 +59,7 @@ class _BondsDrawerState extends ConsumerState<BondsDrawer>
 
   @override
   Widget build(BuildContext context) {
-    final bonds = ref.watch(bondsProvider).valueOrNull ?? [];
+    final bonds = ref.watch(bondsProvider).value ?? [];
     final showContent = _animationCompleted;
 
     return Container(

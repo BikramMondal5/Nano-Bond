@@ -15,8 +15,8 @@ class PortfolioCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Read the portfolio data
     final portfolioAsync = ref.watch(userPortfolioProvider);
-    final portfolio = portfolioAsync.valueOrNull ?? PortfolioModel.empty();
-    final allBonds = ref.watch(bondsProvider).valueOrNull ?? [];
+    final portfolio = portfolioAsync.value ?? PortfolioModel.empty();
+    final allBonds = ref.watch(bondsProvider).value ?? [];
 
     // Default Token (if empty)
     String tokenName = "GOI Bond 2030";

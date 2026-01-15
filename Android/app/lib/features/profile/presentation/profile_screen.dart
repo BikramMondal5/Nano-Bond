@@ -19,7 +19,7 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authStateProvider).valueOrNull;
+    final user = ref.watch(authStateProvider).value;
     final balanceAsync = ref.watch(portfolioProvider);
     final kycStatusAsync = ref.watch(kycStatusProvider);
 
@@ -233,7 +233,7 @@ class ProfileScreen extends ConsumerWidget {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  error: (_, __) => Text(
+                                  error: (_, _) => Text(
                                     "00.00",
                                     style: GoogleFonts.outfit(
                                       color: Colors.white.withValues(
@@ -255,7 +255,7 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                            if (kycStatusAsync.valueOrNull == true)
+                            if (kycStatusAsync.value == true)
                               Container(
                                 padding: EdgeInsets.symmetric(
                                   horizontal: 10.w,

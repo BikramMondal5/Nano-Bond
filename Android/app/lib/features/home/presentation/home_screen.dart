@@ -122,7 +122,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       );
     }
 
-    final user = authState.valueOrNull;
+    final user = authState.value;
     final userImage = user?.profileImage;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -320,7 +320,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     Gap(40.h),
 
                     ...(() {
-                      final list = bondsAsync.valueOrNull;
+                      final list = bondsAsync.value;
                       final bonds = (list != null && list.isNotEmpty)
                           ? list
                           : <Bond>[];

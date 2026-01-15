@@ -39,7 +39,7 @@ class InvestController extends Notifier<InvestState> {
     );
 
     try {
-      final user = ref.read(authStateProvider).valueOrNull;
+      final user = ref.read(authStateProvider).value;
       if (user == null) {
         throw Exception("User session invalid. Please re-login.");
       }

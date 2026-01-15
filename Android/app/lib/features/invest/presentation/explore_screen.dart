@@ -57,7 +57,7 @@ class ExploreScreen extends ConsumerWidget {
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
-        error: (error, __) {
+        error: (error, _) {
           return Center(
             child: Padding(
               padding: EdgeInsets.all(24.0.w),
