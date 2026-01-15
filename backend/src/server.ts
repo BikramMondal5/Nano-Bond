@@ -246,7 +246,7 @@ app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
  */
 app.post('/api/invest', async (req: Request, res: Response) => {
     try {
-        const { address, amount, bondId, network = 'mantle' } = req.body;
+        const { address, amount, bondId, requestId, timestamp, signature, network = 'mantle' } = req.body;
 
         if (!address || !amount) {
             return res.status(400).json({ error: 'Missing address or amount' });
@@ -366,6 +366,8 @@ app.post('/api/invest', async (req: Request, res: Response) => {
             isCrossChain: true
         });
 
+        const result = await aaService.invest(address, amount, bondId, requestId, timestamp, signature, network);
+        res.json(result);
     } catch (error: any) {
         console.error('[API] Invest error:', error.message);
         res.status(500).json({ error: 'Investment failed: ' + error.message });

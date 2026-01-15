@@ -10,7 +10,10 @@ export interface IInvestment extends Document {
     network: 'mantle' | 'ethereum' | 'arbitrum' | 'linea' | 'polygon' | 'scroll'; // Add network field
     sourceNetwork?: string; // For cross-chain investments
     destinationNetwork?: string; // For cross-chain investments
+    requestId?: string; // Add requestId to interface
     timestamp: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 const InvestmentSchema = new Schema<IInvestment>(
@@ -44,7 +47,7 @@ const InvestmentSchema = new Schema<IInvestment>(
         status: {
             type: String,
             enum: ['PENDING', 'SUCCESS', 'FAILED'],
-            default: 'SUCCESS',
+            default: 'PENDING', // Default should be PENDING
         },
         network: {
             type: String,
@@ -62,6 +65,11 @@ const InvestmentSchema = new Schema<IInvestment>(
             type: String,
             enum: ['mantle', 'ethereum', 'arbitrum', 'linea', 'polygon', 'scroll'],
             required: false, // Only for cross-chain transactions
+        },
+        requestId: {
+            type: String,
+            unique: true,
+            sparse: true, // Allow nulls for legacy data
         },
         timestamp: {
             type: Date,
