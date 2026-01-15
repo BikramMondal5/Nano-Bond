@@ -507,24 +507,39 @@ app.get('/api/faucet/balance/:address', async (req: Request, res: Response) => {
  */
 app.post('/api/admin/distribute-yield', async (req: Request, res: Response) => {
     try {
-        const { amount } = req.body;
+        const { amount, bondId } = req.body;
+        const targetBondId = bondId || 'GOI-2030';
         const yieldAmount = parseFloat(amount) || 10;
 
-        console.log(`[API] POST /api/admin/distribute-yield - amount: ${yieldAmount}`);
+        console.log(`[API] POST /api/admin/distribute-yield - amount: ${yieldAmount}, bondId: ${targetBondId}`);
 
         if (!adminWallet) {
             res.status(500).json({ error: 'Admin wallet not configured' });
             return;
         }
 
-        const distributor = new ethers.Contract(config.contracts.distributorAddress, DISTRIBUTOR_ABI, adminWallet);
+        // Fetch Bond to get distributor address from MongoDB
+        const bond: any = await bondService.getBondById(targetBondId);
+        if (!bond) {
+            res.status(404).json({ error: `Bond not found: ${targetBondId}` });
+            return;
+        }
+        if (!bond.distributorAddress) {
+            res.status(400).json({ error: `Distributor not configured for bond ${targetBondId}` });
+            return;
+        }
+
+        const distributorAddress = bond.distributorAddress;
+        console.log(`[API] Using distributor ${distributorAddress} for bond ${targetBondId}`);
+
+        const distributor = new ethers.Contract(distributorAddress, DISTRIBUTOR_ABI, adminWallet);
         const usdt = new ethers.Contract(config.contracts.usdtAddress, ERC20_ABI, adminWallet);
 
         const yieldBig = ethers.parseUnits(yieldAmount.toString(), 6);
 
         // Approve
-        console.log('[API] Approving USDT...');
-        const approveTx = await usdt.approve(config.contracts.distributorAddress, yieldBig);
+        console.log(`[API] Approving USDT for ${distributorAddress}...`);
+        const approveTx = await usdt.approve(distributorAddress, yieldBig);
         await approveTx.wait();
 
         // Deposit Yield

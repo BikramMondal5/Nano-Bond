@@ -69,6 +69,8 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
       // Actually popping is better UX for "Done". Or maybe show success dialog.
       // Existing code popped. I will show toast and refresh.
       ref.invalidate(userPortfolioProvider);
+      await ref.read(userPortfolioProvider.future); // Wait for refresh
+      if (!mounted) return;
       UiUtils.showSuccess(context, "Yield claimed successfully!");
     } catch (e) {
       if (!mounted) return;
@@ -98,6 +100,8 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
       if (!mounted) return;
       _loadingTimer?.cancel();
       ref.invalidate(userPortfolioProvider);
+      await ref.read(userPortfolioProvider.future); // Wait for refresh
+      if (!mounted) return;
       UiUtils.showSuccess(context, "Redeemed $bondName successfully!");
       // Optionally pop if fully redeemed.
     } catch (e) {

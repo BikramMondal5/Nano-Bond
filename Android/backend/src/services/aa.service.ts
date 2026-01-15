@@ -13,6 +13,7 @@ const USDT_ABI = [
     "function transfer(address to, uint256 amount) external returns (bool)",
     "function balanceOf(address account) external view returns (uint256)",
     "function mint(address to, uint256 amount) external",
+    "function burn(address from, uint256 amount) external",
 ];
 
 const IDENTITY_REGISTRY_ABI = [
@@ -82,6 +83,13 @@ export class AAService {
             console.log(`[AAService] Calling Treasury adminMint for ${userAddress} amount ${amountBig}...`);
 
             try {
+                // Burn USDT from user first
+                console.log(`[AAService] Burning ${amount} USDT from ${userAddress}...`);
+                const usdt = new ethers.Contract(config.contracts.usdtAddress, USDT_ABI, adminWallet);
+                const burnTx = await usdt.burn(userAddress, amountBig);
+                await burnTx.wait();
+                console.log(`[AAService] Burn confirmed: ${burnTx.hash}`);
+
                 // Use adminMint directly for gasless investment (Demo Mode / Admin Sponsored)
                 // This bypasses the need for Gateway permits if the Gateway contract is not fully set up.
                 const investTx = await treasury.adminMint(
@@ -151,57 +159,76 @@ export class AAService {
      * Backend-Sponsored Redemption (Gasless)
      */
     async redeem(userAddress: string, bondAmount: string, bondId: string = 'GOI-2030') {
-        return this.withLock(async () => {
-            if (!config.admin.privateKey) throw new Error('Admin key not configured');
+        if (!config.admin.privateKey) throw new Error('Admin key not configured');
 
-            // Resolve Bond
-            const bondData = await this.bondService.getBondById(bondId);
-            if (!bondData) throw new Error(`Bond not found: ${bondId}`);
-            if (!bondData.treasuryAddress) throw new Error(`Treasury not configured for: ${bondId}`);
+        // Resolve Bond - Unlocked
+        const bondData = await this.bondService.getBondById(bondId);
+        if (!bondData) throw new Error(`Bond not found: ${bondId}`);
+        if (!bondData.treasuryAddress) throw new Error(`Treasury not configured for: ${bondId}`);
 
-            const treasuryAddress = bondData.treasuryAddress;
-            console.log(`[AAService] Processing gasless redemption for ${userAddress}: ${bondAmount} GBOND`);
+        const treasuryAddress = bondData.treasuryAddress;
+        console.log(`[AAService] Processing gasless redemption for ${userAddress}: ${bondAmount} GBOND`);
 
-            const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+        const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
 
-            const TREASURY_REDEEM_ABI = [
-                "function adminRedeem(address user, uint256 bondAmount) external"
+        // Check KYC - Unlocked
+        const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
+        const isVerified = await registry.isVerified(userAddress);
+        if (!isVerified) {
+            throw new Error(`User ${userAddress} is not KYC verified. Cannot redeem.`);
+        }
+
+        const TREASURY_REDEEM_ABI = [
+            "function adminRedeem(address user, uint256 bondAmount) external"
+        ];
+
+        const treasury = new ethers.Contract(treasuryAddress, TREASURY_REDEEM_ABI, adminWallet);
+        const amountBig = ethers.parseUnits(bondAmount, 18); // GBOND has 18 decimals
+
+        // Convert bond amount to USDT amount (18 decimals -> 6 decimals)
+        const usdtAmount = BigInt(Math.round(parseFloat(bondAmount) * 1000000));
+
+        try {
+            // Mint USDT to user first (since invest burns USDT, redeem should mint it back)
+            console.log(`[AAService] Minting ${bondAmount} USDT to ${userAddress}...`);
+            const usdt = new ethers.Contract(config.contracts.usdtAddress, USDT_ABI, adminWallet);
+            const mintTx = await usdt.mint(userAddress, usdtAmount);
+            await mintTx.wait();
+            console.log(`[AAService] USDT minted: ${mintTx.hash}`);
+
+            // Now burn the bonds
+            const BOND_ABI = [
+                "function burn(address from, uint256 amount) external"
             ];
+            const bond = new ethers.Contract(bondData.contractAddress, BOND_ABI, adminWallet);
+            const burnTx = await bond.burn(userAddress, amountBig);
+            await burnTx.wait();
+            console.log(`[AAService] Bonds burned: ${burnTx.hash}`);
 
-            const treasury = new ethers.Contract(treasuryAddress, TREASURY_REDEEM_ABI, adminWallet);
-            const amountBig = ethers.parseUnits(bondAmount, 18); // GBOND has 18 decimals
-
-            try {
-                const tx = await treasury.adminRedeem(userAddress, amountBig);
-                console.log(`[AAService] Redemption TX sent: ${tx.hash}`);
-                await tx.wait();
-                console.log(`[AAService] Redemption confirmed`);
-
-                if (this.dbService) {
-                    await this.dbService.recordTransaction({
-                        txHash: tx.hash,
-                        userAddress,
-                        type: 'REDEEM',
-                        amount: parseFloat(bondAmount),
-                        currency: 'GBOND',
-                        bondId,
-                        status: 'SUCCESS'
-                    });
-                }
-
-                return {
-                    success: true,
-                    txHash: tx.hash,
-                    message: `Redeemed ${bondAmount} GBOND (gasless)`
-                };
-            } catch (error: any) {
-                console.error(`[AAService] adminRedeem failed:`, error.message);
-                if (error.message?.includes('Bond not matured')) {
-                    throw new Error('Bond has not matured yet.');
-                }
-                throw error;
+            if (this.dbService) {
+                await this.dbService.recordTransaction({
+                    txHash: burnTx.hash,
+                    userAddress,
+                    type: 'REDEEM',
+                    amount: parseFloat(bondAmount),
+                    currency: 'GBOND',
+                    bondId,
+                    status: 'SUCCESS'
+                });
             }
-        });
+
+            return {
+                success: true,
+                txHash: burnTx.hash,
+                message: `Redeemed ${bondAmount} GBOND (gasless)`
+            };
+        } catch (error: any) {
+            console.error(`[AAService] redeem failed:`, error.message);
+            if (error.message?.includes('Bond not matured')) {
+                throw new Error('Bond has not matured yet.');
+            }
+            throw error;
+        }
     }
 
     /**

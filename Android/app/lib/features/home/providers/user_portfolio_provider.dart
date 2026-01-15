@@ -112,7 +112,7 @@ class PortfolioHolding {
       apy: PortfolioModel._parseDouble(json['apy']),
       maturityDate: json['maturityDate'] as String? ?? '',
       proofUrl: json['proofUrl'] as String?,
-      pendingYield: PortfolioModel._parseDouble(json['pendingYield']),
+      pendingYield: PortfolioModel._parseDouble(json['claimableYield']),
       isUnlocked: (json['status'] as String? ?? 'locked') == 'unlocked',
     );
   }

@@ -13,6 +13,11 @@ const BOND_ABI = [
     "function balanceOf(address account) external view returns (uint256)"
 ];
 
+// Distributor ABI for checking claimable yield
+const DISTRIBUTOR_ABI = [
+    "function claimableYield(address user) external view returns (uint256)"
+];
+
 // Registry bond entry (from JSON file)
 interface RegistryBond {
     bondId: string;
@@ -326,6 +331,18 @@ export class BondService {
                     const maturityTs = Number(maturityTimestamp);
                     const isUnlocked = maturityTs > 0 && nowTimestamp >= maturityTs;
 
+                    // Fetch claimable yield if distributor is configured
+                    let claimableYield = 0;
+                    if (rb.distributorAddress) {
+                        try {
+                            const distributor = new ethers.Contract(rb.distributorAddress, DISTRIBUTOR_ABI, this.provider);
+                            const claimableAmount = await distributor.claimableYield(userAddress);
+                            claimableYield = parseFloat(ethers.formatUnits(claimableAmount, 6)); // USDT 6 decimals
+                        } catch (e) {
+                            console.warn(`[BondService] Failed to fetch claimable yield for ${rb.bondId}`);
+                        }
+                    }
+
                     holdings.push({
                         bondId: rb.bondId,
                         bondName: rb.bondName,
@@ -333,10 +350,12 @@ export class BondService {
                         balance: balance,
                         value: value,
                         apy: rb.couponRate,
-                        maturityDate: rb.maturityDate || '',
+                        maturityDate: maturityTs > 0 ? new Date(maturityTs * 1000).toISOString() : (rb.maturityDate || ''),
                         nextPaymentDate: rb.startDate,
                         proofUrl: rb.proofUrl,
-                        status: isUnlocked ? 'unlocked' : 'locked', // From blockchain!
+                        status: isUnlocked ? 'unlocked' : 'locked',
+                        distributorAddress: rb.distributorAddress,
+                        claimableYield: claimableYield,
                     });
 
                     totalValue += value;
@@ -382,4 +401,6 @@ export interface PortfolioHolding {
     nextPaymentDate?: string;
     proofUrl?: string | null;
     status?: 'locked' | 'unlocked';
+    distributorAddress?: string;
+    claimableYield?: number;
 }
