@@ -596,6 +596,31 @@ app.post('/api/admin/bonds', async (req: Request, res: Response) => {
 
 export default app;
 
+// ============================================
+// GLOBAL ERROR HANDLERS
+// ============================================
+
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION! 💥 Shutting down gracefully...');
+    console.error(err.name, err.message);
+    // Ideally, we should restart the process here, but for now we log it.
+    // process.exit(1); 
+});
+
+process.on('unhandledRejection', (err: any) => {
+    console.error('UNHANDLED REJECTION! 💥');
+    console.error(err.message || err);
+});
+
+// Global Error Handler Middleware - MUST be the last middleware
+app.use((err: any, req: Request, res: Response, next: any) => {
+    console.error('SERVER ERROR:', err.stack || err.message);
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: err.message || 'Something went wrong!'
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`
     =============================================

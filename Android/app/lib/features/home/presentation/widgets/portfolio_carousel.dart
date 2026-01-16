@@ -26,7 +26,6 @@ class _PortfolioCarouselState extends ConsumerState<PortfolioCarousel> {
     super.initState();
     // Start from a large index to allow backward scrolling
     _pageController = PageController(viewportFraction: 1.0, initialPage: 1000);
-    _startAutoSlide();
   }
 
   @override
@@ -36,15 +35,20 @@ class _PortfolioCarouselState extends ConsumerState<PortfolioCarousel> {
     super.dispose();
   }
 
-  void _startAutoSlide() {
-    _autoSlideTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      if (_pageController.hasClients) {
-        _pageController.nextPage(
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
+  void _manageAutoSlide(bool shouldSlide) {
+    if (shouldSlide && _autoSlideTimer == null) {
+      _autoSlideTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+        if (_pageController.hasClients) {
+          _pageController.nextPage(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    } else if (!shouldSlide && _autoSlideTimer != null) {
+      _autoSlideTimer!.cancel();
+      _autoSlideTimer = null;
+    }
   }
 
   @override
@@ -52,12 +56,36 @@ class _PortfolioCarouselState extends ConsumerState<PortfolioCarousel> {
     final portfolioAsync = ref.watch(userPortfolioProvider);
     final portfolio = portfolioAsync.value ?? PortfolioModel.empty();
     final allBonds = ref.watch(bondsProvider).value ?? [];
+    final holdings = portfolio.holdings;
+
+    // Manage auto-slide timer based on item count
+    _manageAutoSlide(holdings.length > 1);
 
     // If no holdings, show a placeholder card
-    if (portfolio.holdings.isEmpty) {
+    if (holdings.isEmpty) {
       return _buildEmptyState(context);
     }
 
+    // If only one holding, show single card without carousel/dots
+    if (holdings.length == 1) {
+      final holding = holdings.first;
+      return Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: SizedBox(
+              height: 200,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                child: _buildHoldingCard(context, holding, allBonds),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Multiple holdings: Show Carousel
     return Column(
       children: [
         ClipRRect(
@@ -66,67 +94,33 @@ class _PortfolioCarouselState extends ConsumerState<PortfolioCarousel> {
             height: 200,
             child: PageView.builder(
               controller: _pageController,
-              // itemCount: null, // Infinite
+              // itemCount is null for infinite scrolling
               onPageChanged: (index) {
-                final length = portfolio.holdings.length;
+                final length = holdings.length;
                 if (length > 0) {
                   setState(() => _currentPage = index % length);
                 }
               },
               itemBuilder: (context, index) {
-                final length = portfolio.holdings.length;
+                final length = holdings.length;
                 final modIndex = index % length;
-                final holding = portfolio.holdings[modIndex];
-
-                String tokenName = holding.bondName;
-                double tokenValue = holding.value;
-                double tokenApy = holding.apy;
-                String tokenSubtitle = holding.bondId;
-                IconData tokenIcon = Icons.account_balance;
-                String maturityYear = "2030";
-
-                // Try to find rich details (Icon) for this bond
-                try {
-                  final bond = allBonds.firstWhere(
-                    (b) => b.bondId == holding.bondId,
-                  );
-                  tokenIcon = bond.icon;
-                } catch (_) {}
-
-                // Extract year from maturity string
-                if (holding.maturityDate.isNotEmpty) {
-                  final parts = holding.maturityDate.split('-');
-                  if (parts.isNotEmpty) {
-                    maturityYear = parts[0];
-                  }
-                }
+                final holding = holdings[modIndex];
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 2.5,
-                  ), // Requested 2.5px margin
-                  child: _buildCard(
-                    context: context,
-                    tokenName: tokenName,
-                    tokenSubtitle: tokenSubtitle,
-                    tokenIcon: tokenIcon,
-                    tokenValue: tokenValue,
-                    tokenApy: tokenApy,
-                    maturityYear: maturityYear,
-                    allBonds: allBonds,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                  child: _buildHoldingCard(context, holding, allBonds),
                 );
               },
             ),
           ),
         ),
         // Page indicator dots
-        if (portfolio.holdings.length > 1) ...[
+        if (holdings.length > 1) ...[
           const Gap(12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              portfolio.holdings.length,
+              holdings.length,
               (index) => AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -143,6 +137,44 @@ class _PortfolioCarouselState extends ConsumerState<PortfolioCarousel> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildHoldingCard(
+    BuildContext context,
+    dynamic holding,
+    List<Bond> allBonds,
+  ) {
+    String tokenName = holding.bondName;
+    double tokenValue = holding.value;
+    double tokenApy = holding.apy;
+    String tokenSubtitle = holding.bondId;
+    IconData tokenIcon = Icons.account_balance;
+    String maturityYear = "2030";
+
+    // Try to find rich details (Icon) for this bond
+    try {
+      final bond = allBonds.firstWhere((b) => b.bondId == holding.bondId);
+      tokenIcon = bond.icon;
+    } catch (_) {}
+
+    // Extract year from maturity string
+    if (holding.maturityDate.isNotEmpty) {
+      final parts = holding.maturityDate.split('-');
+      if (parts.isNotEmpty) {
+        maturityYear = parts[0];
+      }
+    }
+
+    return _buildCard(
+      context: context,
+      tokenName: tokenName,
+      tokenSubtitle: tokenSubtitle,
+      tokenIcon: tokenIcon,
+      tokenValue: tokenValue,
+      tokenApy: tokenApy,
+      maturityYear: maturityYear,
+      allBonds: allBonds,
     );
   }
 

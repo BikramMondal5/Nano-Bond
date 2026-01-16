@@ -65,6 +65,11 @@ export class BondService {
     private db: Db | null = null;
     private bondsCollection: Collection<RegistryBond> | null = null;
 
+    // Simple in-memory cache
+    private static cache = new Map<string, { data: any; expires: number }>();
+    private static CACHE_TTL_SHORT = 60 * 1000; // 60 seconds for dynamic data
+    private static CACHE_TTL_LONG = 60 * 60 * 1000; // 1 hour for static data
+
     constructor() {
         this.provider = new ethers.JsonRpcProvider(config.rpc.url);
         this.initMongoDB();
@@ -101,7 +106,7 @@ export class BondService {
 
         try {
             const bonds = await this.bondsCollection.find({}).toArray();
-            console.log(`[BondService] Loaded ${bonds.length} bonds from MongoDB`);
+            // console.log(`[BondService] Loaded ${bonds.length} bonds from MongoDB`);
             return bonds;
         } catch (error) {
             console.error('[BondService] Failed to load registry from MongoDB:', error);
@@ -161,7 +166,7 @@ export class BondService {
     }
 
     /**
-     * Fetch on-chain data for a bond contract
+     * Fetch on-chain data for a bond contract with Caching
      */
     private async fetchOnChainData(contractAddress: string): Promise<{
         name: string;
@@ -170,6 +175,13 @@ export class BondService {
         totalBackedValue: string;
         maturityDateOnChain: number;
     } | null> {
+        const cacheKey = `bond_data_${contractAddress}`;
+        const cached = BondService.cache.get(cacheKey);
+
+        if (cached && cached.expires > Date.now()) {
+            return cached.data;
+        }
+
         try {
             const contract = new ethers.Contract(contractAddress, BOND_ABI, this.provider);
 
@@ -181,13 +193,21 @@ export class BondService {
                 contract.maturityDate().catch(() => BigInt(0)),
             ]);
 
-            return {
+            const data = {
                 name,
                 symbol,
-                totalSupply: ethers.formatUnits(totalSupply, 18),  // Bond tokens have 18 decimals
-                totalBackedValue: ethers.formatUnits(totalBackedValue, 18),  // Bond tokens have 18 decimals
+                totalSupply: ethers.formatUnits(totalSupply, 18),
+                totalBackedValue: ethers.formatUnits(totalBackedValue, 18),
                 maturityDateOnChain: Number(maturityDateOnChain),
             };
+
+            // Cache for short duration as supply/value changes
+            BondService.cache.set(cacheKey, {
+                data,
+                expires: Date.now() + BondService.CACHE_TTL_SHORT
+            });
+
+            return data;
         } catch (error) {
             console.error(`[BondService] Failed to fetch on-chain data for ${contractAddress}:`, error);
             return null;
@@ -195,38 +215,68 @@ export class BondService {
     }
 
     /**
-     * List all bonds from registry with on-chain data
+     * Helper to limit concurrent promise execution
+     */
+    private async asyncPool<T>(limit: number, array: any[], iteratorFn: (item: any) => Promise<T>): Promise<T[]> {
+        const ret: Promise<T>[] = [];
+        const executing: Promise<T>[] = [];
+        for (const item of array) {
+            const p = Promise.resolve().then(() => iteratorFn(item));
+            ret.push(p);
+
+            if (limit <= array.length) {
+                const e: Promise<T> = p.then(() => e);
+                executing.push(e);
+                if (executing.length >= limit) {
+                    await Promise.race(executing);
+                }
+            }
+        }
+        return Promise.all(ret);
+    }
+
+    /**
+     * List all bonds from registry with on-chain data (Parallelized with limit)
      */
     async listBonds(): Promise<BondDto[]> {
         const registryBonds = await this.loadRegistry();
+
+        // Use a simple batching approach or a concurrency library
+        // Since we don't want to add dependencies, we'll implement a simple batch processor
         const results: BondDto[] = [];
+        const CHUNK_SIZE = 5; // Conservative limit to avoid 50 req/s
 
-        for (const rb of registryBonds) {
-            // Fallback: If registry doesn't specify a contract, use the default Sovereign Bond address
-            const targetAddress = rb.contractAddress || config.contracts.bondAddress;
-            if (!targetAddress) continue; // Skip if no address available at all
+        for (let i = 0; i < registryBonds.length; i += CHUNK_SIZE) {
+            const chunk = registryBonds.slice(i, i + CHUNK_SIZE);
+            const chunkPromises = chunk.map(async (rb) => {
+                const targetAddress = rb.contractAddress || config.contracts.bondAddress;
+                if (!targetAddress) return null;
 
-            const onChain = await this.fetchOnChainData(targetAddress);
+                const onChain = await this.fetchOnChainData(targetAddress);
 
-            results.push({
-                bondId: rb.bondId,
-                bondName: rb.bondName,
-                issuer: rb.issuer,
-                contractAddress: targetAddress,
-                treasuryAddress: rb.treasuryAddress,
-                distributorAddress: rb.distributorAddress,
-                couponRate: rb.couponRate,
-                minInvestment: rb.minInvestment,
-                maxSubscription: rb.maxSubscription,
-                startDate: rb.startDate || null,
-                maturityDate: rb.maturityDate || null,
-                description: rb.description || null,
-                proofUrl: rb.proofUrl || null,
-                totalSupply: onChain?.totalSupply || '0',
-                totalBackedValue: onChain?.totalBackedValue || '0',
-                symbol: onChain?.symbol || 'BOND',
-                maturityDateOnChain: onChain?.maturityDateOnChain,
+                return {
+                    bondId: rb.bondId,
+                    bondName: rb.bondName,
+                    issuer: rb.issuer,
+                    contractAddress: targetAddress,
+                    treasuryAddress: rb.treasuryAddress,
+                    distributorAddress: rb.distributorAddress,
+                    couponRate: rb.couponRate,
+                    minInvestment: rb.minInvestment,
+                    maxSubscription: rb.maxSubscription,
+                    startDate: rb.startDate || null,
+                    maturityDate: rb.maturityDate || null,
+                    description: rb.description || null,
+                    proofUrl: rb.proofUrl || null,
+                    totalSupply: onChain?.totalSupply || '0',
+                    totalBackedValue: onChain?.totalBackedValue || '0',
+                    symbol: onChain?.symbol || 'BOND',
+                    maturityDateOnChain: onChain?.maturityDateOnChain,
+                } as BondDto;
             });
+
+            const chunkResults = await Promise.all(chunkPromises);
+            results.push(...chunkResults.filter((b): b is BondDto => b !== null));
         }
 
         return results;
@@ -307,37 +357,44 @@ export class BondService {
     }
 
     /**
-     * Get user portfolio summary
+     * Get user portfolio summary (Parallelized with limit)
      */
     async getPortfolio(userAddress: string): Promise<PortfolioDto> {
         const registryBonds = await this.loadRegistry();
+
         const holdings: PortfolioHolding[] = [];
-        let totalValue = 0;
-        let weightedApySum = 0;
+        const CHUNK_SIZE = 5; // Conservative limit
 
-        for (const rb of registryBonds) {
-            try {
-                const targetAddress = rb.contractAddress || config.contracts.bondAddress;
-                if (!targetAddress) continue;
+        for (let i = 0; i < registryBonds.length; i += CHUNK_SIZE) {
+            const chunk = registryBonds.slice(i, i + CHUNK_SIZE);
+            const chunkPromises = chunk.map(async (rb) => {
+                try {
+                    const targetAddress = rb.contractAddress || config.contracts.bondAddress;
+                    if (!targetAddress) return null;
 
-                const contract = new ethers.Contract(targetAddress, BOND_ABI, this.provider);
+                    const contract = new ethers.Contract(targetAddress, BOND_ABI, this.provider);
 
-                // Fetch balance and on-chain maturity date in parallel
-                const [balanceBig, maturityTimestamp] = await Promise.all([
-                    contract.balanceOf(userAddress),
-                    contract.maturityDate().catch(() => BigInt(0))
-                ]);
+                    // Fetch balance - this is user specific so we don't cache deeply, 
+                    // but we could cache "user X has 0 balance" for a short time if needed.
+                    // For now, raw parallel calls are much faster than serial.
+                    const [balanceBig, maturityTimestamp] = await Promise.all([
+                        contract.balanceOf(userAddress),
+                        contract.maturityDate().catch(() => BigInt(0))
+                    ]);
 
-                if (balanceBig > BigInt(0)) {
+                    if (balanceBig <= BigInt(0)) {
+                        return null;
+                    }
+
                     const balance = parseFloat(ethers.formatUnits(balanceBig, 18));
                     const value = balance;
 
-                    // Determine unlock status from on-chain maturity (blockchain is source of truth)
+                    // Determine unlock status
                     const nowTimestamp = Math.floor(Date.now() / 1000);
                     const maturityTs = Number(maturityTimestamp);
                     const isUnlocked = maturityTs > 0 && nowTimestamp >= maturityTs;
 
-                    // Fetch claimable yield if distributor is configured
+                    // Fetch claimable yield
                     let claimableYield = 0;
                     if (rb.distributorAddress) {
                         try {
@@ -345,11 +402,11 @@ export class BondService {
                             const claimableAmount = await distributor.claimableYield(userAddress);
                             claimableYield = parseFloat(ethers.formatUnits(claimableAmount, 6)); // USDT 6 decimals
                         } catch (e) {
-                            console.warn(`[BondService] Failed to fetch claimable yield for ${rb.bondId}`);
+                            // warning suppressed for cleaner logs
                         }
                     }
 
-                    holdings.push({
+                    return {
                         bondId: rb.bondId,
                         bondName: rb.bondName,
                         symbol: 'GBOND',
@@ -362,14 +419,24 @@ export class BondService {
                         status: isUnlocked ? 'unlocked' : 'locked',
                         distributorAddress: rb.distributorAddress,
                         claimableYield: claimableYield,
-                    });
+                    } as PortfolioHolding;
 
-                    totalValue += value;
-                    weightedApySum += value * rb.couponRate;
+                } catch (error) {
+                    console.error(`[BondService] Failed to fetch balance for ${rb.contractAddress}:`, error);
+                    return null;
                 }
-            } catch (error) {
-                console.error(`[BondService] Failed to fetch balance for ${rb.contractAddress}:`, error);
-            }
+            });
+
+            const chunkResults = await Promise.all(chunkPromises);
+            holdings.push(...chunkResults.filter((h): h is PortfolioHolding => h !== null));
+        }
+
+        let totalValue = 0;
+        let weightedApySum = 0;
+
+        for (const h of holdings) {
+            totalValue += h.value;
+            weightedApySum += h.value * h.apy;
         }
 
         const averageApy = totalValue > 0 ? weightedApySum / totalValue : 0;
