@@ -214,27 +214,29 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
             adminWallet
         );
 
-        // 3. Check if already verified (Optimization: Check DB first, then Chain)
-        const dbStatus = await userService.getUserStatus(address);
-        if (dbStatus.isVerified) {
-            console.log(`[KYC] Address ${address} already verified (DB cache)`);
+        // 3. Check if already verified ON-CHAIN FIRST (Critical: Don't trust DB cache after registry migration)
+        const isVerifiedOnChain = await registry.isVerified(address);
+        if (isVerifiedOnChain) {
+            console.log(`[KYC] Address ${address} already verified on-chain.`);
+            // Sync DB if needed
+            const dbStatus = await userService.getUserStatus(address);
+            if (!dbStatus.isVerified) {
+                await userService.registerUser({
+                    walletAddress: address,
+                    aadhaarHash: nationalIdHash,
+                    kycStatus: 'APPROVED',
+                    kycApprovedAt: new Date()
+                });
+            }
             res.json({ success: true, message: 'Already verified' });
             return;
         }
 
-        const isVerifiedOnChain = await registry.isVerified(address);
-        if (isVerifiedOnChain) {
-            console.log(`[KYC] Address ${address} already verified on-chain. Syncing to DB...`);
-            // Sync DB if missing
-            await userService.registerUser({
-                walletAddress: address,
-                aadhaarHash: nationalIdHash, // Map nationalIdHash to aadhaarHash
-                kycStatus: 'APPROVED',
-                kycApprovedAt: new Date()
-            });
-
-            res.json({ success: true, message: 'Already verified' });
-            return;
+        // NOTE: Even if DB says verified, we MUST re-register if on-chain check failed
+        // This handles registry contract migrations gracefully
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            console.log(`[KYC] Address ${address} verified in DB but NOT on-chain. Re-registering on new registry...`);
         }
 
         const { signature } = req.body;

@@ -16,6 +16,10 @@ class Bond {
   final String symbol;
   final DateTime? maturityDate;
 
+  final String? contractAddress;
+  final String? treasuryAddress;
+  final String? distributorAddress;
+
   const Bond({
     required this.bondId,
     required this.title,
@@ -30,6 +34,9 @@ class Bond {
     this.totalBackedValue = 0,
     this.symbol = 'BOND',
     this.maturityDate,
+    this.contractAddress,
+    this.treasuryAddress,
+    this.distributorAddress,
   });
 }
 

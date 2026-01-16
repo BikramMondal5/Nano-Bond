@@ -44,6 +44,7 @@ export interface BondDto {
     issuer: string;
     contractAddress: string;
     treasuryAddress?: string;
+    distributorAddress?: string;
     couponRate: number;
     minInvestment: number;
     maxSubscription: number;
@@ -55,6 +56,7 @@ export interface BondDto {
     totalSupply: string;
     totalBackedValue: string;
     symbol: string;
+    maturityDateOnChain?: number;
 }
 
 export class BondService {
@@ -212,6 +214,7 @@ export class BondService {
                 issuer: rb.issuer,
                 contractAddress: targetAddress,
                 treasuryAddress: rb.treasuryAddress,
+                distributorAddress: rb.distributorAddress,
                 couponRate: rb.couponRate,
                 minInvestment: rb.minInvestment,
                 maxSubscription: rb.maxSubscription,
@@ -222,6 +225,7 @@ export class BondService {
                 totalSupply: onChain?.totalSupply || '0',
                 totalBackedValue: onChain?.totalBackedValue || '0',
                 symbol: onChain?.symbol || 'BOND',
+                maturityDateOnChain: onChain?.maturityDateOnChain,
             });
         }
 
@@ -252,6 +256,7 @@ export class BondService {
             issuer: rb.issuer,
             contractAddress: rb.contractAddress,
             treasuryAddress: rb.treasuryAddress,
+            distributorAddress: rb.distributorAddress,
             couponRate: rb.couponRate,
             minInvestment: rb.minInvestment,
             maxSubscription: rb.maxSubscription,
@@ -262,6 +267,7 @@ export class BondService {
             totalSupply: onChain?.totalSupply || '0',
             totalBackedValue: onChain?.totalBackedValue || '0',
             symbol: onChain?.symbol || 'BOND',
+            maturityDateOnChain: onChain?.maturityDateOnChain,
         };
     }
 

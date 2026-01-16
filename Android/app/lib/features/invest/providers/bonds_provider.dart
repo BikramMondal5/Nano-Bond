@@ -48,7 +48,10 @@ class BondsNotifier extends AsyncNotifier<List<Bond>> {
             totalSupply: b.totalSupply,
             totalBackedValue: b.totalBackedValue,
             symbol: b.symbol,
-            maturityDate: b.maturityDate,
+            maturityDate: b.maturityDateOnChain ?? b.maturityDate,
+            contractAddress: b.contractAddress,
+            treasuryAddress: b.treasuryAddress,
+            distributorAddress: b.distributorAddress,
           ),
         )
         .toList();

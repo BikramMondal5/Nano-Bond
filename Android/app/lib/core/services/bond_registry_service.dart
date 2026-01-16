@@ -18,6 +18,10 @@ class BondRegistryBondDto {
   final double totalSupply;
   final double totalBackedValue;
   final String symbol;
+  final String? contractAddress;
+  final String? treasuryAddress;
+  final String? distributorAddress;
+  final DateTime? maturityDateOnChain;
 
   BondRegistryBondDto({
     required this.bondId,
@@ -33,6 +37,10 @@ class BondRegistryBondDto {
     required this.totalSupply,
     required this.totalBackedValue,
     required this.symbol,
+    this.contractAddress,
+    this.treasuryAddress,
+    this.distributorAddress,
+    this.maturityDateOnChain,
   });
 
   factory BondRegistryBondDto.fromJson(Map<String, dynamic> json) {
@@ -43,6 +51,13 @@ class BondRegistryBondDto {
       } catch (_) {
         return null;
       }
+    }
+
+    DateTime? parseTimestamp(dynamic v) {
+      if (v == null) return null;
+      final num = double.tryParse(v.toString());
+      if (num == null || num == 0) return null;
+      return DateTime.fromMillisecondsSinceEpoch((num * 1000).toInt());
     }
 
     double? parseDouble(dynamic v) {
@@ -65,6 +80,10 @@ class BondRegistryBondDto {
       totalSupply: parseDouble(json['totalSupply']) ?? 0,
       totalBackedValue: parseDouble(json['totalBackedValue']) ?? 0,
       symbol: (json['symbol'] ?? 'BOND').toString(),
+      contractAddress: json['contractAddress']?.toString(),
+      treasuryAddress: json['treasuryAddress']?.toString(),
+      distributorAddress: json['distributorAddress']?.toString(),
+      maturityDateOnChain: parseTimestamp(json['maturityDateOnChain']),
     );
   }
 }
