@@ -260,7 +260,7 @@ class _DepositBottomSheetState extends State<DepositBottomSheet> {
                         ],
                       ),
                     ),
-                    Gap(40.h),
+                    Gap(25.h),
                     SlideActionButton(
                       text: "Slide to Claim",
                       isLoading: _isLoading,

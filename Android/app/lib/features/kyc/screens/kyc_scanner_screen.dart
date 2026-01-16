@@ -511,8 +511,19 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
                             }
 
                             final nationalId = widget.extractedData['number'];
+                            final dob = widget.extractedData['dob'];
                             if (nationalId == null) {
                               throw Exception("Identity Number missing");
+                            }
+
+                            // Age verification - block users under 18
+                            if (dob != null && dob.isNotEmpty) {
+                              final age = _calculateAge(dob);
+                              if (age != null && age < 18) {
+                                throw Exception(
+                                  "You must be 18 or older to use this service. Your age: $age years.",
+                                );
+                              }
                             }
 
                             // Sign Data
@@ -523,10 +534,12 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
                             );
 
                             final kycService = KycService();
-                            // Call Secure Backend (Port 3002) with Signature
+                            // Call Secure Backend with Hash of ID+DOB
                             final result = await kycService.requestRegistration(
                               address: userAddress,
                               nationalId: nationalId,
+                              dob:
+                                  dob, // Include DOB in hash for unique identity
                               signature: signature,
                             );
 
@@ -549,7 +562,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
                                 content: Text(
                                   isAlreadyVerified
                                       ? "You are already verified!"
-                                      : "Verification Successful! SBT Minted.",
+                                      : "KYC Verification Done!",
                                   style: GoogleFonts.outfit(),
                                 ),
                                 backgroundColor: isAlreadyVerified
@@ -595,6 +608,33 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
         );
       },
     );
+  }
+
+  /// Calculate age from DOB string (DD/MM/YYYY or DD-MM-YYYY)
+  int? _calculateAge(String dob) {
+    try {
+      final parts = dob.split(RegExp(r'[/\-]'));
+      if (parts.length != 3) return null;
+
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+
+      final birthDate = DateTime(year, month, day);
+      final today = DateTime.now();
+
+      int age = today.year - birthDate.year;
+
+      // Adjust if birthday hasn't occurred this year
+      if (today.month < birthDate.month ||
+          (today.month == birthDate.month && today.day < birthDate.day)) {
+        age--;
+      }
+
+      return age;
+    } catch (e) {
+      return null; // Return null if parsing fails
+    }
   }
 
   Widget _buildInfoTile(String label, String value) {

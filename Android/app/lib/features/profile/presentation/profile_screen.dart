@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/utils/ui_utils.dart';
 
 import '../../../core/theme/theme.dart';
@@ -21,7 +22,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).value;
     final balanceAsync = ref.watch(portfolioProvider);
-    final kycStatusAsync = ref.watch(kycStatusProvider);
+    final kycStatusAsync = ref.watch(kycVerificationDataProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -41,7 +42,7 @@ class ProfileScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(portfolioProvider);
-          ref.invalidate(kycStatusProvider);
+          ref.invalidate(kycVerificationDataProvider);
           ref.invalidate(
             userPortfolioProvider,
           ); // Also refresh the portfolio/yield
@@ -255,41 +256,63 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                            if (kycStatusAsync.value == true)
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 10.w,
-                                  vertical: 6.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF00E676,
-                                  ).withValues(alpha: 0.15),
-                                  border: Border.all(
-                                    color: const Color(0xFF00E676),
-                                    width: 1.w,
+                            if (kycStatusAsync.value?.isVerified == true)
+                              GestureDetector(
+                                onTap: () async {
+                                  final explorerUrl =
+                                      kycStatusAsync.value?.tokenExplorerUrl;
+                                  if (explorerUrl != null) {
+                                    final uri = Uri.parse(explorerUrl);
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(
+                                        uri,
+                                        mode: LaunchMode.externalApplication,
+                                      );
+                                    } else {
+                                      if (context.mounted) {
+                                        UiUtils.showError(
+                                          context,
+                                          "Could not open explorer",
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 10.w,
+                                    vertical: 6.h,
                                   ),
-                                  borderRadius: BorderRadius.circular(20.r),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.verified_rounded,
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF00E676,
+                                    ).withValues(alpha: 0.15),
+                                    border: Border.all(
                                       color: const Color(0xFF00E676),
-                                      size: 14.w,
+                                      width: 1.w,
                                     ),
-                                    Gap(4.w),
-                                    Text(
-                                      "Verified",
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w600,
+                                    borderRadius: BorderRadius.circular(20.r),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.verified_rounded,
                                         color: const Color(0xFF00E676),
-                                        letterSpacing: 0.5.w,
+                                        size: 14.w,
                                       ),
-                                    ),
-                                  ],
+                                      Gap(4.w),
+                                      Text(
+                                        "Verified",
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF00E676),
+                                          letterSpacing: 0.5.w,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                           ],
@@ -323,21 +346,15 @@ class ProfileScreen extends ConsumerWidget {
                         result['isAlreadyVerified'] == true;
 
                     // Refresh status immediately
-                    ref.invalidate(kycStatusProvider);
+                    ref.invalidate(kycVerificationDataProvider);
 
-                    // Only show "Minting SBT" if it was a FRESH verification
+                    // Only show success message if it was a FRESH verification
                     if (!isAlreadyVerified) {
-                      UiUtils.showSuccess(
-                        context,
-                        "KYC Verified! Minting Solebound Token...",
-                      );
+                      UiUtils.showSuccess(context, "KYC Verification Done!");
                       await Future.delayed(const Duration(seconds: 2));
 
                       if (context.mounted) {
-                        UiUtils.showSuccess(
-                          context,
-                          "SBT Minted Successfully (Valid for 1 Year)",
-                        );
+                        UiUtils.showSuccess(context, "KYC Valid for 1 Year");
                       }
                     } else {
                       // Already handled by Scanner Screen snackbar, but we can do a light refresh confirm?

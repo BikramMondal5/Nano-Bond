@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 import '../../../invest/presentation/invest_sheet.dart';
 import '../../../invest/data/bond_model.dart';
 import '../../providers/user_portfolio_provider.dart';
@@ -358,28 +359,16 @@ class _PortfolioCarouselState extends ConsumerState<PortfolioCarousel> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.add_circle_outline_rounded,
-                  color: Colors.white,
-                  size: 32,
+              // Lottie animation centered
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: Lottie.asset(
+                  'assets/animation/Finance guru.json',
+                  fit: BoxFit.contain,
                 ),
               ),
-              const Gap(16),
-              Text(
-                "Start Your Investment",
-                style: GoogleFonts.manrope(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Gap(4),
+              const Gap(12),
               Text(
                 "Tap to explore bonds",
                 style: GoogleFonts.manrope(

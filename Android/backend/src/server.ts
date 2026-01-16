@@ -278,21 +278,14 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
 /**
  * GET /api/kyc/status/:address
  * Check if an address is KYC verified
- * Optimized: Checks MongoDB first.
+ * ALWAYS checks blockchain as source of truth
  */
 app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
     try {
         const { address } = req.params;
         // console.log(`[API] GET /api/kyc/status/${address}`); // Reduce logs
 
-        // 1. Check MongoDB (Fastest)
-        const dbStatus = await userService.getUserStatus(address);
-        if (dbStatus.isVerified) {
-            res.json({ address, isVerified: true, source: 'db' });
-            return;
-        }
-
-        // 2. Fallback to Blockchain (If DB is out of sync or empty)
+        // ALWAYS check blockchain as source of truth
         const registry = new ethers.Contract(
             config.contracts.registryAddress,
             IDENTITY_REGISTRY_ABI,
@@ -301,16 +294,18 @@ app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
 
         const isVerifiedOnChain = await registry.isVerified(address);
 
-        // If verified on chain but not in DB, assume we should treat them as verified.
-        // We can't backfill the nationalIdHash here since we don't have it, but we can mark them as verified.
+        // Sync DB with blockchain status
         if (isVerifiedOnChain) {
-            // Optional: Update DB to avoid future chain calls (partial record)
-            await userService.registerUser({
-                walletAddress: address,
-                aadhaarHash: 'UNKNOWN_ONCHAIN_SYNC',
-                kycStatus: 'APPROVED',
-                kycApprovedAt: new Date()
-            });
+            // Ensure DB is in sync (mark as verified if not already)
+            const dbStatus = await userService.getUserStatus(address);
+            if (!dbStatus.isVerified) {
+                await userService.registerUser({
+                    walletAddress: address,
+                    aadhaarHash: 'SYNCED_FROM_CHAIN',
+                    kycStatus: 'APPROVED',
+                    kycApprovedAt: new Date()
+                });
+            }
         }
 
         res.json({ address, isVerified: isVerifiedOnChain, source: 'chain' });

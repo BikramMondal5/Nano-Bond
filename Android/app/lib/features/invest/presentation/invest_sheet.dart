@@ -132,7 +132,7 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                       ),
                     ),
                   ),
-                  Gap(32.h),
+                  Gap(16.h),
                   if (investState.status == InvestStatus.loading)
                     Center(
                       child: Padding(
@@ -164,7 +164,7 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                     )
                   else ...[
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
                           child: Text(
@@ -223,7 +223,7 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                         ),
                       ],
                     ),
-                    Gap(24.h),
+                    Gap(12.h),
                     // Combined Details Card (Maturity + Contracts)
                     Container(
                       padding: EdgeInsets.all(20.w),
@@ -279,7 +279,7 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                         ],
                       ),
                     ),
-                    Gap(24.h),
+                    Gap(12.h),
                     Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: 20.w,
@@ -372,7 +372,7 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                       ),
                     ),
 
-                    Gap(32.h),
+                    Gap(25.h),
                     SlideActionButton(
                       text: "Slide to Invest",
                       isLoading: investState.status == InvestStatus.loading,
