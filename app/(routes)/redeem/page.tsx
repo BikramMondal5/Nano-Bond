@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { RedemptionCard } from "@/components/redemption-card"
 import { RedemptionSummary } from "@/components/redemption-summary"
@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react"
 import type { IBond } from "@/lib/models/Bond"
 import { useContentTranslation } from "@/hooks/useContentTranslation"
 
-export default function RedeemPage() {
+function RedeemPageContent() {
   const [bonds, setBonds] = useState<IBond[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBondId, setSelectedBondId] = useState<string>("")
@@ -102,5 +102,17 @@ export default function RedeemPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function RedeemPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8 h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    }>
+      <RedeemPageContent />
+    </Suspense>
   )
 }
