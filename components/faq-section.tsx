@@ -35,7 +35,7 @@ export function FaqSection() {
   ]
 
   return (
-    <section id="faq" className="py-24 px-4 relative">
+    <section id="faq" className="py-4 md:py-24 px-4 relative">
       <div className="container mx-auto max-w-7xl">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">

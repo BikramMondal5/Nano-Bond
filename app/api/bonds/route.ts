@@ -36,17 +36,17 @@ interface BondData {
 }
 
 export async function GET() {
-    try {
-        await connectDB();
-        const bonds = await Bond.find({}).sort({ createdAt: -1 });
-        return NextResponse.json(bonds);
-    } catch (error) {
-        console.error('Error fetching bonds:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch bonds' },
-            { status: 500 }
-        );
-    }
+try {
+    await connectDB();
+    const bonds = await Bond.find({}).sort({ createdAt: -1 });
+    return NextResponse.json(bonds);
+} catch (error) {
+    console.error('Error fetching bonds:', error);
+    return NextResponse.json(
+        { error: 'Failed to fetch bonds' },
+        { status: 500 }
+    );
+}
 }
 
 export async function POST(req: Request) {

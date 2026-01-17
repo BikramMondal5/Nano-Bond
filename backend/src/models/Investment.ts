@@ -3,11 +3,17 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IInvestment extends Document {
     walletAddress: string;
     bondId: string;
-    type: 'INVEST' | 'REDEEM' | 'CLAIM';
-    amount: number; // For CLAIM, this might be the yield amount
+    type: 'INVEST' | 'REDEEM' | 'CLAIM' | 'INVEST_CROSS_CHAIN'; // Add cross-chain type
+    amount: number;
     txHash: string;
     status: 'PENDING' | 'SUCCESS' | 'FAILED';
+    network: 'mantle' | 'ethereum' | 'arbitrum' | 'linea' | 'polygon' | 'scroll'; // Add network field
+    sourceNetwork?: string; // For cross-chain investments
+    destinationNetwork?: string; // For cross-chain investments
+    requestId?: string; // Add requestId to interface
     timestamp: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 const InvestmentSchema = new Schema<IInvestment>(
@@ -26,7 +32,7 @@ const InvestmentSchema = new Schema<IInvestment>(
         },
         type: {
             type: String,
-            enum: ['INVEST', 'REDEEM', 'CLAIM'],
+            enum: ['INVEST', 'REDEEM', 'CLAIM', 'INVEST_CROSS_CHAIN'], // Add cross-chain type
             required: true,
         },
         amount: {
@@ -41,7 +47,24 @@ const InvestmentSchema = new Schema<IInvestment>(
         status: {
             type: String,
             enum: ['PENDING', 'SUCCESS', 'FAILED'],
-            default: 'SUCCESS',
+            default: 'PENDING', // Default should be PENDING
+        },
+        network: {
+            type: String,
+            enum: ['mantle', 'ethereum', 'arbitrum', 'linea', 'polygon', 'scroll'],
+            default: 'mantle',
+            required: true,
+            index: true, // Add index for faster queries by network
+        },
+        sourceNetwork: {
+            type: String,
+            enum: ['mantle', 'ethereum', 'arbitrum', 'linea', 'polygon', 'scroll'],
+            required: false, // Only for cross-chain transactions
+        },
+        destinationNetwork: {
+            type: String,
+            enum: ['mantle', 'ethereum', 'arbitrum', 'linea', 'polygon', 'scroll'],
+            required: false, // Only for cross-chain transactions
         },
         requestId: {
             type: String,
@@ -57,5 +80,8 @@ const InvestmentSchema = new Schema<IInvestment>(
         timestamps: true,
     }
 );
+
+// Add compound index for efficient querying by wallet and network
+InvestmentSchema.index({ walletAddress: 1, network: 1 });
 
 export const Investment = mongoose.models.Investment || mongoose.model<IInvestment>('Investment', InvestmentSchema);

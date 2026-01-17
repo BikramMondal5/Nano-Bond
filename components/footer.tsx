@@ -89,7 +89,7 @@ export function Footer() {
                   {content.roadmap}
                 </a>
               </li>
-              <li>
+              <li className="hidden md:block">
                 <a href="#" className="hover:text-primary transition-colors">
                   {content.api_docs}
                 </a>
@@ -111,12 +111,12 @@ export function Footer() {
                   {content.privacy}
                 </a>
               </li>
-              <li>
+              <li className="hidden md:block">
                 <a href="#" className="hover:text-primary transition-colors">
                   {content.compliance}
                 </a>
               </li>
-              <li>
+              <li className="hidden md:block">
                 <a href="#" className="hover:text-primary transition-colors">
                   {content.risk}
                 </a>
@@ -142,12 +142,12 @@ export function Footer() {
                   {content.support}
                 </a>
               </li>
-              <li>
+              <li className="hidden md:block">
                 <a href="#" className="hover:text-primary transition-colors">
                   {content.help_center}
                 </a>
               </li>
-              <li>
+              <li className="hidden md:block">
                 <a href="#" className="hover:text-primary transition-colors">
                   {content.media_kit}
                 </a>

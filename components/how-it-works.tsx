@@ -121,7 +121,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
   return (
     <section
       id="how-it-works"
-      className={cn("w-full py-24 px-4 relative overflow-hidden", className)}
+      className={cn("w-full py-4 md:py-24 px-4 relative overflow-hidden", className)}
       {...props}
     >
       {/* Background glow effects */}

@@ -22,7 +22,10 @@ export function usePortfolioData(bondAddress?: string, distributorAddress?: stri
 
         try {
             setIsLoading(true)
-            const provider = getEthersProvider()
+            // Force connection to Mantle for Bond Data (since all bonds are on Mantle)
+            const provider = new ethers.JsonRpcProvider("https://rpc.sepolia.mantle.xyz")
+
+            // const provider = getEthersProvider()
             if (!provider) return
 
             const bondAddr = bondAddress || SOVEREIGN_BOND.address

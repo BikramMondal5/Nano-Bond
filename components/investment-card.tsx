@@ -11,8 +11,12 @@ import { useGaslessInvestment } from "@/hooks/useGaslessInvestment"
 import { useBondStats } from "@/hooks/useAdminActions"
 import { ethers } from "ethers"
 import { Web3AuthConnectButton } from "@/components/web3auth-connect-button"
+import { toast } from "react-toastify"
 import type { IBond } from "@/lib/models/Bond"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useContentTranslation } from "@/hooks/useContentTranslation"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 interface InvestmentCardProps {
   bond: IBond;
@@ -65,6 +69,20 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
 
   const [usdtBalance, setUsdtBalance] = useState("0")
 
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('mantle')
+  const [showSecretModal, setShowSecretModal] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [secretKeyInput, setSecretKeyInput] = useState("")
+  const [verifyingSecret, setVerifyingSecret] = useState(false)
+
+  const NETWORKS = [
+    { id: 'mantle', name: 'Mantle Sepolia', icon: '🔷' },
+    { id: 'ethereum', name: 'Ethereum Sepolia', icon: '⟠' },
+    { id: 'arbitrum', name: 'Arbitrum Sepolia', icon: '🔵' },
+    { id: 'polygon', name: 'Polygon Amoy', icon: '🟣' },
+    { id: 'scroll', name: 'Scroll Sepolia', icon: '📜' }
+  ]
+
   // Reset state when bond changes
   useEffect(() => {
     reset()
@@ -74,9 +92,23 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
   // Fetch balance on mount and after actions
   useEffect(() => {
     if (walletAddress && loggedIn) {
-      getBalance().then(setUsdtBalance)
+      getBalance(selectedNetwork).then(setUsdtBalance)
     }
-  }, [walletAddress, loggedIn, isSuccess])
+  }, [walletAddress, loggedIn, isSuccess, selectedNetwork])
+
+  const handleNetworkChange = (network: string) => {
+    console.log(`[Card] Network changed to: ${network}`)
+    setSelectedNetwork(network)
+    setUsdtBalance("0") // Reset to 0 while loading
+
+    // Fetch balance for new network immediately
+    if (walletAddress && loggedIn) {
+      getBalance(network).then(balance => {
+        console.log(`[Card] Balance loaded for ${network}: ${balance}`)
+        setUsdtBalance(balance)
+      })
+    }
+  }
 
   const tokenPrice = 1.00 // 1 GBOND = 1 USDT
   const minInvest = bond.minInvestment || 1
@@ -88,15 +120,72 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
   const expectedTokens = amount ? (Number(amount) / tokenPrice).toFixed(2) : "0"
   const isValidAmount = Number(amount) >= minInvest && Number(amount) <= maxInvest && Number(amount) <= Number(usdtBalance)
 
-  const handleInvest = async () => {
-    // Pass the selected bond ID to the hook
-    await invest(amount, bond.bondId)
+  const handleInvestClick = () => {
+    setShowSecretModal(true)
+    setSecretKeyInput("")
+  }
+
+  const handleSecretVerify = async () => {
+    if (!secretKeyInput) return
+    setVerifyingSecret(true)
+    try {
+      const res = await fetch("/api/user/verify-secret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secretKey: secretKeyInput })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setShowSecretModal(false)
+        setShowConfirmModal(true)
+      } else {
+        toast.error(data.error || "Invalid Secret Key")
+      }
+    } catch (e) {
+      toast.error("Verification failed")
+    } finally {
+      setVerifyingSecret(false)
+    }
+  }
+
+  const handleConfirmInvestment = async () => {
+    setShowConfirmModal(false)
+    const result = await invest(amount, bond.bondId, selectedNetwork)
+
+    // Show appropriate message based on network
+    if (result?.isCrossChain) {
+      toast.info('Cross-chain investment initiated! Bonds will arrive in ~5-10 minutes.')
+    }
+  }
+
+  // Original handleInvest kept for reference but unused directly by button
+  const handleInvestLegacy = async () => {
+    const result = await invest(amount, bond.bondId, selectedNetwork)
+
+    // Show appropriate message based on network
+    if (result?.isCrossChain) {
+      toast.info('Cross-chain investment initiated! Bonds will arrive in ~5-10 minutes.')
+    }
   }
 
   const handleFaucet = async () => {
-    await requestFaucet(1000)
-    const newBalance = await getBalance()
-    setUsdtBalance(newBalance)
+    try {
+      await requestFaucet(1000, selectedNetwork)
+
+      // Wait for blockchain to index the transaction
+      toast.info('Waiting for transaction to be indexed...')
+      await new Promise(resolve => setTimeout(resolve, 3000))
+
+      // Force refresh balance
+      console.log(`[Card] Refreshing balance for ${selectedNetwork}`)
+      const newBalance = await getBalance(selectedNetwork)
+      console.log(`[Card] New balance: ${newBalance}`)
+      setUsdtBalance(newBalance)
+
+    } catch (error) {
+      console.error('[Card] Faucet error:', error)
+    }
   }
 
   if (isSuccess) {
@@ -138,161 +227,257 @@ export function InvestmentCard({ bond }: InvestmentCardProps) {
   }
 
   return (
-    <Card className="bg-[#100F14] border-orange-500/20 shadow-2xl overflow-hidden relative transition-all duration-300">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16" />
+    <>
+      <Card className="bg-[#100F14] border-orange-500/20 shadow-2xl overflow-hidden relative transition-all duration-300">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16" />
 
-      <CardHeader className="space-y-1">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
-              {content.purchase} {bond.bondName}
-            </CardTitle>
-            <div className="text-xs text-muted-foreground font-mono bg-white/5 px-2 py-0.5 rounded w-fit">
-              ID: {bond.bondId}
+        <CardHeader className="space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                {content.purchase} {bond.bondName}
+              </CardTitle>
+              <div className="text-xs text-muted-foreground font-mono bg-white/5 px-2 py-0.5 rounded w-fit">
+                ID: {bond.bondId}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+              <ShieldCheck className="w-4 h-4 text-green-500" />
+              <span className="text-xs font-semibold text-green-500 uppercase tracking-wider">{content.gasless}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
-            <ShieldCheck className="w-4 h-4 text-green-500" />
-            <span className="text-xs font-semibold text-green-500 uppercase tracking-wider">{content.gasless}</span>
-          </div>
-        </div>
-        <CardDescription className="text-muted-foreground text-sm pt-2">
-          {bond.description || content.desc_default}
-        </CardDescription>
-      </CardHeader>
+          <CardDescription className="text-muted-foreground text-sm pt-2">
+            {bond.description || content.desc_default}
+          </CardDescription>
+        </CardHeader>
 
-      <CardContent className="space-y-6">
-        {!loggedIn ? (
-          <div className="py-8 flex flex-col items-center justify-center space-y-6">
-            <div className="w-16 h-16 bg-muted/20 rounded-2xl flex items-center justify-center border border-white/5">
-              <Wallet className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <div className="text-center space-y-2">
-              <h4 className="text-lg font-medium text-white">{content.wallet_not_connected}</h4>
-              <p className="text-sm text-muted-foreground max-w-[280px]">
-                {content.connect_prompt}
-              </p>
-            </div>
-            <div className="transform scale-110">
-              <Web3AuthConnectButton />
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Balance Section */}
-            <div className="flex items-center justify-between p-4 bg-[#1C1A21] rounded-xl border border-white/5">
-              <div className="flex items-center gap-3">
-                <div className="text-sm text-muted-foreground">{content.balance_label}</div>
+        <CardContent className="space-y-6">
+          {!loggedIn ? (
+            <div className="py-8 flex flex-col items-center justify-center space-y-6">
+              <div className="w-16 h-16 bg-muted/20 rounded-2xl flex items-center justify-center border border-white/5">
+                <Wallet className="w-8 h-8 text-muted-foreground" />
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-primary">{Number(usdtBalance).toLocaleString()} USDT</span>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-                        onClick={handleFaucet}
-                        disabled={isPending}
-                      >
-                        <Droplet className="w-4 h-4 mr-1" />
-                        {content.faucet_btn}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{content.faucet_tooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </div>
-
-            {/* Input Section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-muted-foreground">{content.invest_label}</label>
-                <span className="text-xs font-semibold text-[#FD8C00]">
-                  {content.limit_label}: {maxInvest.toLocaleString()} USDT
-                </span>
-              </div>
-              <div className="relative group">
-                <Input
-                  type="number"
-                  placeholder={`${content.min_placeholder} ${minInvest} USDT`}
-                  className="bg-[#1C1A21] border-white/5 h-16 text-xl pl-4 pr-16 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  disabled={isPending}
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">USDT</div>
-              </div>
-              {amount && !isValidAmount && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {Number(amount) > Number(usdtBalance)
-                    ? `${content.insufficient_balance} ${Number(usdtBalance).toFixed(2)}`
-                    : Number(amount) > maxInvest
-                      ? content.exceeds_limit
-                      : `${content.min_invest_error} ${minInvest} USDT`}
+              <div className="text-center space-y-2">
+                <h4 className="text-lg font-medium text-white">{content.wallet_not_connected}</h4>
+                <p className="text-sm text-muted-foreground max-w-[280px]">
+                  {content.connect_prompt}
                 </p>
-              )}
-            </div>
-
-            {/* Conversion Result */}
-            <div className="p-4 bg-[#1C1A21] rounded-xl border border-white/5 space-y-3 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-2xl" />
-              <div className="flex items-center justify-between relative z-10">
-                <span className="text-sm text-muted-foreground">{content.receive_label}</span>
-                <div className="flex items-center gap-1.5 text-green-500 text-xs font-bold uppercase">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {content.zero_gas}
-                </div>
               </div>
-              <div className="flex items-end gap-2 relative z-10">
-                <span className="text-3xl font-bold text-white leading-none">{expectedTokens}</span>
-                <span className="text-lg font-medium text-muted-foreground mb-0.5">GBOND</span>
-              </div>
-              <div className="pt-3 border-t border-white/5 flex flex-col gap-1.5 text-xs text-muted-foreground relative z-10">
-                <div className="flex justify-between">
-                  <span>{content.rate_label}</span>
-                  <span className="text-white">1 GBOND = {tokenPrice} USDT</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{content.maturity_label}</span>
-                  <span className="text-white">{new Date(bond.maturityDate).toLocaleDateString()}</span>
-                </div>
+              <div className="transform scale-110">
+                <Web3AuthConnectButton />
               </div>
             </div>
+          ) : (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              {/* Network Selector + Balance Section */}
+              <div className="space-y-3">
+                {/* Network Selector */}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-muted-foreground">Select Network</label>
+                </div>
+                <Select value={selectedNetwork} onValueChange={handleNetworkChange}>
+                  <SelectTrigger className="bg-[#1C1A21] border-white/5 h-12">
+                    <SelectValue placeholder="Select network" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NETWORKS.map((network) => (
+                      <SelectItem key={network.id} value={network.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{network.icon}</span>
+                          <span>{network.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-            {/* Single Invest Button */}
-            <Button
-              className="w-full py-7 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(253,140,0,0.2)] hover:shadow-[0_0_25px_rgba(253,140,0,0.3)] transition-all disabled:opacity-50 text-lg"
-              disabled={!isValidAmount || isPending}
-              onClick={handleInvest}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  {content.investing_in} {bond.bondId}...
-                </>
-              ) : (
-                content.invest_now
-              )}
-            </Button>
-          </div>
+                {/* Balance Display */}
+                <div className="flex items-center justify-between p-4 bg-[#1C1A21] rounded-xl border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-muted-foreground">
+                      USDT Balance on {NETWORKS.find(n => n.id === selectedNetwork)?.name}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold text-primary">{Number(usdtBalance).toLocaleString()} USDT</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                            onClick={handleFaucet}
+                            disabled={isPending}
+                          >
+                            <Droplet className="w-4 h-4 mr-1" />
+                            {content.faucet_btn}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Get 1000 test USDT on {selectedNetwork.toUpperCase()}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </div>
+              </div>
+
+              {/* Input Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-muted-foreground">{content.invest_label}</label>
+                  <span className="text-xs font-semibold text-[#FD8C00]">
+                    {content.limit_label}: {maxInvest.toLocaleString()} USDT
+                  </span>
+                </div>
+                <div className="relative group">
+                  <Input
+                    type="number"
+                    placeholder={`${content.min_placeholder} ${minInvest} USDT`}
+                    className="bg-[#1C1A21] border-white/5 h-16 text-xl pl-4 pr-16 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    disabled={isPending}
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">USDT</div>
+                </div>
+                {amount && !isValidAmount && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {Number(amount) > Number(usdtBalance)
+                      ? `${content.insufficient_balance} ${Number(usdtBalance).toFixed(2)}`
+                      : Number(amount) > maxInvest
+                        ? content.exceeds_limit
+                        : `${content.min_invest_error} ${minInvest} USDT`}
+                  </p>
+                )}
+              </div>
+
+              {/* Conversion Result */}
+              <div className="p-4 bg-[#1C1A21] rounded-xl border border-white/5 space-y-3 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-2xl" />
+                <div className="flex items-center justify-between relative z-10">
+                  <span className="text-sm text-muted-foreground">{content.receive_label}</span>
+                  <div className="flex items-center gap-1.5 text-green-500 text-xs font-bold uppercase">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    {content.zero_gas}
+                  </div>
+                </div>
+                <div className="flex items-end gap-2 relative z-10">
+                  <span className="text-3xl font-bold text-white leading-none">{expectedTokens}</span>
+                  <span className="text-lg font-medium text-muted-foreground mb-0.5">GBOND</span>
+                </div>
+                <div className="pt-3 border-t border-white/5 flex flex-col gap-1.5 text-xs text-muted-foreground relative z-10">
+                  <div className="flex justify-between">
+                    <span>{content.rate_label}</span>
+                    <span className="text-white">1 GBOND = {tokenPrice} USDT</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{content.maturity_label}</span>
+                    <span className="text-white">{new Date(bond.maturityDate).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Single Invest Button */}
+              <Button
+                className="w-full py-7 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(253,140,0,0.2)] hover:shadow-[0_0_25px_rgba(253,140,0,0.3)] transition-all disabled:opacity-50 text-lg"
+                disabled={!isValidAmount || isPending}
+                onClick={handleInvestClick}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    {content.investing_in} {bond.bondId}...
+                  </>
+                ) : (
+                  content.invest_now
+                )}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+
+        {loggedIn && (
+          <CardFooter className="bg-[#1C1A21]/50 border-t border-white/5 py-4">
+            <p className="text-[11px] text-muted-foreground leading-tight">
+              ✨ <span className="text-green-400 font-semibold">{content.gasless_note}</span> -
+              {content.gasless_desc} <strong>{bond.bondName}</strong>. {content.gasless_desc_suffix}
+            </p>
+          </CardFooter>
         )}
-      </CardContent>
+      </Card>
 
-      {loggedIn && (
-        <CardFooter className="bg-[#1C1A21]/50 border-t border-white/5 py-4">
-          <p className="text-[11px] text-muted-foreground leading-tight">
-            ✨ <span className="text-green-400 font-semibold">{content.gasless_note}</span> -
-            {content.gasless_desc} <strong>{bond.bondName}</strong>. {content.gasless_desc_suffix}
-          </p>
-        </CardFooter>
-      )}
-    </Card>
+      {/* Secret Key Modal */}
+      <Dialog open={showSecretModal} onOpenChange={setShowSecretModal}>
+        <DialogContent className="bg-[#1C1A21] border-white/10 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Enter Secret Key</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Please enter your 6-digit private secret key to authorize this transaction.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="secretKey" className="text-white">Secret Key</Label>
+              <Input
+                id="secretKey"
+                type="password"
+                placeholder="••••••"
+                className="bg-black/50 border-white/10 text-white text-center tracking-[1em] font-mono text-lg"
+                maxLength={6}
+                value={secretKeyInput}
+                onChange={(e) => setSecretKeyInput(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowSecretModal(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
+            <Button onClick={handleSecretVerify} disabled={verifyingSecret || secretKeyInput.length < 6} className="bg-primary text-white">
+              {verifyingSecret ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Proceed"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent className="bg-[#1C1A21] border-white/10 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Confirm Investment</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Please review your investment details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-white/5 rounded-lg p-4 space-y-3 border border-white/5">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Bond Product</span>
+              <span className="font-semibold text-white">{bond.bondName}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Investment Amount</span>
+              <span className="font-bold text-primary text-lg">{amount} USDT</span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-white/5">
+              <span className="text-xs text-muted-foreground">You Receive</span>
+              <span className="text-sm text-white font-mono">{expectedTokens} GBOND</span>
+            </div>
+          </div>
+          <div className="py-2">
+            <p className="text-sm text-center text-white/80">
+              Are you sure you want to invest <span className="text-primary font-bold">{amount} USDT</span> in <span className="text-white font-bold">{bond.bondName}</span>?
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setShowConfirmModal(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
+            <Button onClick={handleConfirmInvestment} className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto">
+              Confirm Investment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

@@ -43,10 +43,3 @@ packages/contracts/deploy_log.txt
 packages/contracts/deploy.log
 packages/contracts/deployed_addresses.json
 .env.local
-
-contracts/deployed_arbitrumSepolia.json
-contracts/deployed_lineaSepolia.json
-contracts/deployed_polygonAmoy.json
-contracts/deployed_scrollSepolia.json
-contracts/deployed_ethereumSepolia.json
-.env*.local

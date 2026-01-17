@@ -123,7 +123,7 @@ export default function TestimonialCarousel() {
   ]
 
   return (
-    <section id="testimonials" className="relative py-24 bg-transparent overflow-hidden">
+    <section id="testimonials" className="relative py-4 md:py-24 bg-transparent overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-16 text-center space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-orange-400 mb-6">
           <MessageSquareQuote className="w-3.5 h-3.5" />
