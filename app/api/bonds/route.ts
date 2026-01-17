@@ -36,17 +36,17 @@ interface BondData {
 }
 
 export async function GET() {
-try {
-    await connectDB();
-    const bonds = await Bond.find({}).sort({ createdAt: -1 });
-    return NextResponse.json(bonds);
-} catch (error) {
-    console.error('Error fetching bonds:', error);
-    return NextResponse.json(
-        { error: 'Failed to fetch bonds' },
-        { status: 500 }
-    );
-}
+    try {
+        await connectDB();
+        const bonds = await Bond.find({}).sort({ createdAt: -1 });
+        return NextResponse.json(bonds);
+    } catch (error) {
+        console.error('Error fetching bonds:', error);
+        return NextResponse.json(
+            { error: 'Failed to fetch bonds' },
+            { status: 500 }
+        );
+    }
 }
 
 export async function POST(req: Request) {
@@ -69,17 +69,34 @@ export async function POST(req: Request) {
         if (body.autoDeploy) {
             console.log(`[API] Auto-deploying contracts for ${body.bondId}...`);
             try {
-                // Initialize service (ensure backend service is available in API context)
-                // Note: Next.js API routes run in Node environment, so this should work if paths are correct.
-                // We might need to handle the import path carefully.
+                // Initialize service
                 const bondService = new BondService();
-                const contracts = await bondService.deployBondContracts(body.bondId, body.bondName);
 
-                bondData.contractAddress = contracts.contractAddress;
-                bondData.treasuryAddress = contracts.treasuryAddress;
-                bondData.distributorAddress = contracts.distributorAddress;
+                // Ensure adminWallet is provided
+                const adminWallet = body.adminWallet;
+                if (!adminWallet) {
+                    return NextResponse.json(
+                        { error: 'Admin wallet address is required for auto-deployment' },
+                        { status: 400 }
+                    );
+                }
 
-                console.log(`[API] Deployment success. Addresses:`, contracts);
+                // Use createManagedBond to handle deployment, role granting, and DB saving
+                const result = await bondService.createManagedBond({
+                    bondId: body.bondId,
+                    bondName: body.bondName,
+                    issuer: body.issuer,
+                    couponRate: Number(body.couponRate),
+                    minInvestment: Number(body.minInvestment),
+                    maxSubscription: Number(body.maxSubscription),
+                    startDate: new Date(body.startDate),
+                    maturityDate: new Date(body.maturityDate),
+                    description: body.description || ""
+                }, adminWallet);
+
+                console.log(`[API] Deployment and setup success. Result:`, result);
+                return NextResponse.json(result, { status: 201 });
+
             } catch (deployError: any) {
                 console.error('[API] Auto-deployment failed:', deployError);
                 return NextResponse.json(
@@ -89,7 +106,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // Create new bond
+        // Manual Creation (No Auto-Deploy)
         const newBond = await Bond.create(bondData);
 
         return NextResponse.json(newBond, { status: 201 });

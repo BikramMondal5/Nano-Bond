@@ -119,7 +119,7 @@ export default function PortfolioPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <PortfolioChart />
+          <PortfolioChart bond={selectedBond} />
           {/* We might want to pass all bonds to breakdown to show list, or just selected? 
               For now keeping it as is or passing bonds if intended to be dynamic list. 
               Request was to "fetch token holded for particular bonds" which is covered by Hero + Selector.

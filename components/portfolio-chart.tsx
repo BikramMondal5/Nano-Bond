@@ -5,19 +5,25 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaCh
 import { usePortfolioData } from "@/hooks/usePortfolioData"
 import { useMemo } from "react"
 import { useContentTranslation } from "@/hooks/useContentTranslation"
+import type { IBond } from "@/lib/models/Bond"
 
-export function PortfolioChart() {
+interface PortfolioChartProps {
+  bond?: IBond;
+}
+
+export function PortfolioChart({ bond }: PortfolioChartProps) {
+  const rateVal = bond?.couponRate || 8.5
   const content = useContentTranslation({
     title: "Projected Value Growth",
-    subtitle: "Based on 8.5% APY Projection",
+    subtitle: `Based on ${rateVal}% APY Projection`,
     tooltip_label: "Projected Value"
   })
 
-  const { balance } = usePortfolioData()
+  const { balance } = usePortfolioData(bond?.contractAddress, bond?.distributorAddress)
 
   const data = useMemo(() => {
     const bal = Number(balance || 0)
-    const rate = 0.085
+    const rate = bond?.couponRate ? bond.couponRate / 100 : 0.085
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
     // Generate 12 months of projected growth
@@ -29,7 +35,7 @@ export function PortfolioChart() {
         value: Number(projectedValue.toFixed(2))
       }
     })
-  }, [balance])
+  }, [balance, bond])
 
   return (
     <Card className="bg-[#100F14] border-white/5">
