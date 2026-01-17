@@ -11,6 +11,15 @@
                     "yield": "7.5%",
                     "maturityDate": "2030-01-01",
                     "status": "Active"
+                },
+                {
+                    "id": "6884646",
+                    "name": "gg7",
+                    "amount": 400,
+                    "purchaseDate": "2026-01-17",
+                    "yield": "7%",
+                    "maturityDate": "2026-09-08",
+                    "status": "Active"
                 }
             ]
         },
@@ -75,7 +84,7 @@
                 {
                     "id": "6884646",
                     "name": "gg7",
-                    "amount": 206,
+                    "amount": 412,
                     "purchaseDate": "2026-01-15",
                     "yield": "7%",
                     "maturityDate": "2026-09-08",
