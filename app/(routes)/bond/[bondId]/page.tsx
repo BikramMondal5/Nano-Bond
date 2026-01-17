@@ -1,4 +1,5 @@
 
+import { Suspense } from "react"
 import { BondHero } from "@/components/bond-hero"
 import { BondStats } from "@/components/bond-stats"
 import { YieldChart } from "@/components/yield-chart"
@@ -55,12 +56,12 @@ export default async function BondDetailsPage({
         {/* Sidebar / Action Panel */}
         <div className="lg:col-span-4">
           <div className="sticky top-24 space-y-6">
-            <ActionPanel bondStatus={bondData.status} />
+            <Suspense fallback={<div className="h-[400px] w-full bg-[#100F14] animate-pulse rounded-xl" />}>
+              <ActionPanel bondStatus={bondData.status} />
+            </Suspense>
           </div>
         </div>
       </div>
     </div>
-
-
   )
 }

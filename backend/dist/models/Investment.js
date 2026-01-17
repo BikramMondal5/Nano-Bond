@@ -50,7 +50,7 @@ const InvestmentSchema = new mongoose_1.Schema({
     },
     type: {
         type: String,
-        enum: ['INVEST', 'REDEEM', 'CLAIM'],
+        enum: ['INVEST', 'REDEEM', 'CLAIM', 'INVEST_CROSS_CHAIN'], // Add cross-chain type
         required: true,
     },
     amount: {
@@ -65,7 +65,29 @@ const InvestmentSchema = new mongoose_1.Schema({
     status: {
         type: String,
         enum: ['PENDING', 'SUCCESS', 'FAILED'],
-        default: 'SUCCESS',
+        default: 'PENDING', // Default should be PENDING
+    },
+    network: {
+        type: String,
+        enum: ['mantle', 'ethereum', 'arbitrum', 'linea', 'polygon', 'scroll'],
+        default: 'mantle',
+        required: true,
+        index: true, // Add index for faster queries by network
+    },
+    sourceNetwork: {
+        type: String,
+        enum: ['mantle', 'ethereum', 'arbitrum', 'linea', 'polygon', 'scroll'],
+        required: false, // Only for cross-chain transactions
+    },
+    destinationNetwork: {
+        type: String,
+        enum: ['mantle', 'ethereum', 'arbitrum', 'linea', 'polygon', 'scroll'],
+        required: false, // Only for cross-chain transactions
+    },
+    requestId: {
+        type: String,
+        unique: true,
+        sparse: true, // Allow nulls for legacy data
     },
     timestamp: {
         type: Date,
@@ -74,4 +96,6 @@ const InvestmentSchema = new mongoose_1.Schema({
 }, {
     timestamps: true,
 });
+// Add compound index for efficient querying by wallet and network
+InvestmentSchema.index({ walletAddress: 1, network: 1 });
 exports.Investment = mongoose_1.default.models.Investment || mongoose_1.default.model('Investment', InvestmentSchema);

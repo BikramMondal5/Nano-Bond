@@ -2,6 +2,8 @@ import { ethers } from 'ethers';
 import { config } from '../config';
 import { BondService } from './bond.service';
 import { Investment } from '../models/Investment';
+import { User } from '../models/User';
+import { KYCSubmission } from '../models/KYCSubmission';
 
 // Treasury Swap ABI for investing
 const TREASURY_SWAP_ABI = [
@@ -136,22 +138,39 @@ export class AAService {
 
         const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
 
-        // 1. Check KYC (Auto-verify if possible/needed)
+        // 1. Check KYC Status in MongoDB (Source of Truth)
+        // Ensure strictly lower case for address matching
+        const userAddressLower = userAddress.toLowerCase();
+        const user = await User.findOne({ walletAddress: userAddressLower });
+        const kycParams = await KYCSubmission.findOne({ walletAddress: userAddressLower });
+
+        const isUserApproved = user && user.kycStatus === 'APPROVED';
+        // Allow if status is APPROVED OR if kycApprovedAt date exists (handling inconsistent data)
+        const isKycApproved = kycParams && (kycParams.status === 'APPROVED' || !!kycParams.kycApprovedAt);
+
+        console.log(`[AAService] Check ${userAddress}: UserDB=${isUserApproved}, KYCDB=${isKycApproved} (Status=${kycParams?.status}, Date=${kycParams?.kycApprovedAt})`);
+
+        if (!isUserApproved && !isKycApproved) {
+            throw new Error(`User ${userAddress} is not KYC Verified in database. Please complete KYC first.`);
+        }
+
+        // 1.5 Sync KYC to On-Chain Registry (Auto-register if DB says Approved but Chain says No)
         if (networkConfig.registry && (network === 'mantle' || network === 'polygon')) {
             const registry = new ethers.Contract(networkConfig.registry, IDENTITY_REGISTRY_ABI, adminWallet);
             try {
                 const isVerified = await registry.isVerified(userAddress);
                 if (!isVerified) {
-                    console.log(`[AAService] User ${userAddress} not KYC verified on ${network}. Auto-registering...`);
-                    const idHash = ethers.keccak256(ethers.toUtf8Bytes(`AUTO-${userAddress}-${Date.now()}`));
+                    console.log(`[AAService] User verified in DB but not on-chain. Syncing ${userAddress} to registry...`);
+                    const idHash = ethers.keccak256(ethers.toUtf8Bytes(`SYNC-${userAddress}-${Date.now()}`));
                     const registerTx = await registry.register(userAddress, idHash);
                     await registerTx.wait();
-                    console.log(`[AAService] KYC registered: ${registerTx.hash}`);
+                    console.log(`[AAService] KYC synced to chain: ${registerTx.hash}`);
                 }
             } catch (kycErr) {
-                console.warn(`[AAService] KYC check skipped/failed on ${network} (might be not deployed):`, kycErr);
+                console.warn(`[AAService] Chain KYC sync error (non-blocking if DB approved):`, kycErr);
             }
         }
+
 
         // 1.5 Check Idempotency
         if (requestId) {
