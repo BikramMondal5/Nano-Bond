@@ -278,14 +278,21 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
 /**
  * GET /api/kyc/status/:address
  * Check if an address is KYC verified
- * ALWAYS checks blockchain as source of truth
+ * Optimized: Checks MongoDB first.
  */
 app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
     try {
         const { address } = req.params;
         // console.log(`[API] GET /api/kyc/status/${address}`); // Reduce logs
 
-        // ALWAYS check blockchain as source of truth
+        // 1. Check MongoDB (Fastest)
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            res.json({ address, isVerified: true, source: 'db' });
+            return;
+        }
+
+        // 2. Fallback to Blockchain (If DB is out of sync or empty)
         const registry = new ethers.Contract(
             config.contracts.registryAddress,
             IDENTITY_REGISTRY_ABI,
@@ -294,18 +301,16 @@ app.get('/api/kyc/status/:address', async (req: Request, res: Response) => {
 
         const isVerifiedOnChain = await registry.isVerified(address);
 
-        // Sync DB with blockchain status
+        // If verified on chain but not in DB, assume we should treat them as verified.
+        // We can't backfill the nationalIdHash here since we don't have it, but we can mark them as verified.
         if (isVerifiedOnChain) {
-            // Ensure DB is in sync (mark as verified if not already)
-            const dbStatus = await userService.getUserStatus(address);
-            if (!dbStatus.isVerified) {
-                await userService.registerUser({
-                    walletAddress: address,
-                    aadhaarHash: 'SYNCED_FROM_CHAIN',
-                    kycStatus: 'APPROVED',
-                    kycApprovedAt: new Date()
-                });
-            }
+            // Optional: Update DB to avoid future chain calls (partial record)
+            await userService.registerUser({
+                walletAddress: address,
+                aadhaarHash: 'UNKNOWN_ONCHAIN_SYNC',
+                kycStatus: 'APPROVED',
+                kycApprovedAt: new Date()
+            });
         }
 
         res.json({ address, isVerified: isVerifiedOnChain, source: 'chain' });
@@ -590,31 +595,6 @@ app.post('/api/admin/bonds', async (req: Request, res: Response) => {
 // ============================================
 
 export default app;
-
-// ============================================
-// GLOBAL ERROR HANDLERS
-// ============================================
-
-process.on('uncaughtException', (err) => {
-    console.error('UNCAUGHT EXCEPTION! 💥 Shutting down gracefully...');
-    console.error(err.name, err.message);
-    // Ideally, we should restart the process here, but for now we log it.
-    // process.exit(1); 
-});
-
-process.on('unhandledRejection', (err: any) => {
-    console.error('UNHANDLED REJECTION! 💥');
-    console.error(err.message || err);
-});
-
-// Global Error Handler Middleware - MUST be the last middleware
-app.use((err: any, req: Request, res: Response, next: any) => {
-    console.error('SERVER ERROR:', err.stack || err.message);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: err.message || 'Something went wrong!'
-    });
-});
 
 app.listen(PORT, () => {
     console.log(`

@@ -42,24 +42,9 @@ export class DbService {
             await this.mongoClient.connect();
             this.db = this.mongoClient.db('govtbond');
             this.transactionsCollection = this.db.collection<TransactionDoc>('investments');
-
-            // Create indexes for performance
-            await this.ensureIndexes();
-
             console.log('[DbService] Connected to MongoDB (investments collection)');
         } catch (error) {
             console.error('[DbService] Failed to connect to MongoDB:', error);
-        }
-    }
-
-    private async ensureIndexes() {
-        if (!this.transactionsCollection) return;
-        try {
-            await this.transactionsCollection.createIndex({ walletAddress: 1, timestamp: -1 });
-            await this.transactionsCollection.createIndex({ txHash: 1 }, { unique: true });
-            console.log('[DbService] Indexes ensured');
-        } catch (error) {
-            console.error('[DbService] Failed to create indexes:', error);
         }
     }
 
@@ -71,7 +56,7 @@ export class DbService {
 
         try {
             await this.transactionsCollection.insertOne({
-                walletAddress: tx.userAddress.toLowerCase(), // Normalize to lowercase
+                walletAddress: tx.userAddress,
                 bondId: tx.bondId || undefined,
                 type: tx.type,
                 amount: tx.amount,
@@ -98,9 +83,9 @@ export class DbService {
         }
 
         try {
-            // Normalized query for wallet address (exact match, blazing fast with index)
+            // Case-insensitive query for wallet address
             const transactions = await this.transactionsCollection
-                .find({ walletAddress: address.toLowerCase() })
+                .find({ walletAddress: { $regex: new RegExp(`^${address}$`, 'i') } })
                 .sort({ timestamp: -1 })
                 .limit(100)
                 .toArray();
