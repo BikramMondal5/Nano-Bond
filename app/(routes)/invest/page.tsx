@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { InvestmentCard } from "@/components/investment-card"
 import { MetricsPanel } from "@/components/metrics-panel"
@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react"
 import type { IBond } from "@/lib/models/Bond"
 import { useContentTranslation } from "@/hooks/useContentTranslation"
 
-export default function InvestPage() {
+function InvestPageContent() {
   const content = useContentTranslation({
     title: "Invest in Government Bonds",
     subtitle: "Purchase fractional bonds with instant settlement and zero gas fees.",
@@ -105,6 +105,18 @@ export default function InvestPage() {
         <InvestmentRules />
       </div>
     </div>
+  )
+}
+
+export default function InvestPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8 h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    }>
+      <InvestPageContent />
+    </Suspense>
   )
 }
 
