@@ -113,7 +113,7 @@ export async function POST(req: Request) {
     } catch (error: any) {
         console.error('Error creating bond:', error);
         return NextResponse.json(
-            { error: 'Failed to create bond' },
+            { error: `Failed to create bond: ${error.message}` },
             { status: 500 }
         );
     }
