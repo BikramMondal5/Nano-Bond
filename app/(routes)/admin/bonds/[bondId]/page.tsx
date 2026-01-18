@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react"
 import Link from "next/link"
+import { ethers } from "ethers"
 
 export default function BondDetailsPage() {
     const params = useParams()
@@ -42,10 +43,44 @@ export default function BondDetailsPage() {
     if (isLoading) return <div className="text-white p-10">Loading bond details...</div>
     if (!bond) return null
 
-    // Ownership Check
-    const isOwner = bond.adminWallet && address
-        ? bond.adminWallet.toLowerCase() === address.toLowerCase()
-        : false
+    const [isAdmin, setIsAdmin] = useState(false)
+
+    // Check on-chain role
+    useEffect(() => {
+        const checkRole = async () => {
+            if (!address || !bond || !bond.contractAddress) {
+                setIsAdmin(false)
+                return
+            }
+
+            try {
+                // If address matches Creator, instant yes
+                if (bond.adminWallet && bond.adminWallet.toLowerCase() === address.toLowerCase()) {
+                    setIsAdmin(true)
+                    return
+                }
+
+                if (!window.ethereum) return
+                const provider = new ethers.BrowserProvider(window.ethereum)
+                const bondContract = new ethers.Contract(
+                    bond.contractAddress,
+                    ["function hasRole(bytes32, address) view returns (bool)"],
+                    provider
+                )
+
+                const DEFAULT_ADMIN_ROLE = ethers.ZeroHash
+                const hasRole = await bondContract.hasRole(DEFAULT_ADMIN_ROLE, address)
+                setIsAdmin(hasRole)
+            } catch (err) {
+                console.error("Role check failed:", err)
+                setIsAdmin(false)
+            }
+        }
+        checkRole()
+    }, [address, bond])
+
+    // Use state instead of static check
+    const isOwner = isAdmin
 
     return (
         <div className="flex flex-col min-h-screen bg-[#0A0A0A] p-6 lg:p-8 space-y-8 max-w-7xl mx-auto w-full pb-20">

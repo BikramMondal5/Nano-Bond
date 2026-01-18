@@ -120,19 +120,25 @@ export class BondService {
         }
         // ===============================================
 
-        // 2. Grant DEFAULT_ADMIN_ROLE to Owner
+        // 2. Grant DEFAULT_ADMIN_ROLE to Owner on ALL contracts
         // DEFAULT_ADMIN_ROLE is 0x00...00
         const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
-        const bondContract = new ethers.Contract(
-            deployment.contractAddress,
-            ["function grantRole(bytes32, address) external"],
-            new ethers.Wallet(config.admin.privateKey, this.provider)
-        );
+        const deployerWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+        const grantRoleAbi = ["function grantRole(bytes32, address) external"];
 
-        console.log(`[BondService] Granting ADMIN role to ${ownerAddress}...`);
-        const tx = await bondContract.grantRole(DEFAULT_ADMIN_ROLE, ownerAddress);
-        await tx.wait();
-        console.log(`[BondService] Role Granted.`);
+        const bondContract = new ethers.Contract(deployment.contractAddress, grantRoleAbi, deployerWallet);
+        const treasuryContract = new ethers.Contract(deployment.treasuryAddress, grantRoleAbi, deployerWallet);
+        const distributorContract = new ethers.Contract(deployment.distributorAddress, grantRoleAbi, deployerWallet);
+
+        console.log(`[BondService] Granting ADMIN role to ${ownerAddress} on Bond, Treasury, and Distributor...`);
+
+        // Parallel execution for speed (requires separate nonces if fast, but await sequential is safer usually or Promise.all with managed nonces)
+        // Let's do sequential to avoid nonce errors without complex logic
+        await (await bondContract.grantRole(DEFAULT_ADMIN_ROLE, ownerAddress)).wait();
+        await (await treasuryContract.grantRole(DEFAULT_ADMIN_ROLE, ownerAddress)).wait();
+        await (await distributorContract.grantRole(DEFAULT_ADMIN_ROLE, ownerAddress)).wait();
+
+        console.log(`[BondService] Roles Granted on all contracts.`);
 
         // 3. Save to DB
         // Check if exists
@@ -416,34 +422,44 @@ export class BondService {
             const bondAddr = bond.contractAddress || config.contracts.bondAddress;
             if (!bondAddr) continue;
 
-            try {
-                const bondContract = new ethers.Contract(
-                    bondAddr,
-                    [
-                        "function hasRole(bytes32, address) view returns (bool)",
-                        "function grantRole(bytes32, address) external"
-                    ],
-                    backendWallet
-                );
+            const targets = [
+                { name: 'Bond', address: bondAddr },
+                { name: 'Treasury', address: bond.treasuryAddress },
+                { name: 'Distributor', address: bond.distributorAddress }
+            ];
 
-                const hasRole = await bondContract.hasRole(DEFAULT_ADMIN_ROLE, targetWallet);
+            for (const target of targets) {
+                if (!target.address) continue;
 
-                if (hasRole) {
-                    details.push({ bondId: bond.bondId, status: 'already_has_role' });
-                    successCount++;
-                } else {
-                    console.log(`[BondService] Granting ADMIN role on ${bond.bondId} (${bondAddr}) to ${targetWallet}...`);
-                    const tx = await bondContract.grantRole(DEFAULT_ADMIN_ROLE, targetWallet);
-                    await tx.wait();
-                    console.log(`[BondService] Role granted on ${bond.bondId}.`);
+                try {
+                    const contract = new ethers.Contract(
+                        target.address,
+                        [
+                            "function hasRole(bytes32, address) view returns (bool)",
+                            "function grantRole(bytes32, address) external"
+                        ],
+                        backendWallet
+                    );
 
-                    details.push({ bondId: bond.bondId, status: 'granted', txHash: tx.hash });
-                    successCount++;
+                    const hasRole = await contract.hasRole(DEFAULT_ADMIN_ROLE, targetWallet);
+
+                    if (hasRole) {
+                        details.push({ bondId: bond.bondId, target: target.name, status: 'already_has_role' });
+                        successCount++;
+                    } else {
+                        console.log(`[BondService] Granting ADMIN on ${bond.bondId} ${target.name} (${target.address}) to ${targetWallet}...`);
+                        const tx = await contract.grantRole(DEFAULT_ADMIN_ROLE, targetWallet);
+                        await tx.wait();
+                        console.log(`[BondService] Role granted.`);
+
+                        details.push({ bondId: bond.bondId, target: target.name, status: 'granted', txHash: tx.hash });
+                        successCount++;
+                    }
+                } catch (error: any) {
+                    console.error(`[BondService] Failed to grant role on ${bond.bondId} ${target.name}:`, error.message);
+                    details.push({ bondId: bond.bondId, target: target.name, status: 'failed', error: error.message });
+                    failCount++;
                 }
-            } catch (error: any) {
-                console.error(`[BondService] Failed to grant role on ${bond.bondId}:`, error);
-                details.push({ bondId: bond.bondId, status: 'failed', error: error.message });
-                failCount++;
             }
         }
 
