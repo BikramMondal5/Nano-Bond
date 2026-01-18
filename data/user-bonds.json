@@ -250,11 +250,11 @@
             "bonds": [
                 {
                     "id": "6884646",
-                    "name": "gg7",
+                    "name": "Bond 6884646",
                     "amount": 299,
                     "purchaseDate": "2026-01-17",
-                    "yield": "7%",
-                    "maturityDate": "2026-09-08",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
@@ -271,6 +271,33 @@
                     "name": "bond",
                     "amount": 269,
                     "purchaseDate": "2026-01-17",
+                    "yield": "7%",
+                    "maturityDate": "2026-09-08",
+                    "status": "Active"
+                },
+                {
+                    "id": "688477sd",
+                    "name": "Govt Bond",
+                    "amount": 650,
+                    "purchaseDate": "2026-01-17",
+                    "yield": "7%",
+                    "maturityDate": "2026-09-08",
+                    "status": "Active"
+                },
+                {
+                    "id": "6884rhd",
+                    "name": "mock Bond 2",
+                    "amount": 200,
+                    "purchaseDate": "2026-01-18",
+                    "yield": "7%",
+                    "maturityDate": "2026-09-08",
+                    "status": "Active"
+                },
+                {
+                    "id": "6884rhdfs",
+                    "name": "mock Bond 3",
+                    "amount": 105,
+                    "purchaseDate": "2026-01-18",
                     "yield": "7%",
                     "maturityDate": "2026-09-08",
                     "status": "Active"

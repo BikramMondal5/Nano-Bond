@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAccount } from "wagmi"
 import { VaultControls } from "@/components/admin/vault-controls"
+import { TreasuryWithdraw } from "@/components/admin/treasury-withdraw"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react"
@@ -102,6 +103,25 @@ export default function BondDetailsPage() {
                         bondAddress={bond.contractAddress}
                         distributorAddress={bond.distributorAddress}
                     />
+
+                    {/* Treasury Management */}
+                    <div className="mt-8">
+                        <div className="mb-6 flex items-center gap-4">
+                            <div className="h-px bg-gray-800 flex-1" />
+                            <span className="text-xs uppercase font-semibold tracking-wider text-green-500">
+                                Treasury & Reserves
+                            </span>
+                            <div className="h-px bg-gray-800 flex-1" />
+                        </div>
+                        {bond.treasuryAddress ? (
+                            <TreasuryWithdraw
+                                treasuryAddress={bond.treasuryAddress}
+                                bondSymbol={bond.bondName}
+                            />
+                        ) : (
+                            <div className="text-center text-gray-500 py-4">No Treasury Configured</div>
+                        )}
+                    </div>
                 </section>
             ) : (
                 <div className="p-8 border border-red-900/50 bg-red-900/10 rounded-lg text-center">

@@ -151,13 +151,15 @@ export class BondService {
                 contractAddress: deployment.contractAddress,
                 treasuryAddress: deployment.treasuryAddress,
                 distributorAddress: deployment.distributorAddress,
-                status: 'active' // or 'pending_backing'
+                status: 'active', // or 'pending_backing'
+                adminWallet: ownerAddress // <--- FIXED: Save admin wallet
             });
         } else {
             // Update existing
             bondDoc.contractAddress = deployment.contractAddress;
             bondDoc.treasuryAddress = deployment.treasuryAddress;
             bondDoc.distributorAddress = deployment.distributorAddress;
+            bondDoc.adminWallet = ownerAddress; // <--- FIXED: Update admin wallet
             // Update other fields as well to match request
             bondDoc.bondName = details.bondName;
             bondDoc.couponRate = details.couponRate;
@@ -395,6 +397,57 @@ export class BondService {
             nextMaturityDate: nextMaturity,
             holdings
         };
+    }
+    /**
+     * Sync/Grant Admin Roles for a specific wallet on all managed bonds
+     */
+    async syncAdminRoles(targetWallet: string): Promise<{ success: number; failed: number; details: any[] }> {
+        const dbBonds = await Bond.find({});
+        let successCount = 0;
+        let failCount = 0;
+        const details: any[] = [];
+
+        console.log(`[BondService] Syncing admin roles for ${targetWallet} across ${dbBonds.length} bonds...`);
+
+        const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
+        const backendWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+
+        for (const bond of dbBonds) {
+            const bondAddr = bond.contractAddress || config.contracts.bondAddress;
+            if (!bondAddr) continue;
+
+            try {
+                const bondContract = new ethers.Contract(
+                    bondAddr,
+                    [
+                        "function hasRole(bytes32, address) view returns (bool)",
+                        "function grantRole(bytes32, address) external"
+                    ],
+                    backendWallet
+                );
+
+                const hasRole = await bondContract.hasRole(DEFAULT_ADMIN_ROLE, targetWallet);
+
+                if (hasRole) {
+                    details.push({ bondId: bond.bondId, status: 'already_has_role' });
+                    successCount++;
+                } else {
+                    console.log(`[BondService] Granting ADMIN role on ${bond.bondId} (${bondAddr}) to ${targetWallet}...`);
+                    const tx = await bondContract.grantRole(DEFAULT_ADMIN_ROLE, targetWallet);
+                    await tx.wait();
+                    console.log(`[BondService] Role granted on ${bond.bondId}.`);
+
+                    details.push({ bondId: bond.bondId, status: 'granted', txHash: tx.hash });
+                    successCount++;
+                }
+            } catch (error: any) {
+                console.error(`[BondService] Failed to grant role on ${bond.bondId}:`, error);
+                details.push({ bondId: bond.bondId, status: 'failed', error: error.message });
+                failCount++;
+            }
+        }
+
+        return { success: successCount, failed: failCount, details };
     }
 }
 
