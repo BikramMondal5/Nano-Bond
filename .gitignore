@@ -43,3 +43,4 @@ packages/contracts/deploy_log.txt
 packages/contracts/deploy.log
 packages/contracts/deployed_addresses.json
 .env.local
+bond_ai_applet/target

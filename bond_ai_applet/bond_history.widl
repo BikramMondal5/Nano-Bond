@@ -1,0 +1,10 @@
+record BondHistoryConfig {
+    endpoint: string
+}
+
+interface BondHistory {
+    config -> BondHistoryConfig;
+    
+    mutate func add_log(log: string);
+    query func get_logs() -> list<string>
+}

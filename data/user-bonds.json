@@ -42,29 +42,38 @@
             "bonds": [
                 {
                     "id": "GOI-2030",
-                    "name": "GOI Bond 2030",
+                    "name": "Bond GOI-2030",
                     "amount": 1373,
                     "purchaseDate": "2026-01-13",
-                    "yield": "7.5%",
-                    "maturityDate": "2030-01-01",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "522677",
-                    "name": "gg4",
+                    "name": "Bond 522677",
                     "amount": 4009,
                     "purchaseDate": "2026-01-14",
-                    "yield": "7%",
-                    "maturityDate": "2026-09-08",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "5226778",
                     "name": "gg5",
-                    "amount": 4969,
+                    "amount": 5169,
                     "purchaseDate": "2026-01-14",
                     "yield": "7%",
                     "maturityDate": "2026-09-08",
+                    "status": "Active"
+                },
+                {
+                    "id": "69",
+                    "name": "Bond 69",
+                    "amount": 1176,
+                    "purchaseDate": "2026-01-15",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 }
             ]
