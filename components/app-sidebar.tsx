@@ -42,7 +42,7 @@ export function AppSidebar() {
     { label: content.my_bonds, icon: Wallet, href: "/my-bonds" },
     { label: content.govt_bonds, icon: Landmark, href: "/govt-bonds" },
     { label: content.verification, icon: ShieldCheck, href: "/verification" },
-    { label: content.transactions, icon: History, href: "/market-analysis" },
+    { label: content.transactions, icon: History, href: "/market-Analysis" },
     { label: content.settings, icon: Settings, href: "/settings" },
   ]
 
