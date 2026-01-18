@@ -25,10 +25,18 @@ async function connectDB() {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
         };
 
+        console.log('[MongoDB] Connecting to:', MONGODB_URI?.split('@')[1]); // Log partial URI for privacy
+
         cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
+            console.log('[MongoDB] Connected successfully');
             return mongoose;
+        }).catch(err => {
+            console.error('[MongoDB] Connection failed:', err);
+            throw err;
         });
     }
 

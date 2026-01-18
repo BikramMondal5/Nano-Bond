@@ -78,7 +78,7 @@ export default function PortfolioPage() {
       const res = await fetch("/api/admin/promote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passkey: adminKey }),
+        body: JSON.stringify({ passkey: adminKey, walletAddress: address }),
       })
 
       if (res.ok) {
