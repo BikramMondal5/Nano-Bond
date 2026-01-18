@@ -151,13 +151,15 @@ export class BondService {
                 contractAddress: deployment.contractAddress,
                 treasuryAddress: deployment.treasuryAddress,
                 distributorAddress: deployment.distributorAddress,
-                status: 'active' // or 'pending_backing'
+                status: 'active', // or 'pending_backing'
+                adminWallet: ownerAddress // <--- FIXED: Save admin wallet
             });
         } else {
             // Update existing
             bondDoc.contractAddress = deployment.contractAddress;
             bondDoc.treasuryAddress = deployment.treasuryAddress;
             bondDoc.distributorAddress = deployment.distributorAddress;
+            bondDoc.adminWallet = ownerAddress; // <--- FIXED: Update admin wallet
             // Update other fields as well to match request
             bondDoc.bondName = details.bondName;
             bondDoc.couponRate = details.couponRate;
