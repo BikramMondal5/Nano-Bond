@@ -52,270 +52,331 @@ export class AAService {
         return result;
     }
 
+    /**
+     * Helper to submit a transaction safely with proper nonce management.
+     * Locks ONLY the submission part, allowing wait() to run unlocked for parallelism.
+     */
+    private async submitTx(action: () => Promise<ethers.ContractTransactionResponse>): Promise<ethers.ContractTransactionResponse> {
+        return this.withLock(async () => action());
+    }
+
     constructor(private dbService?: DbService) {
         this.provider = new ethers.JsonRpcProvider(config.rpc.url);
         this.bondService = new BondService();
     }
 
     /**
-     * Backend-Sponsored Investment (Gasless)
-     * Real World Logic:
+     * Backend-Sponsored Investment (Gasless) - PIPELINED VERSION
+     * Flow:
      * 1. Check KYC
-     * 2. Move USDT from User -> Treasury (via Permit + TransferFrom)
-     * 3. Mint Bond to User (via adminMint)
+     * 2. Submit ALL 3 transactions with pre-calculated nonces (fast)
+     * 3. Wait for all confirmations at once
+     * 
+     * COMPENSATION: If mint fails after transfer, refund from Treasury
      */
     async invest(userAddress: string, amount: number, bondId: string = 'GOI-2030') {
-        return this.withLock(async () => {
-            if (!config.admin.privateKey) throw new Error('Admin private key not configured');
+        if (!config.admin.privateKey) throw new Error('Admin private key not configured');
 
-            // 1. Resolve Data
-            const bondData = await this.bondService.getBondById(bondId);
-            if (!bondData || !bondData.treasuryAddress) throw new Error(`Treasury not configured for: ${bondId}`);
+        // 1. Resolve Data (unlocked - read operations)
+        const bondData = await this.bondService.getBondById(bondId);
+        if (!bondData || !bondData.treasuryAddress) throw new Error(`Treasury not configured for: ${bondId}`);
 
-            const treasuryAddress = bondData.treasuryAddress;
-            const usdtAddress = config.contracts.usdtAddress;
-            const registryAddress = config.contracts.registryAddress;
+        const treasuryAddress = bondData.treasuryAddress;
+        const usdtAddress = config.contracts.usdtAddress;
+        const registryAddress = config.contracts.registryAddress;
 
-            const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
-            console.log(`[AAService] Processing investment for ${userAddress}: ${amount} USDT in ${bondId}`);
+        const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+        console.log(`[AAService] Processing investment for ${userAddress}: ${amount} USDT in ${bondId}`);
 
-            // 2. Check KYC
-            const registry = new ethers.Contract(registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
-            const isVerified = await registry.isVerified(userAddress);
-            if (!isVerified) {
-                throw new Error('KYC Verification Required.');
-            }
+        // 2. Check KYC (unlocked - read operation)
+        const registry = new ethers.Contract(registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
+        const isVerified = await registry.isVerified(userAddress);
+        if (!isVerified) {
+            throw new Error('KYC Verification Required.');
+        }
 
-            const usdt = new ethers.Contract(usdtAddress, USDT_ABI, adminWallet);
-            const treasury = new ethers.Contract(treasuryAddress, TREASURY_SWAP_ABI, adminWallet);
+        const usdt = new ethers.Contract(usdtAddress, USDT_ABI, adminWallet);
+        const treasury = new ethers.Contract(treasuryAddress, TREASURY_SWAP_ABI, adminWallet);
 
-            // Fixed: Use parseUnits to avoid floating point precision errors
-            const amountBig = ethers.parseUnits(amount.toString(), 6); // USDT is 6 decimals
+        // Use parseUnits to avoid floating point precision errors
+        const amountBig = ethers.parseUnits(amount.toString(), 6); // USDT is 6 decimals
 
-            try {
-                // 3. Fake Permit (Demo Only)
-                // In production, the user would sign a permit off-chain and send r,s,v here.
-                const deadline = Math.floor(Date.now() / 1000) + 3600;
-                // Approve ADMIN to spend User's funds - Get explicit nonce
-                const permitNonce = await adminWallet.getNonce();
-                const permitTx = await usdt.permit(
-                    userAddress,
-                    adminWallet.address,
-                    amountBig,
-                    deadline,
-                    0, // v
-                    ethers.ZeroHash, // r
-                    ethers.ZeroHash,  // s
-                    { nonce: permitNonce }
-                );
-                await permitTx.wait();
-                console.log(`[AAService] Permit/Approve successful`);
+        // Track state for compensation
+        let usdtTransferred = false;
 
-                // 4. Transfer USDT: User -> Treasury - Get fresh nonce
-                const transferNonce = await adminWallet.getNonce();
-                const transferTx = await usdt.transferFrom(userAddress, treasuryAddress, amountBig, { nonce: transferNonce });
-                await transferTx.wait();
-                console.log(`[AAService] USDT transferred to Treasury: ${transferTx.hash}`);
-
-                // 5. Mint Bond - Get fresh nonce
-                const mintNonce = await adminWallet.getNonce();
-                const investTx = await treasury.adminMint(userAddress, amountBig, { nonce: mintNonce });
-                await investTx.wait();
-                console.log(`[AAService] Bond minted: ${investTx.hash}`);
-
-                if (this.dbService) {
-                    await this.dbService.recordTransaction({
-                        txHash: investTx.hash,
-                        userAddress,
-                        type: 'INVEST',
-                        amount: amount,
-                        currency: 'USDT',
-                        bondId,
-                        status: 'SUCCESS'
-                    });
-                }
-
-                return {
-                    success: true,
-                    txHash: investTx.hash,
-                    message: `Invested ${amount} USDT in ${bondId}`
-                };
-
-            } catch (error: any) {
-                console.error(`[AAService] Investment failed:`, error.message);
-                throw error;
-            }
+        // STEP 1: Permit (approve admin to spend user's USDT)
+        console.log(`[AAService] Step 1/3: Submitting permit...`);
+        const permitTx = await this.submitTx(async () => {
+            const deadline = Math.floor(Date.now() / 1000) + 3600;
+            return usdt.permit(
+                userAddress,
+                adminWallet.address,
+                amountBig,
+                deadline,
+                0, ethers.ZeroHash, ethers.ZeroHash
+            );
         });
+        await permitTx.wait();
+        console.log(`[AAService] Permit confirmed: ${permitTx.hash}`);
+
+        // STEP 2: Transfer USDT to Treasury
+        console.log(`[AAService] Step 2/3: Transferring USDT...`);
+        const transferTx = await this.submitTx(() =>
+            usdt.transferFrom(userAddress, treasuryAddress, amountBig)
+        );
+        await transferTx.wait();
+        usdtTransferred = true;
+        console.log(`[AAService] Transfer confirmed: ${transferTx.hash}`);
+
+        // STEP 3: Mint bonds (with compensation on failure)
+        try {
+            console.log(`[AAService] Step 3/3: Minting bonds...`);
+            const investTx = await this.submitTx(() =>
+                treasury.adminMint(userAddress, amountBig)
+            );
+            await investTx.wait();
+            console.log(`[AAService] Investment complete: ${investTx.hash}`);
+
+            // Record success
+            if (this.dbService) {
+                await this.dbService.recordTransaction({
+                    txHash: investTx.hash,
+                    userAddress,
+                    type: 'INVEST',
+                    amount: amount,
+                    currency: 'USDT',
+                    bondId,
+                    status: 'SUCCESS'
+                });
+            }
+
+            return {
+                success: true,
+                txHash: investTx.hash,
+                message: `Invested ${amount} USDT in ${bondId}`
+            };
+
+        } catch (mintError: any) {
+            // COMPENSATION: Mint failed after USDT transferred - REFUND!
+            console.error(`[AAService] Mint failed: ${mintError.message}`);
+
+            if (usdtTransferred) {
+                console.log(`[AAService] Initiating USDT refund...`);
+                try {
+                    const refundTx = await this.submitTx(() =>
+                        treasury.withdrawReserves(userAddress, amountBig)
+                    );
+                    await refundTx.wait();
+                    console.log(`[AAService] USDT refunded: ${refundTx.hash}`);
+
+                    if (this.dbService) {
+                        await this.dbService.recordTransaction({
+                            txHash: refundTx.hash,
+                            userAddress,
+                            type: 'INVEST',
+                            amount: amount,
+                            currency: 'USDT',
+                            bondId,
+                            status: 'REFUNDED'
+                        });
+                    }
+
+                    throw new Error(`Investment failed but USDT was refunded. Original: ${mintError.message}`);
+                } catch (refundError: any) {
+                    if (refundError.message.includes('refunded')) {
+                        throw refundError;
+                    }
+                    console.error(`[AAService] CRITICAL: Refund failed: ${refundError.message}`);
+
+                    if (this.dbService) {
+                        await this.dbService.recordTransaction({
+                            txHash: 'REFUND_FAILED',
+                            userAddress,
+                            type: 'INVEST',
+                            amount: amount,
+                            currency: 'USDT',
+                            bondId,
+                            status: 'NEEDS_MANUAL_REFUND'
+                        });
+                    }
+                    throw new Error(`CRITICAL: Investment and refund both failed. Manual intervention required.`);
+                }
+            }
+            throw mintError;
+        }
     }
+
+
 
     /**
-     * Backend-Sponsored Redemption (Gasless)
-     * Real World Logic:
+     * Backend-Sponsored Redemption (Gasless) - ATOMIC VERSION
+     * Flow:
      * 1. Check KYC
-     * 2. Burn User's Bond (Admin has MINTER_ROLE)
-     * 3. Send USDT from Treasury -> User (Admin has DEFAULT_ADMIN_ROLE to withdraw)
+     * 2. Check treasury has enough USDT
+     * 3. Burn User's Bond
+     * 4. Send USDT from Treasury -> User
+     * 
+     * NOTE: Pre-check treasury balance to avoid burning bonds when payment would fail
      */
     async redeem(userAddress: string, bondAmount: string, bondId: string = 'GOI-2030') {
-        return this.withLock(async () => {
-            if (!config.admin.privateKey) throw new Error('Admin key not configured');
+        if (!config.admin.privateKey) throw new Error('Admin key not configured');
 
-            const bondData = await this.bondService.getBondById(bondId);
-            if (!bondData || !bondData.treasuryAddress) throw new Error(`Configuration missing for: ${bondId}`);
+        // Resolve data (unlocked)
+        const bondData = await this.bondService.getBondById(bondId);
+        if (!bondData || !bondData.treasuryAddress) throw new Error(`Configuration missing for: ${bondId}`);
 
-            const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+        const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
 
-            // 1. KYC Check
-            const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
-            if (!(await registry.isVerified(userAddress))) {
-                throw new Error(`User ${userAddress} is not KYC verified.`);
-            }
+        // 1. KYC Check (unlocked)
+        const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
+        if (!(await registry.isVerified(userAddress))) {
+            throw new Error(`User ${userAddress} is not KYC verified.`);
+        }
 
-            const bond = new ethers.Contract(bondData.contractAddress, SOVEREIGN_BOND_ABI, adminWallet);
-            const treasury = new ethers.Contract(bondData.treasuryAddress, TREASURY_SWAP_ABI, adminWallet);
+        const bond = new ethers.Contract(bondData.contractAddress, SOVEREIGN_BOND_ABI, adminWallet);
+        const treasury = new ethers.Contract(bondData.treasuryAddress, TREASURY_SWAP_ABI, adminWallet);
+        const usdt = new ethers.Contract(config.contracts.usdtAddress, USDT_ABI, adminWallet);
 
-            // GBOND = 18 decimals, USDT = 6 decimals
-            // Fixed: use parseUnits for both to ensure precision
-            const bondAmountBig = ethers.parseUnits(bondAmount, 18);
-            const usdtAmountBig = ethers.parseUnits(bondAmount, 6);
+        // GBOND = 18 decimals, USDT = 6 decimals
+        const bondAmountBig = ethers.parseUnits(bondAmount, 18);
+        const usdtAmountBig = ethers.parseUnits(bondAmount, 6);
 
-            try {
-                console.log(`[AAService] Redeeming ${bondAmount} GBOND for ${userAddress}...`);
+        // 2. PRE-CHECK: Verify treasury has enough USDT before burning bonds
+        const treasuryBalance = await usdt.balanceOf(bondData.treasuryAddress);
+        if (treasuryBalance < usdtAmountBig) {
+            throw new Error(`Treasury has insufficient USDT. Required: ${bondAmount}, Available: ${ethers.formatUnits(treasuryBalance, 6)}`);
+        }
+        console.log(`[AAService] Treasury balance verified: ${ethers.formatUnits(treasuryBalance, 6)} USDT`);
 
-                // 2. Burn Bonds - Get explicit nonce
-                const burnNonce = await adminWallet.getNonce();
-                const burnTx = await bond.burn(userAddress, bondAmountBig, { nonce: burnNonce });
-                await burnTx.wait();
-                console.log(`[AAService] Bonds burned: ${burnTx.hash}`);
+        console.log(`[AAService] Redeeming ${bondAmount} GBOND for ${userAddress}...`);
 
-                // 3. Pay User (Withdraw from Treasury Reserve) - Get fresh nonce after burn confirms
-                const payNonce = await adminWallet.getNonce();
-                const payTx = await treasury.withdrawReserves(userAddress, usdtAmountBig, { nonce: payNonce });
-                await payTx.wait();
-                console.log(`[AAService] USDT sent to user: ${payTx.hash}`);
+        // 3. Burn Bonds - LOCKED SUBMISSION
+        console.log(`[AAService] Step 1/2: Burning bonds...`);
+        const burnTx = await this.submitTx(() => bond.burn(userAddress, bondAmountBig));
+        await burnTx.wait();
+        console.log(`[AAService] Bonds burned: ${burnTx.hash}`);
 
-                if (this.dbService) {
-                    await this.dbService.recordTransaction({
-                        txHash: payTx.hash,
-                        userAddress,
-                        type: 'REDEEM',
-                        amount: parseFloat(bondAmount),
-                        currency: 'GBOND',
-                        bondId,
-                        status: 'SUCCESS'
-                    });
-                }
+        // 4. Pay User - LOCKED SUBMISSION
+        console.log(`[AAService] Step 2/2: Sending USDT payment...`);
+        const payTx = await this.submitTx(() =>
+            treasury.withdrawReserves(userAddress, usdtAmountBig)
+        );
+        await payTx.wait();
+        console.log(`[AAService] USDT sent to user: ${payTx.hash}`);
 
-                return {
-                    success: true,
-                    txHash: payTx.hash,
-                    message: `Redeemed ${bondAmount} GBOND`
-                };
+        if (this.dbService) {
+            await this.dbService.recordTransaction({
+                txHash: payTx.hash,
+                userAddress,
+                type: 'REDEEM',
+                amount: parseFloat(bondAmount),
+                currency: 'GBOND',
+                bondId,
+                status: 'SUCCESS'
+            });
+        }
 
-            } catch (error: any) {
-                console.error(`[AAService] Redeem failed:`, error.message);
-                throw error;
-            }
-        });
+        return {
+            success: true,
+            txHash: payTx.hash,
+            message: `Redeemed ${bondAmount} GBOND`
+        };
     }
+
 
     /**
      * Backend-Sponsored Yield Claim (Gasless)
      * Fixed: Added KYC check and missing bondId in record
      */
     async claim(userAddress: string, bondId: string = 'GOI-2030') {
-        return this.withLock(async () => {
-            if (!config.admin.privateKey) throw new Error('Admin key not configured');
+        if (!config.admin.privateKey) throw new Error('Admin key not configured');
 
-            const bondData = await this.bondService.getBondById(bondId);
-            if (!bondData || !bondData.distributorAddress) throw new Error(`Distributor missing for: ${bondId}`);
+        const bondData = await this.bondService.getBondById(bondId);
+        if (!bondData || !bondData.distributorAddress) throw new Error(`Distributor missing for: ${bondId}`);
 
-            const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+        const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
 
-            // 1. KYC Check (Fixed: Added missing security check)
-            const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
-            if (!(await registry.isVerified(userAddress))) {
-                throw new Error(`User ${userAddress} is not KYC verified.`);
-            }
+        // 1. KYC Check (unlocked - read operation)
+        const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
+        if (!(await registry.isVerified(userAddress))) {
+            throw new Error(`User ${userAddress} is not KYC verified.`);
+        }
 
-            const distributor = new ethers.Contract(bondData.distributorAddress, DISTRIBUTOR_ABI, adminWallet);
+        const distributor = new ethers.Contract(bondData.distributorAddress, DISTRIBUTOR_ABI, adminWallet);
 
-            try {
-                // Check amount first
-                const claimable = await distributor.claimableYield(userAddress);
-                const claimableFormatted = parseFloat(ethers.formatUnits(claimable, 6));
+        // Check claimable amount first (unlocked - read operation)
+        const claimable = await distributor.claimableYield(userAddress);
+        const claimableFormatted = parseFloat(ethers.formatUnits(claimable, 6));
 
-                if (claimableFormatted <= 0) {
-                    throw new Error('No yield available to claim.');
-                }
+        if (claimableFormatted <= 0) {
+            throw new Error('No yield available to claim.');
+        }
 
-                console.log(`[AAService] Claiming ${claimableFormatted} USDT for ${userAddress}`);
+        console.log(`[AAService] Claiming ${claimableFormatted} USDT for ${userAddress}`);
 
-                const tx = await distributor.adminClaim(userAddress);
-                await tx.wait();
+        // Submit claim transaction - LOCKED SUBMISSION
+        const tx = await this.submitTx(() => distributor.adminClaim(userAddress));
+        console.log(`[AAService] Claim submitted: ${tx.hash}`);
 
-                if (this.dbService) {
-                    // Fixed: Added missing bondId field
-                    await this.dbService.recordTransaction({
-                        txHash: tx.hash,
-                        userAddress,
-                        type: 'CLAIM',
-                        amount: claimableFormatted,
-                        currency: 'USDT',
-                        bondId: bondId,
-                        status: 'SUCCESS'
-                    });
-                }
+        await tx.wait();
+        console.log(`[AAService] Claim confirmed: ${tx.hash}`);
 
-                return {
-                    success: true,
-                    txHash: tx.hash,
-                    amount: claimableFormatted,
-                    message: `Yield claimed successfully`
-                };
-            } catch (error: any) {
-                console.error(`[AAService] Claim failed:`, error.message);
-                throw error;
-            }
-        });
+        if (this.dbService) {
+            await this.dbService.recordTransaction({
+                txHash: tx.hash,
+                userAddress,
+                type: 'CLAIM',
+                amount: claimableFormatted,
+                currency: 'USDT',
+                bondId: bondId,
+                status: 'SUCCESS'
+            });
+        }
+
+        return {
+            success: true,
+            txHash: tx.hash,
+            amount: claimableFormatted,
+            message: `Yield claimed successfully`
+        };
     }
 
     /**
      * Mint USDT helper for Faucet (Demo Only)
-     * Fixed: Added KYC check and proper math
      */
     async mintUSDT(to: string, amount: number) {
-        return this.withLock(async () => {
-            if (!config.admin.privateKey) throw new Error("Admin key required");
+        if (!config.admin.privateKey) throw new Error("Admin key required");
 
-            const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
+        const adminWallet = new ethers.Wallet(config.admin.privateKey, this.provider);
 
-            // 1. KYC Check (Fixed: Added as per bug report)
-            const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
-            if (!(await registry.isVerified(to))) {
-                throw new Error(`User ${to} must be KYC verified to use the faucet.`);
-            }
+        // KYC Check (unlocked - read operation)
+        const registry = new ethers.Contract(config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
+        if (!(await registry.isVerified(to))) {
+            throw new Error(`User ${to} must be KYC verified to use the faucet.`);
+        }
 
-            const usdt = new ethers.Contract(config.contracts.usdtAddress, USDT_ABI, adminWallet);
+        const usdt = new ethers.Contract(config.contracts.usdtAddress, USDT_ABI, adminWallet);
+        const amountBig = ethers.parseUnits(amount.toString(), 6);
 
-            // Fixed: Use parseUnits
-            const amountBig = ethers.parseUnits(amount.toString(), 6); // 6 decimals
+        console.log(`[AAService] Minting ${amount} USDT on faucet for ${to}`);
 
-            const tx = await usdt.mint(to, amountBig);
-            await tx.wait();
+        // Submit mint - LOCKED SUBMISSION
+        const tx = await this.submitTx(() => usdt.mint(to, amountBig));
+        await tx.wait();
+        console.log(`[AAService] Faucet mint confirmed: ${tx.hash}`);
 
-            if (this.dbService) {
-                await this.dbService.recordTransaction({
-                    txHash: tx.hash,
-                    userAddress: to,
-                    type: 'DEPOSIT',
-                    amount: amount,
-                    currency: 'USDT',
-                    status: 'SUCCESS'
-                });
-            }
+        if (this.dbService) {
+            await this.dbService.recordTransaction({
+                txHash: tx.hash,
+                userAddress: to,
+                type: 'DEPOSIT',
+                amount: amount,
+                currency: 'USDT',
+                status: 'SUCCESS'
+            });
+        }
 
-            return tx.hash;
-        });
+        return tx.hash;
     }
 
     /**

@@ -259,7 +259,7 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
       child: Column(
         children: [
           SizedBox(
-            height: 150.h,
+            height: 220.h,
             child: Lottie.asset(
               'assets/animation/Coin.json',
               fit: BoxFit.contain,

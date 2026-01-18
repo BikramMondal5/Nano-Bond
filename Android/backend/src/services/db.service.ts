@@ -8,7 +8,7 @@ export interface TransactionRecord {
     amount: number;
     currency: string;
     bondId?: string;
-    status: 'SUCCESS' | 'FAILED' | 'PENDING';
+    status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'REFUNDED' | 'NEEDS_MANUAL_REFUND';
 }
 
 interface TransactionDoc {
