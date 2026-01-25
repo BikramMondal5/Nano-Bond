@@ -4,6 +4,8 @@
 /node_modules
 /packages/backend/node_modules
 /packages/contracts/node_modules
+Android/admin-web/node_modules/
+Android/backend/node_modules/
 
 # next.js
 /.next/
@@ -11,7 +13,7 @@
 ai-kyc-service/venv/
 # production
 /build
-package-lock.json  
+package-lock.json
 backend/node_modules/
 contracts/node_modules/
 
@@ -23,14 +25,14 @@ yarn-error.log*
 backend/.env
 
 # env files
- 
+
 # env files
 .env
 .env.*
 !.env.example
 # vercel
 .vercel
- 
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
