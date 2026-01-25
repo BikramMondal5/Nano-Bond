@@ -6,6 +6,7 @@
 /packages/contracts/node_modules
 Android/admin-web/node_modules/
 Android/backend/node_modules/
+Android/contracts/node_modules/
 
 # next.js
 /.next/
