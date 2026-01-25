@@ -108,6 +108,17 @@ class AAService {
             const amountBig = BigInt(Math.round(amount * 1000000)); // 6 decimals
             const tx = await usdt.mint(to, amountBig);
             await tx.wait();
+            // Record deposit/faucet transaction
+            if (this.dbService) {
+                await this.dbService.recordTransaction({
+                    txHash: tx.hash,
+                    userAddress: to,
+                    type: 'DEPOSIT',
+                    amount: amount,
+                    currency: 'USDT',
+                    status: 'SUCCESS'
+                });
+            }
             return tx.hash;
         });
     }
@@ -176,9 +187,9 @@ class AAService {
                 throw new Error(`Bond not found: ${bondId}`);
             // Note: Bond Registry has "distributorAddress" but we might need to fetch it from the bond data structure in bondService
             // The JSON structure has it.
-            const distributorAddress = bondData.distributorAddress || config_1.config.contracts.distributorAddress; // Fallback
+            const distributorAddress = bondData.distributorAddress;
             if (!distributorAddress)
-                throw new Error(`Distributor not configured`);
+                throw new Error(`Distributor not configured for: ${bondId}`);
             console.log(`[AAService] Processing gasless claim for ${userAddress}`);
             const adminWallet = new ethers_1.ethers.Wallet(config_1.config.admin.privateKey, this.provider);
             const DISTRIBUTOR_CLAIM_ABI = [
@@ -240,9 +251,9 @@ class AAService {
             const bondData = await this.bondService.getBondById(bondId);
             if (!bondData)
                 return 0;
-            const distributorAddress = bondData.distributorAddress || config_1.config.contracts.distributorAddress;
+            const distributorAddress = bondData.distributorAddress;
             if (!distributorAddress)
-                return 0;
+                return 0; // No distributor = no yield
             const DISTRIBUTOR_VIEW_ABI = [
                 "function claimableYield(address user) external view returns (uint256)"
             ];

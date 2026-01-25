@@ -23,6 +23,7 @@ interface RegistryBond {
     bondId: string;
     bondName: string;
     issuer: string;
+    adminWallet?: string;
     category?: string;
     contractAddress: string;
     treasuryAddress?: string;
@@ -42,6 +43,7 @@ export interface BondDto {
     bondId: string;
     bondName: string;
     issuer: string;
+    adminWallet?: string;
     contractAddress: string;
     treasuryAddress?: string;
     distributorAddress?: string;
@@ -212,6 +214,7 @@ export class BondService {
                 bondId: rb.bondId,
                 bondName: rb.bondName,
                 issuer: rb.issuer,
+                adminWallet: rb.adminWallet,
                 contractAddress: targetAddress,
                 treasuryAddress: rb.treasuryAddress,
                 distributorAddress: rb.distributorAddress,
@@ -254,6 +257,7 @@ export class BondService {
             bondId: rb.bondId,
             bondName: rb.bondName,
             issuer: rb.issuer,
+            adminWallet: rb.adminWallet,
             contractAddress: rb.contractAddress,
             treasuryAddress: rb.treasuryAddress,
             distributorAddress: rb.distributorAddress,

@@ -5,6 +5,7 @@ import { config } from './config';
 import { BondService } from './services/bond.service';
 import { AAService } from './services/aa.service';
 import { DbService } from './services/db.service';
+import { DeploymentService } from './services/deployment.service';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,6 +22,7 @@ const bondService = new BondService();
 const dbService = new DbService();
 const aaService = new AAService(dbService);
 const userService = new UserService();
+let deploymentService: DeploymentService | null = null;
 
 // Provider and Wallet for admin operations
 const provider = new ethers.JsonRpcProvider(config.rpc.url);
@@ -58,6 +60,17 @@ const ERC20_ABI = [
 
 app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ============================================
+// PUBLIC CONFIG (for admin-web)
+// ============================================
+
+app.get('/api/config', (_req: Request, res: Response) => {
+    res.json({
+        rpcUrl: config.rpc.url,
+        contracts: config.contracts
+    });
 });
 
 // ============================================
@@ -571,8 +584,13 @@ app.post('/api/admin/bonds', async (req: Request, res: Response) => {
         console.log(`[API] POST /api/admin/bonds - ${bondData.bondId}`);
 
         // Basic validation
-        if (!bondData.bondId || !bondData.bondName || !bondData.contractAddress) {
-            res.status(400).json({ error: 'Missing required fields (bondId, bondName, contractAddress)' });
+        if (!bondData.bondId || !bondData.bondName) {
+            res.status(400).json({ error: 'Missing required fields (bondId, bondName)' });
+            return;
+        }
+
+        if (!bondData.autoDeploy && !bondData.contractAddress) {
+            res.status(400).json({ error: 'contractAddress is required when autoDeploy is false' });
             return;
         }
 
@@ -581,7 +599,30 @@ app.post('/api/admin/bonds', async (req: Request, res: Response) => {
         if (bondData.minInvestment) bondData.minInvestment = Number(bondData.minInvestment);
         if (bondData.maxSubscription) bondData.maxSubscription = Number(bondData.maxSubscription);
 
-        const newBond = bondService.addBond(bondData);
+        // Optional: Auto-deploy contracts (Bond + Treasury + Distributor)
+        if (bondData.autoDeploy) {
+            const ownerWallet = bondData.adminWallet;
+            if (!ownerWallet) {
+                res.status(400).json({ error: 'adminWallet is required for autoDeploy' });
+                return;
+            }
+
+            if (!deploymentService) {
+                deploymentService = new DeploymentService();
+            }
+
+            const deployment = await deploymentService.deployBondProduct({
+                bondName: bondData.bondName,
+                bondId: bondData.bondId,
+                ownerWallet
+            });
+
+            bondData.contractAddress = deployment.contractAddress;
+            bondData.treasuryAddress = deployment.treasuryAddress;
+            bondData.distributorAddress = deployment.distributorAddress;
+        }
+
+        const newBond = await bondService.addBond(bondData);
         res.json({ success: true, bond: newBond });
 
     } catch (error: any) {
@@ -606,6 +647,7 @@ app.listen(PORT, () => {
     
     Endpoints:
       GET  /health               - Health check
+      GET  /api/config           - Public config (RPC + contract addresses)
       GET  /api/bonds            - List all bonds
       GET  /api/bonds/:address   - Get bond by address
       GET  /api/portfolio/:addr  - Get user portfolio
@@ -616,6 +658,7 @@ app.listen(PORT, () => {
       POST /api/faucet/usdt      - Mint test USDT
       GET  /api/faucet/balance/:addr - Check USDT balance
       POST /api/admin/distribute-yield - Distribute yield
+      POST /api/admin/bonds      - Add bond to registry (supports autoDeploy)
     
     RPC: ${config.rpc.url}
     Admin Wallet: ${adminWallet ? adminWallet.address : 'NOT CONFIGURED'}
