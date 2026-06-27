@@ -1,5 +1,8 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import mongoose from 'mongoose';
+import * as dotenv from 'dotenv';
+dotenv.config();
 import { ethers } from 'ethers';
 import { config } from './config';
 import { BondService } from './services/bond.service';
@@ -11,6 +14,30 @@ const PORT = process.env.PORT || 8000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Global MongoDB connection state for Serverless
+let isConnected = false;
+const connectDB = async () => {
+    if (isConnected) return;
+    try {
+        const MONGODB_URI = process.env.MONGODB_URI;
+        if (!MONGODB_URI) {
+            console.error('[CRITICAL] MONGODB_URI is NOT defined in environment variables.');
+            return;
+        }
+        await mongoose.connect(MONGODB_URI);
+        isConnected = true;
+        console.log('[API] Connected to MongoDB successfully.');
+    } catch (error) {
+        console.error('[CRITICAL] MongoDB connection error:', error);
+    }
+};
+
+// Ensure DB is connected on every request for Vercel Serverless
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
+});
 
 // Services
 const bondService = new BondService();
@@ -637,59 +664,44 @@ app.post('/api/admin/create-bond', async (req: Request, res: Response) => {
 
 export default app;
 
-// Mongoose Connection
-import mongoose from 'mongoose';
-import * as dotenv from 'dotenv';
-dotenv.config();
-
-const connectDB = async () => {
-    try {
-        const MONGODB_URI = process.env.MONGODB_URI;
-        if (!MONGODB_URI) {
-            console.error('[CRITICAL] MONGODB_URI is NOT defined in environment variables.');
-            console.error('Please add MONGODB_URI=... to your backend/.env file.');
-            process.exit(1);
-        }
-        await mongoose.connect(MONGODB_URI);
-        console.log('[API] Connected to MongoDB successfully.');
-    } catch (error) {
-        console.error('[CRITICAL] MongoDB connection error:', error);
-        process.exit(1);
-    }
-};
-
 // Start Server
-connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log(`
-    =============================================
-       SOVEREIGN BOND UNIFIED API SERVER
-    =============================================
+if (process.env.VERCEL) {
+    // Export for Vercel Serverless
+    module.exports = app;
+} else {
+    // Local / Traditional Hosting
+    connectDB().then(() => {
+        app.listen(PORT, () => {
+            console.log(`
+        =============================================
+           SOVEREIGN BOND UNIFIED API SERVER
+        =============================================
+        
+        Server running on: http://localhost:${PORT}
+        
+        Endpoints:
+          GET  /health               - Health check
+          GET  /api/bonds            - List all bonds
+          GET  /api/bonds/:address   - Get bond by address
+          GET  /api/portfolio/:addr  - Get user portfolio
+          GET  /api/debt/status      - Debt monitoring status
+          POST /api/kyc/register     - Register for KYC
+          GET  /api/kyc/status/:addr - Check KYC status
+          POST /api/invest           - Gasless Investment (AA)
+          POST /api/faucet/usdt      - Mint test USDT
+          GET  /api/faucet/balance/:addr - Check USDT balance
+          POST /api/admin/distribute-yield - Distribute yield
+        
+        RPC: ${config.rpc.url}
+        Admin Wallet: ${adminWallet ? adminWallet.address : 'NOT CONFIGURED'}
+        MongoDB: Connected
     
-    Server running on: http://localhost:${PORT}
-    
-    Endpoints:
-      GET  /health               - Health check
-      GET  /api/bonds            - List all bonds
-      GET  /api/bonds/:address   - Get bond by address
-      GET  /api/portfolio/:addr  - Get user portfolio
-      GET  /api/debt/status      - Debt monitoring status
-      POST /api/kyc/register     - Register for KYC
-      GET  /api/kyc/status/:addr - Check KYC status
-      POST /api/invest           - Gasless Investment (AA)
-      POST /api/faucet/usdt      - Mint test USDT
-      GET  /api/faucet/balance/:addr - Check USDT balance
-      POST /api/admin/distribute-yield - Distribute yield
-    
-    RPC: ${config.rpc.url}
-    Admin Wallet: ${adminWallet ? adminWallet.address : 'NOT CONFIGURED'}
-    MongoDB: Connected
-
-    [DEBUG] Loaded Config:
-    Gateway: ${config.contracts.gatewayAddress}
-    USDT: ${config.contracts.usdtAddress}
-    Registry: ${config.contracts.registryAddress}
-    =============================================
-    `);
+        [DEBUG] Loaded Config:
+        Gateway: ${config.contracts.gatewayAddress}
+        USDT: ${config.contracts.usdtAddress}
+        Registry: ${config.contracts.registryAddress}
+        =============================================
+        `);
+        });
     });
-});
+}

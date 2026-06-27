@@ -34,6 +34,7 @@ export function AppSidebar() {
     settings: "Settings",
     logout: "Logout"
   })
+  //FEBCSLCKJDNJK
 
   const mainNavItems = [
     { label: content.dashboard, icon: Home, href: "/portfolio" },

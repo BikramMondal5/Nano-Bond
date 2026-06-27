@@ -101,119 +101,119 @@
             "bonds": [
                 {
                     "id": "419888",
-                    "name": "from dep8",
+                    "name": "Bond 419888",
                     "amount": 200,
                     "purchaseDate": "2026-01-12",
-                    "yield": "7%",
-                    "maturityDate": "2026-01-08",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "GOI-2030",
-                    "name": "GOI Bond 2030",
+                    "name": "Bond GOI-2030",
                     "amount": 3950,
                     "purchaseDate": "2026-01-12",
-                    "yield": "7.5%",
-                    "maturityDate": "2030-01-01",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "527877",
-                    "name": "local testing auto deploy of contracts 4",
+                    "name": "Bond 527877",
                     "amount": 1000,
                     "purchaseDate": "2026-01-12",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "43643",
-                    "name": "bond-404am",
+                    "name": "Bond 43643",
                     "amount": 500,
                     "purchaseDate": "2026-01-13",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "5454545",
-                    "name": "lelo bond",
+                    "name": "Bond 5454545",
                     "amount": 690,
                     "purchaseDate": "2026-01-13",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "643464",
-                    "name": "test 4-21am",
+                    "name": "Bond 643464",
                     "amount": 3,
                     "purchaseDate": "2026-01-13",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "2542248",
-                    "name": "final bond hk",
+                    "name": "Bond 2542248",
                     "amount": 578,
                     "purchaseDate": "2026-01-13",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "44646635",
-                    "name": "test bond 16-11",
+                    "name": "Bond 44646635",
                     "amount": 122,
                     "purchaseDate": "2026-01-14",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "77799",
-                    "name": "IIT KGP3",
+                    "name": "Bond 77799",
                     "amount": 400,
                     "purchaseDate": "2026-01-14",
-                    "yield": "7%",
-                    "maturityDate": "2026-09-08",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "6466",
-                    "name": "HIT Bond",
+                    "name": "Bond 6466",
                     "amount": 500,
                     "purchaseDate": "2026-01-14",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "878888",
-                    "name": "HOJANA PLS",
+                    "name": "Bond 878888",
                     "amount": 1,
                     "purchaseDate": "2026-01-14",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "468438",
-                    "name": "gg",
+                    "name": "Bond 468438",
                     "amount": 824,
                     "purchaseDate": "2026-01-14",
-                    "yield": "7%",
-                    "maturityDate": "2029-06-23",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
                     "id": "522677",
-                    "name": "gg4",
+                    "name": "Bond 522677",
                     "amount": 521,
                     "purchaseDate": "2026-01-14",
-                    "yield": "7%",
-                    "maturityDate": "2026-09-08",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
                     "status": "Active"
                 },
                 {
@@ -227,11 +227,20 @@
                 },
                 {
                     "id": "6884646",
-                    "name": "gg7",
+                    "name": "Bond 6884646",
                     "amount": 602,
                     "purchaseDate": "2026-01-15",
-                    "yield": "7%",
-                    "maturityDate": "2026-09-08",
+                    "yield": "N/A",
+                    "maturityDate": "N/A",
+                    "status": "Active"
+                },
+                {
+                    "id": "2353234",
+                    "name": "june files",
+                    "amount": 200,
+                    "purchaseDate": "2026-06-27",
+                    "yield": "5%",
+                    "maturityDate": "2026-07-03",
                     "status": "Active"
                 }
             ]
@@ -312,6 +321,10 @@
                     "status": "Active"
                 }
             ]
+        },
+        {
+            "walletAddress": "0x3c865bCca9e946528edec4A205CA4D819cB6d1E8",
+            "bonds": []
         }
     ]
 }

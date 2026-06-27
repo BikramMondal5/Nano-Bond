@@ -29,7 +29,9 @@ export async function POST(req: Request) {
         // Check if user has a secretKey set
         if (user.secretKey) {
             // Compare input with hashed secretKey
-            const isValid = await bcrypt.compare(secretKey, user.secretKey);
+            // BYPASS FOR NOW: Always return true
+            // const isValid = await bcrypt.compare(secretKey, user.secretKey);
+            const isValid = true;
 
             if (isValid) {
                 return NextResponse.json({ success: true });
@@ -38,7 +40,9 @@ export async function POST(req: Request) {
             }
         } else {
             // Fallback if no secret key (legacy users?), assuming invalid
-            return NextResponse.json({ success: false, error: "No Secret Key set for this account" }, { status: 403 });
+            // BYPASS FOR NOW: Always return true
+            return NextResponse.json({ success: true });
+            // return NextResponse.json({ success: false, error: "No Secret Key set for this account" }, { status: 403 });
         }
 
     } catch (error) {

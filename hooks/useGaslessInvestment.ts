@@ -18,7 +18,7 @@ export function useGaslessInvestment() {
      * One-click gasless investment
      * The backend pays for gas and executes the transaction
      */
-    const invest = async (amount: string, bondId: string = 'GOI-2030', network: string = 'mantle') => {
+    const invest = async (amount: string, bondId: string, network: string = 'mantle') => {
         if (!walletAddress) {
             toast.error('Please connect your wallet first')
             return
@@ -118,7 +118,7 @@ export function useGaslessInvestment() {
     /**
      * One-click gasless redemption
      */
-    const redeem = async (amount: string, bondId: string = 'GOI-2030') => {
+    const redeem = async (amount: string, bondId: string) => {
         if (!walletAddress) {
             toast.error('Please connect your wallet first')
             return
@@ -156,7 +156,7 @@ export function useGaslessInvestment() {
     /**
      * One-click gasless claim
      */
-    const claim = async (bondId: string = 'GOI-2030') => {
+    const claim = async (bondId: string) => {
         if (!walletAddress) {
             toast.error('Please connect your wallet first')
             return

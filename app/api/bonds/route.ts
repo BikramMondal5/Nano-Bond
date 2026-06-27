@@ -81,7 +81,7 @@ export async function POST(req: Request) {
                     );
                 }
 
-                // Use createManagedBond to handle deployment, role granting, and DB saving
+                // Use createManagedBond to handle deployment and role granting
                 const result = await bondService.createManagedBond({
                     bondId: body.bondId,
                     bondName: body.bondName,
@@ -94,8 +94,14 @@ export async function POST(req: Request) {
                     description: body.description || ""
                 }, adminWallet);
 
-                console.log(`[API] Deployment and setup success. Result:`, result);
-                return NextResponse.json(result, { status: 201 });
+                // Save to DB using the frontend's connected Mongoose instance
+                const newBond = await Bond.create({
+                    ...result,
+                    status: 'active'
+                });
+
+                console.log(`[API] Deployment and setup success. Result saved.`);
+                return NextResponse.json(newBond, { status: 201 });
 
             } catch (deployError: any) {
                 console.error('[API] Auto-deployment failed:', deployError);

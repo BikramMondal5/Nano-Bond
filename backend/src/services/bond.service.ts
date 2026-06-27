@@ -134,42 +134,24 @@ export class BondService {
         await tx.wait();
         console.log(`[BondService] Role Granted.`);
 
-        // 3. Save to DB
-        // Check if exists
-        let bondDoc = await Bond.findOne({ bondId: details.bondId });
-        if (!bondDoc) {
-            bondDoc = new Bond({
-                bondId: details.bondId,
-                bondName: details.bondName,
-                issuer: details.issuer,
-                couponRate: details.couponRate,
-                minInvestment: details.minInvestment,
-                maxSubscription: details.maxSubscription,
-                startDate: details.startDate,
-                maturityDate: details.maturityDate,
-                description: details.description,
-                contractAddress: deployment.contractAddress,
-                treasuryAddress: deployment.treasuryAddress,
-                distributorAddress: deployment.distributorAddress,
-                status: 'active', // or 'pending_backing'
-                adminWallet: ownerAddress // <--- FIXED: Save admin wallet
-            });
-        } else {
-            // Update existing
-            bondDoc.contractAddress = deployment.contractAddress;
-            bondDoc.treasuryAddress = deployment.treasuryAddress;
-            bondDoc.distributorAddress = deployment.distributorAddress;
-            bondDoc.adminWallet = ownerAddress; // <--- FIXED: Update admin wallet
-            // Update other fields as well to match request
-            bondDoc.bondName = details.bondName;
-            bondDoc.couponRate = details.couponRate;
-            bondDoc.maxSubscription = details.maxSubscription;
-        }
-
-        await bondDoc.save();
-        console.log(`[BondService] Bond saved to DB.`);
-
-        return this.mapDocToPartial(bondDoc);
+        // 3. DO NOT Save to DB here! (Due to Next.js dual mongoose instance bug)
+        // Return the deployment details and let the Next.js API route save it to its connected Mongoose.
+        return {
+            bondId: details.bondId,
+            bondName: details.bondName,
+            issuer: details.issuer,
+            contractAddress: deployment.contractAddress,
+            treasuryAddress: deployment.treasuryAddress,
+            distributorAddress: deployment.distributorAddress,
+            couponRate: details.couponRate,
+            minInvestment: details.minInvestment,
+            maxSubscription: details.maxSubscription,
+            startDate: details.startDate ? details.startDate.toISOString() : null,
+            maturityDate: details.maturityDate ? details.maturityDate.toISOString() : null,
+            description: details.description || null,
+            proofUrl: null,
+            adminWallet: ownerAddress
+        };
     }
 
     /**
