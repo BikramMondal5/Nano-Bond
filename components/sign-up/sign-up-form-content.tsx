@@ -33,9 +33,12 @@ export default function SignUpFormContent() {
     const { login, isInitializing } = useWeb3Auth()
 
     const handleWeb3SignUp = async () => {
-        setIsLoading(true)
         try {
+            // Trigger login immediately synchronously to prevent popup blockers!
             const result = await login()
+            // Set loading state AFTER popup has opened successfully
+            setIsLoading(true)
+            
             if (result && result.user && result.user.email) {
                 const signInResult = await signIn("credentials", {
                     web3auth_email: result.user.email,

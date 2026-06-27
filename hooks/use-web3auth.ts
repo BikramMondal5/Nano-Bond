@@ -94,9 +94,11 @@ export const useWeb3Auth = () => {
       setError("Web3Auth not initialized");
       return;
     }
-    setError(null);
+    // Do NOT set state here (e.g. setError(null)) because it breaks the synchronous
+    // user gesture context required by browsers to open popups!
     try {
       const web3authProvider = await web3authRef.current.connect();
+      setError(null);
       setProvider(web3authProvider);
       if (web3authRef.current.connected && web3authProvider) {
         setLoggedIn(true);
