@@ -29,6 +29,7 @@ export interface BondDto {
     maturityDate: string | null;
     description: string | null;
     proofUrl: string | null;
+    adminWallet?: string;
     // On-chain data
     totalSupply: string;
     totalBackedValue: string;
@@ -150,7 +151,10 @@ export class BondService {
             maturityDate: details.maturityDate ? details.maturityDate.toISOString() : null,
             description: details.description || null,
             proofUrl: null,
-            adminWallet: ownerAddress
+            adminWallet: ownerAddress,
+            totalSupply: '0',
+            totalBackedValue: '0',
+            symbol: 'BOND'
         };
     }
 
