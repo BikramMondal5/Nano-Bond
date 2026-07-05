@@ -36,88 +36,9 @@ class BondService {
             this.db = this.mongoClient.db('govtbond');
             this.bondsCollection = this.db.collection('bonds');
             console.log('[BondService] Connected to MongoDB successfully');
-            // Seed initial data if collection is empty
-            const count = await this.bondsCollection.countDocuments();
-            if (count === 0) {
-                await this.seedInitialBonds();
-            }
         }
         catch (error) {
             console.error('[BondService] Failed to connect to MongoDB:', error);
-        }
-    }
-    /**
-     * Seed initial bond data (migrated from JSON)
-     */
-    async seedInitialBonds() {
-        if (!this.bondsCollection)
-            return;
-        const initialBonds = [
-            {
-                bondId: "GOI-2030",
-                bondName: "GOI Bond 2030",
-                issuer: "Govt of India",
-                category: "Sovereign",
-                contractAddress: "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
-                distributorAddress: "0x956D938378484AbADf0873ca7bC94c0203e76584",
-                treasuryAddress: "0xF013e47AD7d8e0EdbB8e9D2A7d7c73a23AF88A11",
-                couponRate: 7.5,
-                minInvestment: 100,
-                maxSubscription: 1000000,
-                startDate: "2024-01-01",
-                maturityDate: "2030-01-01",
-                description: "Government of India Sovereign Bond maturing in 2030 with 7.5% annual yield.",
-                proofUrl: "https://rbi.org.in/sovereign-bonds"
-            },
-            {
-                bondId: "INFRA-28",
-                bondName: "Solar Infra Bond 2028",
-                issuer: "Min. of New & Renewable Energy",
-                category: "Green Bond",
-                contractAddress: "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
-                couponRate: 8.2,
-                startDate: "2024-06-01",
-                maturityDate: "2028-06-01",
-                minInvestment: 500,
-                maxSubscription: 200000,
-                description: "Green Energy financing bond for solar parks across Gujarat and Rajasthan.",
-                proofUrl: "https://mnre.gov.in/green-bonds"
-            },
-            {
-                bondId: "HOU-2027",
-                bondName: "Housing Dev Bond 2027",
-                issuer: "NHB (National Housing Bank)",
-                category: "Social",
-                contractAddress: "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
-                couponRate: 6.8,
-                startDate: "2024-02-15",
-                maturityDate: "2027-02-15",
-                minInvestment: 1000,
-                maxSubscription: 50000,
-                description: "Supporting affordable housing projects for EWS and LIG categories.",
-                proofUrl: "https://nhb.org.in/bonds"
-            },
-            {
-                bondId: "HWY-2029",
-                bondName: "Highway Infra 2029",
-                issuer: "NHAI (National Highways)",
-                category: "Infrastructure",
-                contractAddress: "0x762E3159F2d7C3574BdF2DC8bBF16e9B41587A02",
-                couponRate: 7.9,
-                startDate: "2024-04-01",
-                maturityDate: "2029-04-01",
-                minInvestment: 200,
-                maxSubscription: 500000,
-                description: "Tax-free bonds for financing national highway expansion projects.",
-                proofUrl: "https://nhai.gov.in/bonds"
-            }
-        ];
-        try {
-            await this.bondsCollection.insertMany(initialBonds);
-            console.log('[BondService] Seeded initial bond data to MongoDB');
-        }
-        catch (error) {
-            console.error('[BondService] Failed to seed initial bonds:', error);
         }
     }
     /**
@@ -161,6 +82,27 @@ class BondService {
         }
     }
     /**
+     * Set bond lock/unlock status for withdrawals
+     */
+    async setBondStatus(bondId, status) {
+        if (!this.bondsCollection) {
+            throw new Error('MongoDB not connected');
+        }
+        try {
+            const result = await this.bondsCollection.updateOne({ bondId }, { $set: { status } });
+            if (result.matchedCount === 0) {
+                console.warn(`[BondService] Bond ${bondId} not found for status update`);
+                return false;
+            }
+            console.log(`[BondService] Bond ${bondId} status set to ${status}`);
+            return true;
+        }
+        catch (error) {
+            console.error('[BondService] Failed to set bond status:', error);
+            throw error;
+        }
+    }
+    /**
      * Fetch on-chain data for a bond contract
      */
     async fetchOnChainData(contractAddress) {
@@ -176,8 +118,8 @@ class BondService {
             return {
                 name,
                 symbol,
-                totalSupply: ethers_1.ethers.formatUnits(totalSupply, 6),
-                totalBackedValue: ethers_1.ethers.formatUnits(totalBackedValue, 6),
+                totalSupply: ethers_1.ethers.formatUnits(totalSupply, 18), // Bond tokens have 18 decimals
+                totalBackedValue: ethers_1.ethers.formatUnits(totalBackedValue, 18), // Bond tokens have 18 decimals
                 maturityDateOnChain: Number(maturityDateOnChain),
             };
         }
@@ -202,8 +144,10 @@ class BondService {
                 bondId: rb.bondId,
                 bondName: rb.bondName,
                 issuer: rb.issuer,
+                adminWallet: rb.adminWallet,
                 contractAddress: targetAddress,
                 treasuryAddress: rb.treasuryAddress,
+                distributorAddress: rb.distributorAddress,
                 couponRate: rb.couponRate,
                 minInvestment: rb.minInvestment,
                 maxSubscription: rb.maxSubscription,
@@ -235,8 +179,10 @@ class BondService {
             bondId: rb.bondId,
             bondName: rb.bondName,
             issuer: rb.issuer,
+            adminWallet: rb.adminWallet,
             contractAddress: rb.contractAddress,
             treasuryAddress: rb.treasuryAddress,
+            distributorAddress: rb.distributorAddress,
             couponRate: rb.couponRate,
             minInvestment: rb.minInvestment,
             maxSubscription: rb.maxSubscription,
@@ -288,10 +234,18 @@ class BondService {
                 if (!targetAddress)
                     continue;
                 const contract = new ethers_1.ethers.Contract(targetAddress, BOND_ABI, this.provider);
-                const balanceBig = await contract.balanceOf(userAddress);
+                // Fetch balance and on-chain maturity date in parallel
+                const [balanceBig, maturityTimestamp] = await Promise.all([
+                    contract.balanceOf(userAddress),
+                    contract.maturityDate().catch(() => BigInt(0))
+                ]);
                 if (balanceBig > BigInt(0)) {
                     const balance = parseFloat(ethers_1.ethers.formatUnits(balanceBig, 18));
                     const value = balance;
+                    // Determine unlock status from on-chain maturity (blockchain is source of truth)
+                    const nowTimestamp = Math.floor(Date.now() / 1000);
+                    const maturityTs = Number(maturityTimestamp);
+                    const isUnlocked = maturityTs > 0 && nowTimestamp >= maturityTs;
                     holdings.push({
                         bondId: rb.bondId,
                         bondName: rb.bondName,
@@ -301,7 +255,8 @@ class BondService {
                         apy: rb.couponRate,
                         maturityDate: rb.maturityDate || '',
                         nextPaymentDate: rb.startDate,
-                        proofUrl: rb.proofUrl
+                        proofUrl: rb.proofUrl,
+                        status: isUnlocked ? 'unlocked' : 'locked', // From blockchain!
                     });
                     totalValue += value;
                     weightedApySum += value * rb.couponRate;

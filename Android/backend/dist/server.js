@@ -10,16 +10,20 @@ const config_1 = require("./config");
 const bond_service_1 = require("./services/bond.service");
 const aa_service_1 = require("./services/aa.service");
 const db_service_1 = require("./services/db.service");
+const deployment_service_1 = require("./services/deployment.service");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
 // Middleware
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.static('public')); // Serve static files (admin page)
+const user_service_1 = require("./services/user.service");
 // Services
 const bondService = new bond_service_1.BondService();
 const dbService = new db_service_1.DbService();
 const aaService = new aa_service_1.AAService(dbService);
+const userService = new user_service_1.UserService();
+let deploymentService = null;
 // Provider and Wallet for admin operations
 const provider = new ethers_1.ethers.JsonRpcProvider(config_1.config.rpc.url);
 const adminWallet = config_1.config.admin.privateKey
@@ -29,6 +33,7 @@ const adminWallet = config_1.config.admin.privateKey
 const IDENTITY_REGISTRY_ABI = [
     "function register(address wallet, bytes32 nationalIdHash) external",
     "function isVerified(address wallet) external view returns (bool)",
+    "function registerVerified(address wallet, bytes32 aadhaarHash, bytes memory walletSignature, uint8 riskScore) external", // Added here for consistency
 ];
 // MockUSDT ABI
 const MOCK_USDT_ABI = [
@@ -49,6 +54,15 @@ const ERC20_ABI = [
 // ============================================
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+// ============================================
+// PUBLIC CONFIG (for admin-web)
+// ============================================
+app.get('/api/config', (_req, res) => {
+    res.json({
+        rpcUrl: config_1.config.rpc.url,
+        contracts: config_1.config.contracts
+    });
 });
 // ============================================
 // BONDS API
@@ -135,7 +149,6 @@ app.get('/api/history/:address', async (req, res) => {
  */
 app.get('/api/debt/status', async (_req, res) => {
     try {
-        console.log('[API] GET /api/debt/status');
         const status = await bondService.getDebtStatus();
         res.json(status);
     }
@@ -154,15 +167,16 @@ app.get('/api/debt/status', async (_req, res) => {
  * 1. Validates input.
  * 2. Hashes 'nationalId' immediately.
  * 3. Submits Hash to Blockchain.
- * 4. Does NOT save 'nationalId' anywhere.
+ * 4. Stores { wallet, hash, verified: true } in MongoDB securely.
+ * 5. Does NOT save raw 'nationalId' anywhere.
  */
 app.post('/api/kyc/register', async (req, res) => {
     try {
-        const { address, nationalId } = req.body;
+        const { address, nationalId, nationalIdHash: preHashedId } = req.body;
         // 1. Strict Input Validation
-        if (!address || !nationalId) {
+        if (!address || (!nationalId && !preHashedId)) {
             console.log(`[KYC] Failed request - Missing Data`);
-            res.status(400).json({ error: 'Missing address or nationalId' });
+            res.status(400).json({ error: 'Missing address or nationalId/nationalIdHash' });
             return;
         }
         if (!adminWallet) {
@@ -170,20 +184,38 @@ app.post('/api/kyc/register', async (req, res) => {
             res.status(500).json({ error: 'Server configuration error' });
             return;
         }
-        // 2. Immediate Hashing (Zero Knowledge Storage)
-        const nationalIdHash = ethers_1.ethers.keccak256(ethers_1.ethers.toUtf8Bytes(nationalId));
+        // 2. Use pre-hashed ID from device (more secure) or hash on server (fallback)
+        // SECURITY: Raw ID should be hashed on device - we receive only the hash
+        let nationalIdHash;
+        if (preHashedId) {
+            nationalIdHash = preHashedId;
+            console.log(`[KYC] Using device-hashed ID (secure): ${nationalIdHash.substring(0, 20)}...`);
+        }
+        else {
+            // Fallback: Hash on server (less secure, for backward compatibility)
+            nationalIdHash = ethers_1.ethers.keccak256(ethers_1.ethers.toUtf8Bytes(nationalId));
+            console.log(`[KYC] Server-side hash (fallback): ${nationalIdHash.substring(0, 20)}...`);
+        }
+        // NOTE: Raw nationalId is NEVER logged or stored
         console.log(`[KYC] Processing KYC for ${address}`);
-        console.log(`[KYC] ID Hash generated: ${nationalIdHash}`);
-        // NOTE: We do NOT log the actual nationalId.
-        const IDENTITY_REGISTRY_ABI = [
-            "function registerVerified(address wallet, bytes32 aadhaarHash, bytes memory walletSignature, uint8 riskScore) external",
-            "function isVerified(address wallet) external view returns (bool)",
-        ];
         const registry = new ethers_1.ethers.Contract(config_1.config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, adminWallet);
-        // 3. Check if already verified (to save gas)
-        const isVerified = await registry.isVerified(address);
-        if (isVerified) {
-            console.log(`[KYC] Address ${address} already verified on-chain`);
+        // 3. Check if already verified (Optimization: Check DB first, then Chain)
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            console.log(`[KYC] Address ${address} already verified (DB cache)`);
+            res.json({ success: true, message: 'Already verified' });
+            return;
+        }
+        const isVerifiedOnChain = await registry.isVerified(address);
+        if (isVerifiedOnChain) {
+            console.log(`[KYC] Address ${address} already verified on-chain. Syncing to DB...`);
+            // Sync DB if missing
+            await userService.registerUser({
+                walletAddress: address,
+                aadhaarHash: nationalIdHash, // Map nationalIdHash to aadhaarHash
+                kycStatus: 'APPROVED',
+                kycApprovedAt: new Date()
+            });
             res.json({ success: true, message: 'Already verified' });
             return;
         }
@@ -198,7 +230,15 @@ app.post('/api/kyc/register', async (req, res) => {
         // Wait for confirmation
         await tx.wait();
         console.log(`[KYC] Verification Confirmed on Blockchain.`);
-        // 4. Success Response
+        // 4. Save to MongoDB (Separate Section)
+        await userService.registerUser({
+            walletAddress: address,
+            aadhaarHash: nationalIdHash,
+            kycStatus: 'APPROVED',
+            kycApprovedAt: new Date(),
+            txHash: tx.hash
+        });
+        // 5. Success Response
         res.json({
             success: true,
             message: 'Secure Verification Successful',
@@ -213,14 +253,33 @@ app.post('/api/kyc/register', async (req, res) => {
 /**
  * GET /api/kyc/status/:address
  * Check if an address is KYC verified
+ * Optimized: Checks MongoDB first.
  */
 app.get('/api/kyc/status/:address', async (req, res) => {
     try {
         const { address } = req.params;
-        console.log(`[API] GET /api/kyc/status/${address}`);
+        // console.log(`[API] GET /api/kyc/status/${address}`); // Reduce logs
+        // 1. Check MongoDB (Fastest)
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            res.json({ address, isVerified: true, source: 'db' });
+            return;
+        }
+        // 2. Fallback to Blockchain (If DB is out of sync or empty)
         const registry = new ethers_1.ethers.Contract(config_1.config.contracts.registryAddress, IDENTITY_REGISTRY_ABI, provider);
-        const isVerified = await registry.isVerified(address);
-        res.json({ address, isVerified });
+        const isVerifiedOnChain = await registry.isVerified(address);
+        // If verified on chain but not in DB, assume we should treat them as verified.
+        // We can't backfill the nationalIdHash here since we don't have it, but we can mark them as verified.
+        if (isVerifiedOnChain) {
+            // Optional: Update DB to avoid future chain calls (partial record)
+            await userService.registerUser({
+                walletAddress: address,
+                aadhaarHash: 'UNKNOWN_ONCHAIN_SYNC',
+                kycStatus: 'APPROVED',
+                kycApprovedAt: new Date()
+            });
+        }
+        res.json({ address, isVerified: isVerifiedOnChain, source: 'chain' });
     }
     catch (error) {
         console.error('[API] KYC status error:', error.message);
@@ -418,8 +477,12 @@ app.post('/api/admin/bonds', async (req, res) => {
         const bondData = req.body;
         console.log(`[API] POST /api/admin/bonds - ${bondData.bondId}`);
         // Basic validation
-        if (!bondData.bondId || !bondData.bondName || !bondData.contractAddress) {
-            res.status(400).json({ error: 'Missing required fields (bondId, bondName, contractAddress)' });
+        if (!bondData.bondId || !bondData.bondName) {
+            res.status(400).json({ error: 'Missing required fields (bondId, bondName)' });
+            return;
+        }
+        if (!bondData.autoDeploy && !bondData.contractAddress) {
+            res.status(400).json({ error: 'contractAddress is required when autoDeploy is false' });
             return;
         }
         // Ensure numeric fields are numbers
@@ -429,7 +492,26 @@ app.post('/api/admin/bonds', async (req, res) => {
             bondData.minInvestment = Number(bondData.minInvestment);
         if (bondData.maxSubscription)
             bondData.maxSubscription = Number(bondData.maxSubscription);
-        const newBond = bondService.addBond(bondData);
+        // Optional: Auto-deploy contracts (Bond + Treasury + Distributor)
+        if (bondData.autoDeploy) {
+            const ownerWallet = bondData.adminWallet;
+            if (!ownerWallet) {
+                res.status(400).json({ error: 'adminWallet is required for autoDeploy' });
+                return;
+            }
+            if (!deploymentService) {
+                deploymentService = new deployment_service_1.DeploymentService();
+            }
+            const deployment = await deploymentService.deployBondProduct({
+                bondName: bondData.bondName,
+                bondId: bondData.bondId,
+                ownerWallet
+            });
+            bondData.contractAddress = deployment.contractAddress;
+            bondData.treasuryAddress = deployment.treasuryAddress;
+            bondData.distributorAddress = deployment.distributorAddress;
+        }
+        const newBond = await bondService.addBond(bondData);
         res.json({ success: true, bond: newBond });
     }
     catch (error) {
@@ -451,6 +533,7 @@ app.listen(PORT, () => {
     
     Endpoints:
       GET  /health               - Health check
+      GET  /api/config           - Public config (RPC + contract addresses)
       GET  /api/bonds            - List all bonds
       GET  /api/bonds/:address   - Get bond by address
       GET  /api/portfolio/:addr  - Get user portfolio
@@ -461,6 +544,7 @@ app.listen(PORT, () => {
       POST /api/faucet/usdt      - Mint test USDT
       GET  /api/faucet/balance/:addr - Check USDT balance
       POST /api/admin/distribute-yield - Distribute yield
+      POST /api/admin/bonds      - Add bond to registry (supports autoDeploy)
     
     RPC: ${config_1.config.rpc.url}
     Admin Wallet: ${adminWallet ? adminWallet.address : 'NOT CONFIGURED'}

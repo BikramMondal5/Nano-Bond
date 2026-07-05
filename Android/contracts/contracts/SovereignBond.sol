@@ -3,20 +3,14 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./IdentityRegistry.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./IdentityRegistry.sol"; 
 
-/**
- * @title SovereignBond
- * @dev Restricted ERC-20 Token representing a National Bond.
- *      - Checks IdentityRegistry on every transfer.
- *      - Minting is controlled by Treasury.
- */
-contract SovereignBond is ERC20, AccessControl {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE"); // Treasury
-    
+contract SovereignBond is ERC20, AccessControl, ReentrancyGuard {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
     IdentityRegistry public registry;
-    
-    // RWA Backing Logic
+
     struct Asset {
         string uri;
         uint256 value;
@@ -26,70 +20,65 @@ contract SovereignBond is ERC20, AccessControl {
     uint256 public totalBackedValue;
 
     event AssetAdded(uint256 indexed id, string uri, uint256 value);
-
-    error NotVerified(address user);
-    error Unauthorized();
-    error ExceedsBackedLogic();
-    error NotMatured(uint256 current, uint256 maturity);
-
-    uint256 public maturityDate;
-    
     event MaturityDateUpdated(uint256 newDate);
 
-    constructor(string memory name, string memory symbol, address _registry, address admin) 
-        ERC20(name, symbol) 
-    {
-        registry = IdentityRegistry(_registry);  // This now points to V2 address
+    error NotVerified(address user);
+    error ExceedsBackedLogic();
+
+    uint256 public maturityDate;
+    address public distributor;
+
+    constructor(
+        string memory name,
+        string memory symbol,
+        address _registry,
+        address admin
+    ) ERC20(name, symbol) {
+        registry = IdentityRegistry(_registry);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MINTER_ROLE, admin);
-        
-        // Default Maturity: 2 Years from deployment (Bot/Auto handling)
-        maturityDate = block.timestamp + 730 days; 
+        maturityDate = block.timestamp + 730 days; // 2 years default
     }
 
     function setRegistry(address _registry) external onlyRole(DEFAULT_ADMIN_ROLE) {
         registry = IdentityRegistry(_registry);
     }
 
-    /**
-     * @notice Admin override for maturity date (Manual provoke).
-     */
     function setMaturityDate(uint256 _newDate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         maturityDate = _newDate;
         emit MaturityDateUpdated(_newDate);
     }
 
-    // Distributor Hook
-    address public distributor;
     function setDistributor(address _distributor) external onlyRole(DEFAULT_ADMIN_ROLE) {
         distributor = _distributor;
     }
 
-    // Override ERC20 _update to trigger Distributor checkpoints AND enforce Identity
-    function _update(address from, address to, uint256 value) internal override {
-        // 1. Identity Registry Checks (Pre-Transfer validation)
+    // Override _update to enforce KYC and trigger Distributor
+    // Fixed: State change BEFORE external call (CEI pattern)
+    function _update(address from, address to, uint256 value) internal override nonReentrant {
+        // 1. Identity Registry Checks (ACTIVE)
         if (from != address(0) && to != address(0)) {
+            // Regular transfer: Both must be verified
             if (!registry.isVerified(from)) revert NotVerified(from);
             if (!registry.isVerified(to)) revert NotVerified(to);
         } else if (to != address(0)) {
             // Minting: Receiver must be verified
             if (!registry.isVerified(to)) revert NotVerified(to);
         }
+        // Burning (to == 0): No strict verification needed for burning usually.
 
-        // 2. Distributor Hook (Pre-Transfer accounting)
+        // 2. State Change FIRST (CEI Pattern - Checks-Effects-Interactions)
+        super._update(from, to, value);
+
+        // 3. Distributor Hook AFTER state change
         if (distributor != address(0)) {
             (bool success, ) = distributor.call(
                 abi.encodeWithSignature("onTokenTransfer(address,address)", from, to)
             );
             require(success, "Distributor Hook Failed");
         }
-
-        // 3. State Update
-        super._update(from, to, value);
     }
-    /**
-     * @notice Adds a verified RWA document to increase the minting cap.
-     */
+
     function addAsset(string memory uri, uint256 value) external onlyRole(DEFAULT_ADMIN_ROLE) {
         assets.push(Asset(uri, value, block.timestamp));
         totalBackedValue += value;
@@ -97,16 +86,29 @@ contract SovereignBond is ERC20, AccessControl {
     }
 
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
-        // 1. Verify Identity (Optimization: _update already checks too, but explicit check here fails faster)
+        // Registry check handled in _update, but checking here saves gas if failed
         if (!registry.isVerified(to)) revert NotVerified(to);
-        
-        // 2. Verify Asset Backing Cap
-        if (totalSupply() + amount > totalBackedValue) revert ExceedsBackedLogic();
 
+        // Verify Asset Backing Cap
+        if (totalSupply() + amount > totalBackedValue) revert ExceedsBackedLogic();
+        
         _mint(to, amount);
     }
 
+    /// @notice Burn tokens with explicit allowance check for consent
+    /// @dev Treasury must have allowance from user OR user must call directly
     function burn(address from, uint256 amount) external onlyRole(MINTER_ROLE) {
+        // If caller is not the token owner, require allowance
+        if (from != msg.sender) {
+            uint256 currentAllowance = allowance(from, msg.sender);
+            require(currentAllowance >= amount, "Burn: insufficient allowance");
+            _approve(from, msg.sender, currentAllowance - amount);
+        }
         _burn(from, amount);
+    }
+
+    /// @notice Allow users to burn their own tokens directly
+    function burnOwn(uint256 amount) external {
+        _burn(msg.sender, amount);
     }
 }

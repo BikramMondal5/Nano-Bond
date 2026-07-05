@@ -132,7 +132,7 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                       ),
                     ),
                   ),
-                  Gap(32.h),
+                  Gap(16.h),
                   if (investState.status == InvestStatus.loading)
                     Center(
                       child: Padding(
@@ -168,9 +168,11 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                       children: [
                         Expanded(
                           child: Text(
-                            "Invest in\n${widget.bond.title}",
+                            widget.bond.title,
                             style: AppTextStyles.heading2.copyWith(
-                              fontSize: 24.sp,
+                              fontSize: 28.sp,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
                               height: 1.2,
                             ),
                           ),
@@ -208,82 +210,76 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                         ),
                       ],
                     ),
-                    Gap(8.h),
-                    RichText(
-                      text: TextSpan(
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: "Current Yield: ",
-                            style: TextStyle(color: Colors.blueGrey[800]),
-                          ),
-                          TextSpan(
-                            text: widget.bond.apy.replaceAll(' APY', ''),
-                            style: const TextStyle(color: Colors.green),
-                          ),
-                          TextSpan(
-                            text: " APY",
-                            style: TextStyle(color: Colors.blueGrey[800]),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Gap(24.h),
-                    // Bond Info - Bento Grid
-                    Column(
+                    Gap(4.h),
+                    // Info chips row
+                    Wrap(
+                      spacing: 12.w,
+                      runSpacing: 8.h,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildBentoItem(
-                                "Issuer",
-                                widget.bond.subtitle,
-                                Icons.business_rounded,
-                                const Color(0xFFEDF3F8),
-                                const Color(0xFF102E4A),
-                              ),
-                            ),
-                            Gap(12.w),
-                            Expanded(
-                              child: _buildBentoItem(
-                                "Minimum",
-                                widget.bond.minInvestment,
-                                Icons.attach_money_rounded,
-                                const Color(0xFFEDF3F8),
-                                const Color(0xFF102E4A),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Gap(12.h),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildBentoItem(
-                                "Symbol",
-                                widget.bond.symbol,
-                                Icons.verified_user_rounded,
-                                const Color(0xFFEDF3F8), // Same as Total Supply
-                                const Color(0xFF102E4A), // Deep dark blue text
-                              ),
-                            ),
-                            Gap(12.w),
-                            Expanded(
-                              child: _buildBentoItem(
-                                "Maturity Date",
-                                _formatMaturityDate(widget.bond.maturityDate),
-                                Icons.lock_clock_rounded,
-                                const Color(0xFFEDF3F8), // Same as Total Supply
-                                const Color(0xFF102E4A), // Deep dark blue text
-                              ),
-                            ),
-                          ],
+                        _buildInfoChip("Symbol", widget.bond.symbol),
+                        _buildInfoChip(
+                          "APY",
+                          widget.bond.apy.replaceAll(' APY', ''),
                         ),
                       ],
                     ),
-                    Gap(24.h),
+                    Gap(12.h),
+                    // Combined Details Card (Maturity + Contracts)
+                    Container(
+                      padding: EdgeInsets.all(20.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F7FA),
+                        borderRadius: BorderRadius.circular(24.r),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildDetailRow(
+                            "Maturity Date",
+                            _formatMaturityDate(widget.bond.maturityDate),
+                          ),
+                          if (widget.bond.contractAddress != null) ...[
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              child: Divider(
+                                color: Colors.grey.withValues(alpha: 0.1),
+                                height: 1,
+                              ),
+                            ),
+                            _buildAddressRow(
+                              "Bond Contract",
+                              widget.bond.contractAddress!,
+                            ),
+                          ],
+                          if (widget.bond.treasuryAddress != null) ...[
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              child: Divider(
+                                color: Colors.grey.withValues(alpha: 0.1),
+                                height: 1,
+                              ),
+                            ),
+                            _buildAddressRow(
+                              "Treasury Contract",
+                              widget.bond.treasuryAddress!,
+                            ),
+                          ],
+                          if (widget.bond.distributorAddress != null) ...[
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              child: Divider(
+                                color: Colors.grey.withValues(alpha: 0.1),
+                                height: 1,
+                              ),
+                            ),
+                            _buildAddressRow(
+                              "Distributor Contract",
+                              widget.bond.distributorAddress!,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Gap(12.h),
                     Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: 20.w,
@@ -376,7 +372,7 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
                       ),
                     ),
 
-                    Gap(32.h),
+                    Gap(25.h),
                     SlideActionButton(
                       text: "Slide to Invest",
                       isLoading: investState.status == InvestStatus.loading,
@@ -405,44 +401,106 @@ class _InvestBottomSheetState extends ConsumerState<InvestBottomSheet> {
     );
   }
 
-  Widget _buildBentoItem(
-    String label,
-    String value,
-    IconData icon, // Kept for API compatibility but not used
-    Color bgColor,
-    Color textColor,
-  ) {
+  Widget _buildInfoChip(String label, String value) {
     return Container(
-      padding: EdgeInsets.all(14.w),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16.r),
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2), width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Removed icon for cleaner look
           Text(
-            label,
+            "$label: ",
             style: TextStyle(
-              color: textColor.withValues(alpha: 0.7),
-              fontSize: 11.sp,
+              color: Colors.grey[600],
+              fontSize: 12.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
-          Gap(4.h),
           Text(
             value,
             style: TextStyle(
-              color: textColor,
-              fontSize: 17.sp,
-              fontWeight: FontWeight.w600, // Reduced from w800
-              letterSpacing: -0.5,
+              color: AppColors.primary,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: AppColors.primary,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddressRow(String label, String address) {
+    final truncated =
+        "${address.substring(0, 6)}...${address.substring(address.length - 4)}";
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        GestureDetector(
+          onTap: () async {
+            final url = Uri.parse(
+              "https://explorer.sepolia.mantle.xyz/address/$address",
+            );
+            if (await canLaunchUrl(url)) {
+              await launchUrl(url, mode: LaunchMode.externalApplication);
+            }
+          },
+          child: Row(
+            children: [
+              Text(
+                truncated,
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+              Gap(4.w),
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 14.w,
+                color: AppColors.primary,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

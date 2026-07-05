@@ -10,10 +10,17 @@ class KycService {
     return v.endsWith('/') ? v.substring(0, v.length - 1) : v;
   }
 
-  /// Hash nationalId on device using keccak256 (same as Solidity)
+  /// Hash identity data on device using keccak256 (same as Solidity)
+  /// Combines nationalId + dob for a unique identity fingerprint
   /// This ensures raw ID NEVER leaves the device
-  String _hashNationalId(String nationalId) {
-    final bytes = utf8.encode(nationalId);
+  String _hashIdentity(String nationalId, {String? dob}) {
+    // Combine ID + DOB for unique hash (prevents duplicate registrations)
+    // Format: "AADHAAR_NUMBER:DD/MM/YYYY" or just "AADHAAR_NUMBER" if no DOB
+    final dataToHash = dob != null && dob.isNotEmpty
+        ? '$nationalId:$dob'
+        : nationalId;
+
+    final bytes = utf8.encode(dataToHash);
     final hash = keccak256(Uint8List.fromList(bytes));
     return '0x${bytesToHex(hash)}';
   }
@@ -21,18 +28,22 @@ class KycService {
   Future<Map<String, dynamic>> requestRegistration({
     required String address,
     String? nationalId,
+    String? dob,
     String? signature,
   }) async {
     if (_baseUrl.isEmpty) {
       throw Exception('Missing API_BASE_URL in .env');
     }
 
-    // SECURITY: Hash nationalId on device before sending
+    // SECURITY: Hash nationalId + DOB on device before sending
     // Raw ID never leaves the phone
-    String? nationalIdHash;
+    String? identityHash;
     if (nationalId != null) {
-      nationalIdHash = _hashNationalId(nationalId);
-      debugPrint('KYC: Hashed ID on device (raw ID never sent to server)');
+      identityHash = _hashIdentity(nationalId, dob: dob);
+      debugPrint(
+        'KYC: Hashed ID+DOB on device (raw data never sent to server)',
+      );
+      debugPrint('KYC: Hash includes DOB: ${dob != null && dob.isNotEmpty}');
     }
 
     // Use main backend endpoint for KYC registration
@@ -46,8 +57,8 @@ class KycService {
       headers: headers,
       body: jsonEncode({
         'address': address,
-        if (nationalIdHash != null)
-          'nationalIdHash': nationalIdHash, // Send HASH only
+        if (identityHash != null)
+          'nationalIdHash': identityHash, // Send HASH only (includes DOB)
         if (signature != null) 'signature': signature,
       }),
     );

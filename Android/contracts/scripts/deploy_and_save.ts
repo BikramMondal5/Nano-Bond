@@ -58,7 +58,7 @@ async function main() {
     // 7. Deploy SwapGateway
     console.log("Deploying SwapGateway...");
     const SwapGateway = await ethers.getContractFactory("SwapGateway");
-    const gateway = await SwapGateway.deploy(treasuryAddr, usdtAddr, routerAddr, usdtAddr);
+    const gateway = await SwapGateway.deploy(treasuryAddr, usdtAddr, routerAddr, deployer.address);
     await gateway.waitForDeployment();
     const gatewayAddr = await gateway.getAddress();
     console.log("SwapGateway deployed to:", gatewayAddr);
@@ -76,13 +76,30 @@ async function main() {
     await bond.setDistributor(distributorAddr);
     console.log("Bond Linked.");
 
+    // 10. Deploy InvestmentGateway
+    console.log("Deploying InvestmentGateway...");
+    const InvestmentGateway = await ethers.getContractFactory("InvestmentGateway");
+    const investGateway = await InvestmentGateway.deploy(usdtAddr);
+    await investGateway.waitForDeployment();
+    const investGatewayAddr = await investGateway.getAddress();
+    console.log("InvestmentGateway deployed to:", investGatewayAddr);
+
+    // 11. Grant Minter Role to MockUSDT for MockRouter
+    console.log("Granting Minter Role on MockUSDT to MockRouter...");
+    const USDT_MINTER_ROLE = await usdt.MINTER_ROLE();
+    const txMinter = await usdt.grantRole(USDT_MINTER_ROLE, routerAddr);
+    await txMinter.wait();
+    console.log("MockRouter has MINTER_ROLE on MockUSDT.");
+
     const addresses = {
         USDT: usdtAddr,
         Registry: registryAddr,
         Bond: bondAddr,
         Treasury: treasuryAddr,
         Gateway: gatewayAddr,
-        Distributor: distributorAddr
+        Distributor: distributorAddr,
+        MockRouter: routerAddr,
+        InvestmentGateway: investGatewayAddr
     };
 
     const outputPath = path.join(__dirname, "../deployed_addresses.json");

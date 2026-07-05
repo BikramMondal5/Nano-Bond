@@ -5,6 +5,7 @@ import { config } from './config';
 import { BondService } from './services/bond.service';
 import { AAService } from './services/aa.service';
 import { DbService } from './services/db.service';
+import { DeploymentService } from './services/deployment.service';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,6 +22,7 @@ const bondService = new BondService();
 const dbService = new DbService();
 const aaService = new AAService(dbService);
 const userService = new UserService();
+let deploymentService: DeploymentService | null = null;
 
 // Provider and Wallet for admin operations
 const provider = new ethers.JsonRpcProvider(config.rpc.url);
@@ -58,6 +60,17 @@ const ERC20_ABI = [
 
 app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ============================================
+// PUBLIC CONFIG (for admin-web)
+// ============================================
+
+app.get('/api/config', (_req: Request, res: Response) => {
+    res.json({
+        rpcUrl: config.rpc.url,
+        contracts: config.contracts
+    });
 });
 
 // ============================================
@@ -214,27 +227,29 @@ app.post('/api/kyc/register', async (req: Request, res: Response) => {
             adminWallet
         );
 
-        // 3. Check if already verified (Optimization: Check DB first, then Chain)
-        const dbStatus = await userService.getUserStatus(address);
-        if (dbStatus.isVerified) {
-            console.log(`[KYC] Address ${address} already verified (DB cache)`);
+        // 3. Check if already verified ON-CHAIN FIRST (Critical: Don't trust DB cache after registry migration)
+        const isVerifiedOnChain = await registry.isVerified(address);
+        if (isVerifiedOnChain) {
+            console.log(`[KYC] Address ${address} already verified on-chain.`);
+            // Sync DB if needed
+            const dbStatus = await userService.getUserStatus(address);
+            if (!dbStatus.isVerified) {
+                await userService.registerUser({
+                    walletAddress: address,
+                    aadhaarHash: nationalIdHash,
+                    kycStatus: 'APPROVED',
+                    kycApprovedAt: new Date()
+                });
+            }
             res.json({ success: true, message: 'Already verified' });
             return;
         }
 
-        const isVerifiedOnChain = await registry.isVerified(address);
-        if (isVerifiedOnChain) {
-            console.log(`[KYC] Address ${address} already verified on-chain. Syncing to DB...`);
-            // Sync DB if missing
-            await userService.registerUser({
-                walletAddress: address,
-                aadhaarHash: nationalIdHash, // Map nationalIdHash to aadhaarHash
-                kycStatus: 'APPROVED',
-                kycApprovedAt: new Date()
-            });
-
-            res.json({ success: true, message: 'Already verified' });
-            return;
+        // NOTE: Even if DB says verified, we MUST re-register if on-chain check failed
+        // This handles registry contract migrations gracefully
+        const dbStatus = await userService.getUserStatus(address);
+        if (dbStatus.isVerified) {
+            console.log(`[KYC] Address ${address} verified in DB but NOT on-chain. Re-registering on new registry...`);
         }
 
         const { signature } = req.body;
@@ -507,24 +522,39 @@ app.get('/api/faucet/balance/:address', async (req: Request, res: Response) => {
  */
 app.post('/api/admin/distribute-yield', async (req: Request, res: Response) => {
     try {
-        const { amount } = req.body;
+        const { amount, bondId } = req.body;
+        const targetBondId = bondId || 'GOI-2030';
         const yieldAmount = parseFloat(amount) || 10;
 
-        console.log(`[API] POST /api/admin/distribute-yield - amount: ${yieldAmount}`);
+        console.log(`[API] POST /api/admin/distribute-yield - amount: ${yieldAmount}, bondId: ${targetBondId}`);
 
         if (!adminWallet) {
             res.status(500).json({ error: 'Admin wallet not configured' });
             return;
         }
 
-        const distributor = new ethers.Contract(config.contracts.distributorAddress, DISTRIBUTOR_ABI, adminWallet);
+        // Fetch Bond to get distributor address from MongoDB
+        const bond: any = await bondService.getBondById(targetBondId);
+        if (!bond) {
+            res.status(404).json({ error: `Bond not found: ${targetBondId}` });
+            return;
+        }
+        if (!bond.distributorAddress) {
+            res.status(400).json({ error: `Distributor not configured for bond ${targetBondId}` });
+            return;
+        }
+
+        const distributorAddress = bond.distributorAddress;
+        console.log(`[API] Using distributor ${distributorAddress} for bond ${targetBondId}`);
+
+        const distributor = new ethers.Contract(distributorAddress, DISTRIBUTOR_ABI, adminWallet);
         const usdt = new ethers.Contract(config.contracts.usdtAddress, ERC20_ABI, adminWallet);
 
         const yieldBig = ethers.parseUnits(yieldAmount.toString(), 6);
 
         // Approve
-        console.log('[API] Approving USDT...');
-        const approveTx = await usdt.approve(config.contracts.distributorAddress, yieldBig);
+        console.log(`[API] Approving USDT for ${distributorAddress}...`);
+        const approveTx = await usdt.approve(distributorAddress, yieldBig);
         await approveTx.wait();
 
         // Deposit Yield
@@ -554,8 +584,13 @@ app.post('/api/admin/bonds', async (req: Request, res: Response) => {
         console.log(`[API] POST /api/admin/bonds - ${bondData.bondId}`);
 
         // Basic validation
-        if (!bondData.bondId || !bondData.bondName || !bondData.contractAddress) {
-            res.status(400).json({ error: 'Missing required fields (bondId, bondName, contractAddress)' });
+        if (!bondData.bondId || !bondData.bondName) {
+            res.status(400).json({ error: 'Missing required fields (bondId, bondName)' });
+            return;
+        }
+
+        if (!bondData.autoDeploy && !bondData.contractAddress) {
+            res.status(400).json({ error: 'contractAddress is required when autoDeploy is false' });
             return;
         }
 
@@ -564,7 +599,30 @@ app.post('/api/admin/bonds', async (req: Request, res: Response) => {
         if (bondData.minInvestment) bondData.minInvestment = Number(bondData.minInvestment);
         if (bondData.maxSubscription) bondData.maxSubscription = Number(bondData.maxSubscription);
 
-        const newBond = bondService.addBond(bondData);
+        // Optional: Auto-deploy contracts (Bond + Treasury + Distributor)
+        if (bondData.autoDeploy) {
+            const ownerWallet = bondData.adminWallet;
+            if (!ownerWallet) {
+                res.status(400).json({ error: 'adminWallet is required for autoDeploy' });
+                return;
+            }
+
+            if (!deploymentService) {
+                deploymentService = new DeploymentService();
+            }
+
+            const deployment = await deploymentService.deployBondProduct({
+                bondName: bondData.bondName,
+                bondId: bondData.bondId,
+                ownerWallet
+            });
+
+            bondData.contractAddress = deployment.contractAddress;
+            bondData.treasuryAddress = deployment.treasuryAddress;
+            bondData.distributorAddress = deployment.distributorAddress;
+        }
+
+        const newBond = await bondService.addBond(bondData);
         res.json({ success: true, bond: newBond });
 
     } catch (error: any) {
@@ -589,6 +647,7 @@ app.listen(PORT, () => {
     
     Endpoints:
       GET  /health               - Health check
+      GET  /api/config           - Public config (RPC + contract addresses)
       GET  /api/bonds            - List all bonds
       GET  /api/bonds/:address   - Get bond by address
       GET  /api/portfolio/:addr  - Get user portfolio
@@ -599,6 +658,7 @@ app.listen(PORT, () => {
       POST /api/faucet/usdt      - Mint test USDT
       GET  /api/faucet/balance/:addr - Check USDT balance
       POST /api/admin/distribute-yield - Distribute yield
+      POST /api/admin/bonds      - Add bond to registry (supports autoDeploy)
     
     RPC: ${config.rpc.url}
     Admin Wallet: ${adminWallet ? adminWallet.address : 'NOT CONFIGURED'}

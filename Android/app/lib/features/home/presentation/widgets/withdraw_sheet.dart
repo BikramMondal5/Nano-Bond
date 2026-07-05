@@ -26,6 +26,10 @@ class WithdrawBottomSheet extends ConsumerStatefulWidget {
 
 class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
   bool _isLoading = false;
+  bool _showSuccess = false;
+  bool _isClaimSuccess = false; // true = claim, false = redeem
+  double _successAmount = 0;
+  String _successBondName = '';
   String _loadingMessage = "Processing...";
   Timer? _loadingTimer;
 
@@ -53,7 +57,11 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
     });
   }
 
-  Future<void> _handleClaim(String bondId) async {
+  Future<void> _handleClaim(
+    String bondId,
+    double yieldAmount,
+    String bondName,
+  ) async {
     setState(() => _isLoading = true);
     _startLoadingAnimation("Initiating Claim...");
 
@@ -65,17 +73,21 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
 
       if (!mounted) return;
       _loadingTimer?.cancel();
-      // Don't pop, just refresh data so user can see updated status if needed (e.g. yield goes to 0)
-      // Actually popping is better UX for "Done". Or maybe show success dialog.
-      // Existing code popped. I will show toast and refresh.
       ref.invalidate(userPortfolioProvider);
-      UiUtils.showSuccess(context, "Yield claimed successfully!");
+
+      // Show success screen instead of just a toast
+      setState(() {
+        _isLoading = false;
+        _showSuccess = true;
+        _isClaimSuccess = true;
+        _successAmount = yieldAmount;
+        _successBondName = bondName;
+      });
     } catch (e) {
       if (!mounted) return;
       _loadingTimer?.cancel();
       _handleError(e);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -98,14 +110,20 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
       if (!mounted) return;
       _loadingTimer?.cancel();
       ref.invalidate(userPortfolioProvider);
-      UiUtils.showSuccess(context, "Redeemed $bondName successfully!");
-      // Optionally pop if fully redeemed.
+
+      // Show success screen instead of just a toast
+      setState(() {
+        _isLoading = false;
+        _showSuccess = true;
+        _isClaimSuccess = false;
+        _successAmount = amount;
+        _successBondName = bondName;
+      });
     } catch (e) {
       if (!mounted) return;
       _loadingTimer?.cancel();
       _handleError(e);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -164,24 +182,27 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
                 ),
                 Gap(16.h),
 
-                // Header
-                // Header
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24.w),
-                  child: Center(
-                    child: Text(
-                      "Redeem",
-                      style: GoogleFonts.outfit(
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                // Header - Only show when not loading or showing success
+                if (!_isLoading && !_showSuccess) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.w),
+                    child: Center(
+                      child: Text(
+                        "Redeem",
+                        style: GoogleFonts.outfit(
+                          fontSize: 24.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Gap(16.h),
+                  Gap(16.h),
+                ],
 
-                if (_isLoading)
+                if (_showSuccess)
+                  _buildSuccessState()
+                else if (_isLoading)
                   _buildLoadingState()
                 else
                   Expanded(
@@ -238,7 +259,7 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
       child: Column(
         children: [
           SizedBox(
-            height: 150.h,
+            height: 220.h,
             child: Lottie.asset(
               'assets/animation/Coin.json',
               fit: BoxFit.contain,
@@ -257,6 +278,136 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSuccessState() {
+    return Expanded(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Success Animation
+            Container(
+              width: 120.w,
+              height: 120.w,
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle_rounded,
+                size: 80.w,
+                color: Colors.green[600],
+              ),
+            ),
+            Gap(32.h),
+            // Success Title
+            Text(
+              _isClaimSuccess ? "Yield Claimed!" : "Redemption Successful!",
+              style: GoogleFonts.outfit(
+                fontSize: 24.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Gap(12.h),
+            // Success Details
+            Text(
+              _isClaimSuccess
+                  ? "You have successfully claimed yield"
+                  : "You have successfully redeemed",
+              style: GoogleFonts.manrope(
+                fontSize: 14.sp,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Gap(8.h),
+            // Amount
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: "\$${_successAmount.toStringAsFixed(2)}",
+                    style: GoogleFonts.manrope(
+                      fontSize: 32.sp,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.green[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Gap(8.h),
+            Text(
+              "from $_successBondName",
+              style: GoogleFonts.manrope(
+                fontSize: 14.sp,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Gap(16.h),
+            // USDT Added info
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 18.w,
+                    color: Colors.green[600],
+                  ),
+                  Gap(8.w),
+                  Text(
+                    "USDT added to your wallet",
+                    style: GoogleFonts.manrope(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            // Done Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  "Done",
+                  style: GoogleFonts.manrope(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            Gap(16.h),
+          ],
+        ),
       ),
     );
   }
@@ -417,7 +568,11 @@ class _WithdrawBottomSheetState extends ConsumerState<WithdrawBottomSheet> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: hasYield
-                        ? () => _handleClaim(holding.bondId)
+                        ? () => _handleClaim(
+                            holding.bondId,
+                            holdingYield,
+                            holding.bondName,
+                          )
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[600],
